@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Building,
   Users,
+  Percent,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -41,8 +42,17 @@ import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { format } from "date-fns"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Progress } from "@/components/ui/progress"
 
-// Dados de exemplo - obras
+// Definição das etapas da obra
+export type EtapaObra = {
+  id: string
+  nome: string
+  concluida: boolean
+  progresso: number // 0-100%
+}
+
+// Dados de exemplo - obras (com etapas)
 const obras = [
   {
     id: 1,
@@ -53,6 +63,13 @@ const obras = [
     dataFim: "20/06/2023",
     status: "Concluída",
     responsavel: "Maria Oliveira",
+    etapas: [
+      { id: "fundacao", nome: "Fundação", concluida: true, progresso: 100 },
+      { id: "estrutura", nome: "Estrutura", concluida: true, progresso: 100 },
+      { id: "alvenaria", nome: "Alvenaria", concluida: true, progresso: 100 },
+      { id: "instalacao", nome: "Instalação", concluida: true, progresso: 100 },
+      { id: "acabamento", nome: "Acabamento", concluida: true, progresso: 100 },
+    ],
     descricao: "Construção de mansão de alto padrão com 5 suítes, piscina, área de lazer completa e paisagismo.",
     orcamentos: [
       {
@@ -94,6 +111,13 @@ const obras = [
     dataFim: "15/12/2023",
     status: "Em andamento",
     responsavel: "Carlos Santos",
+    etapas: [
+      { id: "fundacao", nome: "Fundação", concluida: true, progresso: 100 },
+      { id: "estrutura", nome: "Estrutura", concluida: true, progresso: 100 },
+      { id: "alvenaria", nome: "Alvenaria", concluida: true, progresso: 100 },
+      { id: "instalacao", nome: "Instalação", concluida: false, progresso: 75 },
+      { id: "acabamento", nome: "Acabamento", concluida: false, progresso: 0 },
+    ],
     descricao: "Construção de casa de praia com 4 quartos, vista para o mar, deck e área gourmet.",
     orcamentos: [
       {
@@ -135,6 +159,13 @@ const obras = [
     dataFim: "30/09/2023",
     status: "Concluída",
     responsavel: "Ana Pereira",
+    etapas: [
+      { id: "fundacao", nome: "Fundação", concluida: true, progresso: 100 },
+      { id: "estrutura", nome: "Estrutura", concluida: true, progresso: 100 },
+      { id: "alvenaria", nome: "Alvenaria", concluida: true, progresso: 100 },
+      { id: "instalacao", nome: "Instalação", concluida: true, progresso: 100 },
+      { id: "acabamento", nome: "Acabamento", concluida: true, progresso: 100 },
+    ],
     descricao: "Reforma completa de cobertura duplex com 300m², incluindo automação residencial e energia solar.",
     orcamentos: [
       {
@@ -163,6 +194,13 @@ const obras = [
     dataFim: "10/12/2023",
     status: "Em andamento",
     responsavel: "Pedro Souza",
+    etapas: [
+      { id: "fundacao", nome: "Fundação", concluida: true, progresso: 100 },
+      { id: "estrutura", nome: "Estrutura", concluida: true, progresso: 100 },
+      { id: "alvenaria", nome: "Alvenaria", concluida: false, progresso: 25 },
+      { id: "instalacao", nome: "Instalação", concluida: false, progresso: 0 },
+      { id: "acabamento", nome: "Acabamento", concluida: false, progresso: 0 },
+    ],
     descricao: "Construção de casa de campo em estilo rústico com estrutura de madeira, lareira e vista panorâmica.",
     orcamentos: [
       {
@@ -204,6 +242,13 @@ const obras = [
     dataFim: "25/08/2024",
     status: "Em andamento",
     responsavel: "Maria Oliveira",
+    etapas: [
+      { id: "fundacao", nome: "Fundação", concluida: true, progresso: 100 },
+      { id: "estrutura", nome: "Estrutura", concluida: false, progresso: 50 },
+      { id: "alvenaria", nome: "Alvenaria", concluida: false, progresso: 0 },
+      { id: "instalacao", nome: "Instalação", concluida: false, progresso: 0 },
+      { id: "acabamento", nome: "Acabamento", concluida: false, progresso: 0 },
+    ],
     descricao: "Construção de mansão em estilo neoclássico com 6 suítes, cinema, adega, spa e garagem para 8 carros.",
     orcamentos: [
       {
@@ -363,6 +408,42 @@ const getFuncionariosObra = (obraId: number) => {
   return funcionariosObra ? funcionariosObra.funcionarios : []
 }
 
+// Função para calcular o percentual total de evolução da obra
+const calcularEvolucaoTotal = (etapas: EtapaObra[]) => {
+  // Cada etapa representa 20% do total
+  const pesoEtapa = 20
+
+  // Soma o progresso ponderado de cada etapa
+  let evolucaoTotal = 0
+
+  etapas.forEach((etapa) => {
+    evolucaoTotal += (etapa.progresso / 100) * pesoEtapa
+  })
+
+  return Math.round(evolucaoTotal)
+}
+
+// Função para obter a cor da barra de progresso com base no percentual
+const getProgressColor = (percentual: number) => {
+  if (percentual < 25) return "bg-red-500"
+  if (percentual < 50) return "bg-yellow-500"
+  if (percentual < 75) return "bg-blue-500"
+  return "bg-green-500"
+}
+
+// Função para obter o nome da etapa atual
+const getEtapaAtual = (etapas: EtapaObra[]) => {
+  // Encontra a primeira etapa não concluída
+  const etapaAtual = etapas.find((etapa) => !etapa.concluida)
+
+  // Se todas as etapas estiverem concluídas, retorna a última
+  if (!etapaAtual) {
+    return etapas[etapas.length - 1].nome
+  }
+
+  return etapaAtual.nome
+}
+
 export default function ObrasPage() {
   // Estado para pesquisa
   const [searchTerm, setSearchTerm] = useState("")
@@ -371,6 +452,7 @@ export default function ObrasPage() {
   const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState<string[]>([])
   const [filtroResponsavel, setFiltroResponsavel] = useState<string[]>([])
+  const [filtroEtapa, setFiltroEtapa] = useState<string[]>([])
 
   // Estado para o diálogo de detalhes da obra
   const [detalhesDialogAberto, setDetalhesDialogAberto] = useState(false)
@@ -380,8 +462,15 @@ export default function ObrasPage() {
   const [editarDialogAberto, setEditarDialogAberto] = useState(false)
   const [obraEditada, setObraEditada] = useState<(typeof obras)[0] | null>(null)
 
+  // Estado para o diálogo de atualização da evolução
+  const [evolucaoDialogAberto, setEvolucaoDialogAberto] = useState(false)
+  const [obraEvolucao, setObraEvolucao] = useState<{ id: number; nome: string; etapas: EtapaObra[] } | null>(null)
+
   // Obter todos os responsáveis únicos
   const responsaveis = Array.from(new Set(obras.map((obra) => obra.responsavel))).sort()
+
+  // Etapas disponíveis para filtro
+  const etapasDisponiveis = ["Fundação", "Estrutura", "Alvenaria", "Instalação", "Acabamento"]
 
   // Função para filtrar obras
   const filtrarObras = () => {
@@ -398,7 +487,11 @@ export default function ObrasPage() {
       // Filtro por responsável
       const matchesResponsavel = filtroResponsavel.length === 0 || filtroResponsavel.includes(obra.responsavel)
 
-      return matchesSearch && matchesStatus && matchesResponsavel
+      // Filtro por etapa atual
+      const etapaAtual = getEtapaAtual(obra.etapas)
+      const matchesEtapa = filtroEtapa.length === 0 || filtroEtapa.includes(etapaAtual)
+
+      return matchesSearch && matchesStatus && matchesResponsavel && matchesEtapa
     })
   }
 
@@ -427,10 +520,22 @@ export default function ObrasPage() {
     })
   }
 
+  // Função para alternar seleção de etapa no filtro
+  const toggleEtapa = (etapa: string) => {
+    setFiltroEtapa((current) => {
+      if (current.includes(etapa)) {
+        return current.filter((e) => e !== etapa)
+      } else {
+        return [...current, etapa]
+      }
+    })
+  }
+
   // Função para limpar todos os filtros
   const limparFiltros = () => {
     setFiltroStatus([])
     setFiltroResponsavel([])
+    setFiltroEtapa([])
     setSearchTerm("")
   }
 
@@ -444,6 +549,16 @@ export default function ObrasPage() {
   const abrirDialogoEditar = (obra: (typeof obras)[0]) => {
     setObraEditada({ ...obra })
     setEditarDialogAberto(true)
+  }
+
+  // Função para abrir o diálogo de atualização da evolução
+  const abrirDialogoEvolucao = (obra: (typeof obras)[0]) => {
+    setObraEvolucao({
+      id: obra.id,
+      nome: obra.nome,
+      etapas: JSON.parse(JSON.stringify(obra.etapas)),
+    })
+    setEvolucaoDialogAberto(true)
   }
 
   // Função para salvar edição da obra
@@ -472,6 +587,69 @@ export default function ObrasPage() {
 
     // Limpar o estado
     setObraEditada(null)
+  }
+
+  // Função para salvar a evolução da obra
+  const salvarEvolucaoObra = () => {
+    if (!obraEvolucao) return
+
+    // Fechar o diálogo
+    setEvolucaoDialogAberto(false)
+
+    // Calcular o percentual total
+    const percentualTotal = calcularEvolucaoTotal(obraEvolucao.etapas)
+
+    // Mostrar toast de sucesso
+    toast({
+      title: "Evolução Atualizada",
+      description: `A evolução da obra ${obraEvolucao.nome} foi atualizada para ${percentualTotal}%.`,
+      action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+    })
+
+    // Limpar o estado
+    setObraEvolucao(null)
+  }
+
+  // Função para atualizar o progresso de uma etapa
+  const atualizarProgressoEtapa = (etapaId: string, progresso: number) => {
+    if (!obraEvolucao) return
+
+    const novasEtapas = obraEvolucao.etapas.map((etapa) => {
+      if (etapa.id === etapaId) {
+        return {
+          ...etapa,
+          progresso,
+          concluida: progresso === 100,
+        }
+      }
+      return etapa
+    })
+
+    setObraEvolucao({
+      ...obraEvolucao,
+      etapas: novasEtapas,
+    })
+  }
+
+  // Função para marcar uma etapa como concluída
+  const marcarEtapaConcluida = (etapaId: string, concluida: boolean) => {
+    if (!obraEvolucao) return
+
+    const novasEtapas = obraEvolucao.etapas.map((etapa) => {
+      if (etapa.id === etapaId) {
+        return {
+          ...etapa,
+          concluida,
+          progresso: concluida ? 100 : etapa.progresso,
+        }
+      }
+      return etapa
+    })
+
+    setObraEvolucao({
+      ...obraEvolucao,
+      etapas: novasEtapas,
+    })
   }
 
   return (
@@ -550,6 +728,27 @@ export default function ObrasPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <h5 className="text-sm font-medium">Etapa Atual</h5>
+                <div className="space-y-2">
+                  {etapasDisponiveis.map((etapa) => (
+                    <div key={etapa} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`etapa-${etapa}`}
+                        checked={filtroEtapa.includes(etapa)}
+                        onCheckedChange={() => toggleEtapa(etapa)}
+                      />
+                      <label
+                        htmlFor={`etapa-${etapa}`}
+                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {etapa}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex justify-between">
                 <Button variant="outline" size="sm" onClick={limparFiltros}>
                   Limpar Filtros
@@ -572,54 +771,87 @@ export default function ObrasPage() {
               <TableHead>Data de Início</TableHead>
               <TableHead>Data de Conclusão</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Etapa Atual</TableHead>
+              <TableHead>Evolução</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {obrasFiltradas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   Nenhuma obra encontrada.
                 </TableCell>
               </TableRow>
             ) : (
-              obrasFiltradas.map((obra) => (
-                <TableRow key={obra.id}>
-                  <TableCell className="font-medium">{obra.nome}</TableCell>
-                  <TableCell>{obra.cliente}</TableCell>
-                  <TableCell>{obra.endereco}</TableCell>
-                  <TableCell>{obra.dataInicio}</TableCell>
-                  <TableCell>{obra.dataFim}</TableCell>
-                  <TableCell>
-                    <Badge variant={obra.status === "Concluída" ? "default" : "secondary"}>{obra.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Abrir menu</span>
+              obrasFiltradas.map((obra) => {
+                const evolucaoTotal = calcularEvolucaoTotal(obra.etapas)
+                const etapaAtual = getEtapaAtual(obra.etapas)
+
+                return (
+                  <TableRow key={obra.id}>
+                    <TableCell className="font-medium">{obra.nome}</TableCell>
+                    <TableCell>{obra.cliente}</TableCell>
+                    <TableCell>{obra.endereco}</TableCell>
+                    <TableCell>{obra.dataInicio}</TableCell>
+                    <TableCell>{obra.dataFim}</TableCell>
+                    <TableCell>
+                      <Badge variant={obra.status === "Concluída" ? "default" : "secondary"}>{obra.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-normal">
+                        {etapaAtual}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="w-full max-w-[100px]">
+                          <Progress value={evolucaoTotal} className={getProgressColor(evolucaoTotal)} />
+                        </div>
+                        <span className="text-sm font-medium">{evolucaoTotal}%</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => abrirDialogoEvolucao(obra)}
+                        >
+                          <Percent className="h-4 w-4" />
+                          <span className="sr-only">Atualizar evolução</span>
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => abrirDialogoEditar(obra)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => abrirDialogoDetalhes(obra)}>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Ver Detalhes
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Abrir menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => abrirDialogoEditar(obra)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => abrirDialogoEvolucao(obra)}>
+                            <Percent className="mr-2 h-4 w-4" />
+                            Atualizar Evolução
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => abrirDialogoDetalhes(obra)}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Ver Detalhes
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
@@ -636,6 +868,7 @@ export default function ObrasPage() {
             <Tabs defaultValue="info" className="mt-4">
               <TabsList className="mb-4">
                 <TabsTrigger value="info">Informações</TabsTrigger>
+                <TabsTrigger value="evolucao">Evolução</TabsTrigger>
                 <TabsTrigger value="orcamentos">Orçamentos</TabsTrigger>
                 <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
                 <TabsTrigger value="funcionarios">Funcionários</TabsTrigger>
@@ -672,6 +905,49 @@ export default function ObrasPage() {
                   <div className="space-y-1 col-span-2">
                     <h4 className="text-sm font-medium">Descrição</h4>
                     <p className="text-sm text-muted-foreground">{obraSelecionada.descricao}</p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="evolucao" className="space-y-4">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Evolução da Obra</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        Total: {calcularEvolucaoTotal(obraSelecionada.etapas)}%
+                      </span>
+                      <Button size="sm" variant="outline" onClick={() => abrirDialogoEvolucao(obraSelecionada)}>
+                        <Percent className="mr-2 h-4 w-4" />
+                        Atualizar Evolução
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="h-4 mb-6">
+                    <Progress
+                      value={calcularEvolucaoTotal(obraSelecionada.etapas)}
+                      className={getProgressColor(calcularEvolucaoTotal(obraSelecionada.etapas))}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    {obraSelecionada.etapas.map((etapa) => (
+                      <div key={etapa.id} className="border rounded-md p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{etapa.nome}</h4>
+                            {etapa.concluida && (
+                              <Badge variant="default" className="bg-green-500">
+                                Concluída
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-sm font-medium">{etapa.progresso}%</span>
+                        </div>
+                        <Progress value={etapa.progresso} className={getProgressColor(etapa.progresso)} />
+                      </div>
+                    ))}
                   </div>
                 </div>
               </TabsContent>
@@ -972,6 +1248,102 @@ export default function ObrasPage() {
               Cancelar
             </Button>
             <Button onClick={salvarEdicaoObra}>Salvar Alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Atualização da Evolução */}
+      <Dialog open={evolucaoDialogAberto} onOpenChange={setEvolucaoDialogAberto}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Atualizar Evolução da Obra</DialogTitle>
+            <DialogDescription>Atualize o progresso de cada etapa da obra {obraEvolucao?.nome}.</DialogDescription>
+          </DialogHeader>
+          {obraEvolucao && (
+            <div className="grid gap-4 py-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Evolução Total</h3>
+                <span className="text-xl font-bold">{calcularEvolucaoTotal(obraEvolucao.etapas)}%</span>
+              </div>
+              <div className="h-4 mb-4">
+                <Progress
+                  value={calcularEvolucaoTotal(obraEvolucao.etapas)}
+                  className={getProgressColor(calcularEvolucaoTotal(obraEvolucao.etapas))}
+                />
+              </div>
+
+              <div className="space-y-6">
+                {obraEvolucao.etapas.map((etapa) => (
+                  <div key={etapa.id} className="border rounded-md p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium">{etapa.nome}</h4>
+                        <span className="text-sm text-muted-foreground">(20% da obra)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{etapa.progresso}%</span>
+                        <Checkbox
+                          id={`concluida-${etapa.id}`}
+                          checked={etapa.concluida}
+                          onCheckedChange={(checked) => marcarEtapaConcluida(etapa.id, checked === true)}
+                        />
+                        <Label htmlFor={`concluida-${etapa.id}`} className="text-sm">
+                          Concluída
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-[1fr,auto] gap-4 items-center">
+                      <Input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={etapa.progresso}
+                        onChange={(e) => atualizarProgressoEtapa(etapa.id, Number.parseInt(e.target.value))}
+                        className="w-full"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => atualizarProgressoEtapa(etapa.id, 0)}
+                          disabled={etapa.progresso === 0}
+                        >
+                          0%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => atualizarProgressoEtapa(etapa.id, 50)}
+                          disabled={etapa.progresso === 50}
+                        >
+                          50%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => atualizarProgressoEtapa(etapa.id, 100)}
+                          disabled={etapa.progresso === 100}
+                        >
+                          100%
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="h-2 mt-2">
+                      <Progress value={etapa.progresso} className={getProgressColor(etapa.progresso)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEvolucaoDialogAberto(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={salvarEvolucaoObra}>Salvar Evolução</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

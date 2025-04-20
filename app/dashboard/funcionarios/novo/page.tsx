@@ -1,11 +1,14 @@
 import Link from "next/link"
+
+import { ArrowLeft } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+// Modificar o componente para adicionar os novos campos
 export default function NovoFuncionarioPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -67,10 +70,44 @@ export default function NovoFuncionarioPage() {
                 <Input id="dataContratacao" type="date" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="salario">Salário</Label>
-                <Input id="salario" type="number" placeholder="0.00" />
+                <Label htmlFor="chavePix">Chave PIX</Label>
+                <Input id="chavePix" placeholder="CPF, email, telefone ou chave aleatória" />
               </div>
             </div>
+
+            {/* Seção de Pagamentos */}
+            <div className="pt-4 border-t">
+              <h3 className="text-lg font-medium mb-4">Informações de Pagamento</h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="diaria">Valor da Diária (R$)</Label>
+                  <Input id="diaria" type="number" step="0.01" placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="diasTrabalhados">Dias Trabalhados</Label>
+                  <Input id="diasTrabalhados" type="number" placeholder="0" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="valorAdicional">Valor Adicional (R$)</Label>
+                  <Input id="valorAdicional" type="number" step="0.01" placeholder="0.00" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="descontos">Descontos (R$)</Label>
+                  <Input id="descontos" type="number" step="0.01" placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adiantamento">Adiantamento (R$)</Label>
+                  <Input id="adiantamento" type="number" step="0.01" placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="valorTotal">Valor Total (R$)</Label>
+                  <Input id="valorTotal" type="number" step="0.01" placeholder="0.00" disabled className="bg-muted" />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="observacoes">Observações</Label>
               <Textarea id="observacoes" placeholder="Informações adicionais sobre o funcionário" />

@@ -3,74 +3,83 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { PhoneCall, Mail, MapPin, Clock, CheckCircle, ArrowRight } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet"
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Image
-              src="/microphone-crowd.png"
-              alt="Master Construtora Logo"
-              width={40}
-              height={40}
-              className="rounded"
-            />
-            <span className="text-xl font-bold">Master Construtora</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="#inicio" className="text-sm font-medium hover:text-primary">
-              Início
-            </Link>
-            <Link href="#sobre" className="text-sm font-medium hover:text-primary">
-              Sobre
-            </Link>
-            <Link href="#servicos" className="text-sm font-medium hover:text-primary">
-              Serviços
-            </Link>
-            <Link href="#projetos" className="text-sm font-medium hover:text-primary">
-              Projetos
-            </Link>
-            <Link href="#depoimentos" className="text-sm font-medium hover:text-primary">
-              Depoimentos
-            </Link>
-            <Link href="#contato" className="text-sm font-medium hover:text-primary">
-              Contato
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="hidden md:flex">
-              <PhoneCall className="mr-2 h-4 w-4" />
-              (31) 99999-9999
-            </Button>
-            <Button className="hidden md:flex">Solicitar Orçamento</Button>
-            <Button variant="secondary" size="sm" className="hidden md:flex" asChild>
-              <Link href="/login">Entrar</Link>
-            </Button>
-            <ThemeToggle />
-            <Button variant="outline" size="icon" className="md:hidden">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-6 w-6"
-              >
-                <line x1="4" x2="20" y1="12" y2="12" />
-                <line x1="4" x2="20" y1="6" y2="6" />
-                <line x1="4" x2="20" y1="18" y2="18" />
-              </svg>
-            </Button>
-          </div>
+      <header className="sticky top-0 bg-background z-50">
+      <div className="container flex items-center justify-between py-4">
+        <Link href="/" className="font-bold text-2xl">
+          Logo
+        </Link>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" className="hidden md:flex">
+            <PhoneCall className="mr-2 h-4 w-4" />
+            (31) 99999-9999
+          </Button>
+          <Button className="hidden md:flex">Solicitar Orçamento</Button>
+          <Button variant="secondary" size="sm" className="hidden md:flex" asChild>
+            <Link href="/login">Entrar</Link>
+          </Button>
+          <ThemeToggle />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="md:hidden">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-6 w-6"
+                >
+                  <line x1="4" x2="20" y1="12" y2="12" />
+                  <line x1="4" x2="20" y1="6" y2="6" />
+                  <line x1="4" x2="20" y1="18" y2="18" />
+                </svg>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[350px]">
+              <nav className="flex flex-col gap-4 mt-8">
+                <Link href="#inicio" className="text-lg font-medium hover:text-primary">
+                  Início
+                </Link>
+                <Link href="#sobre" className="text-lg font-medium hover:text-primary">
+                  Sobre
+                </Link>
+                <Link href="#servicos" className="text-lg font-medium hover:text-primary">
+                  Serviços
+                </Link>
+                <Link href="#projetos" className="text-lg font-medium hover:text-primary">
+                  Projetos
+                </Link>
+                <Link href="#depoimentos" className="text-lg font-medium hover:text-primary">
+                  Depoimentos
+                </Link>
+                <Link href="#contato" className="text-lg font-medium hover:text-primary">
+                  Contato
+                </Link>
+                <div className="pt-4 mt-4 border-t">
+                  <Button className="w-full mb-2">Solicitar Orçamento</Button>
+                  <Button variant="outline" size="sm" className="w-full mb-2">
+                    <PhoneCall className="mr-2 h-4 w-4" />
+                    (31) 99999-9999
+                  </Button>
+                  <Button variant="secondary" size="sm" className="w-full" asChild>
+                    <Link href="/login">Entrar</Link>
+                  </Button>
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
-      </header>
+      </div>
+    </header>
 
       <main className="flex-1">
         {/* Hero Section */}

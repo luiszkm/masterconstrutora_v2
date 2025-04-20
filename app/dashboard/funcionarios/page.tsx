@@ -22,6 +22,7 @@ import {
   Download,
   FileText,
   Upload,
+  CopyPlus,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -45,7 +46,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
+import { format, startOfMonth, endOfMonth, isWithinInterval, addMonths } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { DateRangePicker } from "@/components/date-range-picker"
 import type { DateRange } from "react-day-picker"
@@ -321,6 +322,13 @@ export default function FuncionariosPage() {
     to: endOfMonth(new Date()),
   })
 
+  // Estado para seleção de funcionários
+  const [selectedFuncionarios, setSelectedFuncionarios] = useState<number[]>([])
+
+  // Estado para o diálogo de replicação
+  const [dialogReplicacaoAberto, setDialogReplicacaoAberto] = useState(false)
+  const [proximaQuinzena, setProximaQuinzena] = useState("")
+
   // Determinar a quinzena atual
   const hoje = new Date()
   const diaAtual = hoje.getDate()
@@ -333,6 +341,15 @@ export default function FuncionariosPage() {
   const quinzenaAtual = ehPrimeiraQuinzena
     ? `Primeira quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
     : `Segunda quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
+
+  // Calcular a próxima quinzena
+  const proximaQuinzenaData = ehPrimeiraQuinzena
+    ? new Date(hoje.getFullYear(), hoje.getMonth(), 16)
+    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1)
+
+  const proximaQuinzenaTexto = ehPrimeiraQuinzena
+    ? `Segunda quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
+    : `Primeira quinzena de ${format(addMonths(hoje, 1), "MMMM/yyyy", { locale: ptBR })}`
 
   // Calcular o valor total da quinzena atual
   const valorTotalQuinzena = funcionariosAtivos.reduce((total, funcionario) => {
@@ -455,6 +472,60 @@ export default function FuncionariosPage() {
     })
   }
 
+  // Função para selecionar/deselecionar todos os funcionários
+  const toggleSelectAll = () => {
+    if (selectedFuncionarios.length === funcionariosAtivosFiltrados.length) {
+      setSelectedFuncionarios([])
+    } else {
+      setSelectedFuncionarios(funcionariosAtivosFiltrados.map((f) => f.id))
+    }
+  }
+
+  // Função para selecionar/deselecionar um funcionário
+  const toggleSelectFuncionario = (id: number) => {
+    setSelectedFuncionarios((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((fId) => fId !== id)
+      } else {
+        return [...prev, id]
+      }
+    })
+  }
+
+  // Função para abrir o diálogo de replicação
+  const abrirDialogoReplicacao = () => {
+    if (selectedFuncionarios.length === 0) {
+      toast({
+        title: "Nenhum funcionário selecionado",
+        description: "Selecione pelo menos um funcionário para replicar para a próxima quinzena.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setProximaQuinzena(proximaQuinzenaTexto)
+    setDialogReplicacaoAberto(true)
+  }
+
+  // Função para replicar funcionários para a próxima quinzena
+  const replicarFuncionarios = () => {
+    // Aqui você implementaria a lógica real para replicar os funcionários
+    // para a próxima quinzena no seu backend
+
+    // Fechar o diálogo
+    setDialogReplicacaoAberto(false)
+
+    // Mostrar toast de sucesso
+    toast({
+      title: "Funcionários Replicados",
+      description: `${selectedFuncionarios.length} funcionário(s) replicado(s) com sucesso para a ${proximaQuinzena}.`,
+      action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+    })
+
+    // Limpar seleção
+    setSelectedFuncionarios([])
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -497,8 +568,8 @@ export default function FuncionariosPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+          <div className="flex flex-col md:flex-row items-center gap-2 justify-between">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
@@ -508,71 +579,82 @@ export default function FuncionariosPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Popover open={filtroAberto} onOpenChange={setFiltroAberto}>
-              <PopoverTrigger asChild>
-                <Button variant="outline">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filtrar
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
-                <div className="space-y-4">
-                  <h4 className="font-medium">Filtrar por</h4>
+            <div className="flex gap-2 w-full md:w-auto">
+              <Button
+                variant="outline"
+                onClick={abrirDialogoReplicacao}
+                disabled={selectedFuncionarios.length === 0}
+                className="whitespace-nowrap"
+              >
+                <CopyPlus className="mr-2 h-4 w-4" />
+                Replicar para Próxima Quinzena
+              </Button>
+              <Popover open={filtroAberto} onOpenChange={setFiltroAberto}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filtrar
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Filtrar por</h4>
 
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-medium">Departamento</h5>
                     <div className="space-y-2">
-                      {departamentos.map((departamento) => (
-                        <div key={departamento} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`departamento-${departamento}`}
-                            checked={filtroDepartamento.includes(departamento)}
-                            onCheckedChange={() => toggleDepartamento(departamento)}
-                          />
-                          <label
-                            htmlFor={`departamento-${departamento}`}
-                            className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {departamento}
-                          </label>
-                        </div>
-                      ))}
+                      <h5 className="text-sm font-medium">Departamento</h5>
+                      <div className="space-y-2">
+                        {departamentos.map((departamento) => (
+                          <div key={departamento} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`departamento-${departamento}`}
+                              checked={filtroDepartamento.includes(departamento)}
+                              onCheckedChange={() => toggleDepartamento(departamento)}
+                            />
+                            <label
+                              htmlFor={`departamento-${departamento}`}
+                              className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {departamento}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h5 className="text-sm font-medium">Cargo</h5>
+                      <div className="space-y-2">
+                        {cargos.map((cargo) => (
+                          <div key={cargo} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`cargo-${cargo}`}
+                              checked={filtroCargo.includes(cargo)}
+                              onCheckedChange={() => toggleCargo(cargo)}
+                            />
+                            <label
+                              htmlFor={`cargo-${cargo}`}
+                              className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {cargo}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <Button variant="outline" size="sm" onClick={limparFiltros}>
+                        Limpar Filtros
+                      </Button>
+                      <Button size="sm" onClick={() => setFiltroAberto(false)}>
+                        Aplicar Filtros
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-medium">Cargo</h5>
-                    <div className="space-y-2">
-                      {cargos.map((cargo) => (
-                        <div key={cargo} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`cargo-${cargo}`}
-                            checked={filtroCargo.includes(cargo)}
-                            onCheckedChange={() => toggleCargo(cargo)}
-                          />
-                          <label
-                            htmlFor={`cargo-${cargo}`}
-                            className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {cargo}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <Button variant="outline" size="sm" onClick={limparFiltros}>
-                      Limpar Filtros
-                    </Button>
-                    <Button size="sm" onClick={() => setFiltroAberto(false)}>
-                      Aplicar Filtros
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <div className="rounded-md border overflow-hidden">
@@ -580,6 +662,16 @@ export default function FuncionariosPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={
+                          funcionariosAtivosFiltrados.length > 0 &&
+                          selectedFuncionarios.length === funcionariosAtivosFiltrados.length
+                        }
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Selecionar todos"
+                      />
+                    </TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Departamento</TableHead>
@@ -598,13 +690,23 @@ export default function FuncionariosPage() {
                 <TableBody>
                   {funcionariosAtivosFiltrados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="h-24 text-center">
+                      <TableCell colSpan={14} className="h-24 text-center">
                         Nenhum funcionário encontrado.
                       </TableCell>
                     </TableRow>
                   ) : (
                     funcionariosAtivosFiltrados.map((funcionario) => (
-                      <TableRow key={funcionario.id}>
+                      <TableRow
+                        key={funcionario.id}
+                        className={selectedFuncionarios.includes(funcionario.id) ? "bg-muted/50" : ""}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedFuncionarios.includes(funcionario.id)}
+                            onCheckedChange={() => toggleSelectFuncionario(funcionario.id)}
+                            aria-label={`Selecionar ${funcionario.nome}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{funcionario.nome}</TableCell>
                         <TableCell>{funcionario.cargo}</TableCell>
                         <TableCell>{funcionario.departamento}</TableCell>
@@ -906,6 +1008,38 @@ export default function FuncionariosPage() {
             <Button onClick={processarPagamento} disabled={!contaSelecionada}>
               Confirmar Pagamento
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Replicação */}
+      <Dialog open={dialogReplicacaoAberto} onOpenChange={setDialogReplicacaoAberto}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Replicar para Próxima Quinzena</DialogTitle>
+            <DialogDescription>
+              Os funcionários selecionados serão replicados para a próxima quinzena com os mesmos valores.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-1">
+              <h4 className="font-medium">Funcionários Selecionados</h4>
+              <p>{selectedFuncionarios.length} funcionário(s)</p>
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-medium">Próxima Quinzena</h4>
+              <p>{proximaQuinzenaTexto}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="observacao">Observação (opcional)</Label>
+              <Input id="observacao" placeholder="Adicione uma observação..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogReplicacaoAberto(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={replicarFuncionarios}>Confirmar Replicação</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

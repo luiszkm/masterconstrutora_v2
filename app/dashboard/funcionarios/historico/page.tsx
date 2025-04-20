@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Edit, Trash2, MoreHorizontal, Filter, ChevronDown, Star, ArrowLeft } from "lucide-react"
+import { Search, Edit, Trash2, MoreHorizontal, Filter, ChevronDown, Star, ArrowLeft, CopyPlus } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,11 +16,21 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { format, parseISO, isWithinInterval } from "date-fns"
+import { format, parseISO, isWithinInterval, addMonths } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { DateRangePicker } from "@/components/date-range-picker"
 import type { DateRange } from "react-day-picker"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { toast } from "@/components/ui/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 // Dados de exemplo - funcionários ativos
 const funcionariosAtivos = [
@@ -227,6 +237,23 @@ export default function HistoricoFuncionariosPage() {
   const [dateRangeContratacao, setDateRangeContratacao] = useState<DateRange | undefined>(undefined)
   const [dateRangeDemissao, setDateRangeDemissao] = useState<DateRange | undefined>(undefined)
 
+  // Estado para seleção de funcionários
+  const [selectedFuncionarios, setSelectedFuncionarios] = useState<number[]>([])
+
+  // Estado para o diálogo de replicação
+  const [dialogReplicacaoAberto, setDialogReplicacaoAberto] = useState(false)
+  const [proximaQuinzena, setProximaQuinzena] = useState("")
+
+  // Determinar a quinzena atual
+  const hoje = new Date()
+  const diaAtual = hoje.getDate()
+  const ehPrimeiraQuinzena = diaAtual <= 15
+
+  // Calcular a próxima quinzena
+  const proximaQuinzenaTexto = ehPrimeiraQuinzena
+    ? `Segunda quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
+    : `Primeira quinzena de ${format(addMonths(hoje, 1), "MMMM/yyyy", { locale: ptBR })}`
+
   // Função para filtrar todos os funcionários (ativos e inativos)
   const todosFuncionariosFiltrados = todosFuncionarios.filter((funcionario) => {
     // Filtro por termo de pesquisa
@@ -348,6 +375,74 @@ export default function HistoricoFuncionariosPage() {
     setDateRangeDemissao(undefined)
   }
 
+  // Função para selecionar/deselecionar todos os funcionários
+  const toggleSelectAll = () => {
+    if (selectedFuncionarios.length === todosFuncionariosFiltrados.length) {
+      setSelectedFuncionarios([])
+    } else {
+      setSelectedFuncionarios(todosFuncionariosFiltrados.map((f) => f.id))
+    }
+  }
+
+  // Função para selecionar/deselecionar um funcionário
+  const toggleSelectFuncionario = (id: number) => {
+    setSelectedFuncionarios((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((fId) => fId !== id)
+      } else {
+        return [...prev, id]
+      }
+    })
+  }
+
+  // Função para abrir o diálogo de replicação
+  const abrirDialogoReplicacao = () => {
+    if (selectedFuncionarios.length === 0) {
+      toast({
+        title: "Nenhum funcionário selecionado",
+        description: "Selecione pelo menos um funcionário para replicar para a próxima quinzena.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Verificar se há funcionários inativos selecionados
+    const funcionariosInativos = selectedFuncionarios.filter(
+      (id) => todosFuncionarios.find((f) => f.id === id)?.status === "Inativo",
+    )
+
+    if (funcionariosInativos.length > 0) {
+      toast({
+        title: "Funcionários inativos selecionados",
+        description: "Não é possível replicar funcionários inativos para a próxima quinzena.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setProximaQuinzena(proximaQuinzenaTexto)
+    setDialogReplicacaoAberto(true)
+  }
+
+  // Função para replicar funcionários para a próxima quinzena
+  const replicarFuncionarios = () => {
+    // Aqui você implementaria a lógica real para replicar os funcionários
+    // para a próxima quinzena no seu backend
+
+    // Fechar o diálogo
+    setDialogReplicacaoAberto(false)
+
+    // Mostrar toast de sucesso
+    toast({
+      title: "Funcionários Replicados",
+      description: `${selectedFuncionarios.length} funcionário(s) replicado(s) com sucesso para a ${proximaQuinzena}.`,
+      action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+    })
+
+    // Limpar seleção
+    setSelectedFuncionarios([])
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -359,6 +454,17 @@ export default function HistoricoFuncionariosPage() {
             </Link>
           </Button>
           <h2 className="text-3xl font-bold tracking-tight">Histórico de Funcionários</h2>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={abrirDialogoReplicacao}
+            disabled={selectedFuncionarios.length === 0}
+            className="whitespace-nowrap"
+          >
+            <CopyPlus className="mr-2 h-4 w-4" />
+            Replicar para Próxima Quinzena
+          </Button>
         </div>
       </div>
 
@@ -510,6 +616,16 @@ export default function HistoricoFuncionariosPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={
+                      todosFuncionariosFiltrados.length > 0 &&
+                      selectedFuncionarios.length === todosFuncionariosFiltrados.length
+                    }
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Cargo</TableHead>
                 <TableHead>Departamento</TableHead>
@@ -524,13 +640,23 @@ export default function HistoricoFuncionariosPage() {
             <TableBody>
               {todosFuncionariosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center">
+                  <TableCell colSpan={10} className="h-24 text-center">
                     Nenhum funcionário encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
                 todosFuncionariosFiltrados.map((funcionario) => (
-                  <TableRow key={funcionario.id}>
+                  <TableRow
+                    key={funcionario.id}
+                    className={selectedFuncionarios.includes(funcionario.id) ? "bg-muted/50" : ""}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedFuncionarios.includes(funcionario.id)}
+                        onCheckedChange={() => toggleSelectFuncionario(funcionario.id)}
+                        aria-label={`Selecionar ${funcionario.nome}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{funcionario.nome}</TableCell>
                     <TableCell>{funcionario.cargo}</TableCell>
                     <TableCell>{funcionario.departamento}</TableCell>
@@ -597,6 +723,48 @@ export default function HistoricoFuncionariosPage() {
           </Table>
         </div>
       </div>
+
+      {/* Diálogo de Replicação */}
+      <Dialog open={dialogReplicacaoAberto} onOpenChange={setDialogReplicacaoAberto}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Replicar para Próxima Quinzena</DialogTitle>
+            <DialogDescription>
+              Os funcionários selecionados serão replicados para a próxima quinzena com os mesmos valores.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-1">
+              <h4 className="font-medium">Funcionários Selecionados</h4>
+              <p>{selectedFuncionarios.length} funcionário(s)</p>
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-medium">Próxima Quinzena</h4>
+              <p>{proximaQuinzenaTexto}</p>
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-medium">Funcionários a serem replicados</h4>
+              <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
+                {selectedFuncionarios.map((id) => {
+                  const funcionario = todosFuncionarios.find((f) => f.id === id)
+                  return funcionario?.status === "Ativo" ? (
+                    <li key={id} className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-green-500" />
+                      {funcionario.nome}
+                    </li>
+                  ) : null
+                })}
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogReplicacaoAberto(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={replicarFuncionarios}>Confirmar Replicação</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

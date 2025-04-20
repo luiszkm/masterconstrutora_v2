@@ -117,6 +117,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
   const [isNavExpanded, setIsNavExpanded] = useState(true)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
 
   const toggleSubmenu = (title: string) => {
     if (openSubmenu === title) {
@@ -126,11 +127,15 @@ export default function DashboardLayout({
     }
   }
 
+  const handleNavItemClick = () => {
+    setIsSheetOpen(false)
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       {/* Mobile Header */}
       <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:hidden">
-        <Sheet>
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon" className="shrink-0">
               <Menu className="h-5 w-5" />
@@ -160,11 +165,14 @@ export default function DashboardLayout({
               {navItems.map((item) => (
                 <div key={item.title}>
                   <Link
+               
                     href={item.href}
                     className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-orange-500 ${
                       pathname === item.href ? "bg-accent text-orange-500 font-semibold" : ""
                     }`}
-                    onClick={() => item.submenu && toggleSubmenu(item.title)}
+                    onClick={(e) => {
+                      handleNavItemClick()
+                    }}
                   >
                     <item.icon className="h-5 w-5" />
                     {item.title}
@@ -178,6 +186,7 @@ export default function DashboardLayout({
                           className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-orange-500 ${
                             pathname === subitem.href ? "bg-accent text-orange-500 font-semibold" : ""
                           }`}
+                          onClick={handleNavItemClick}
                         >
                           <Plus className="h-4 w-4" />
                           {subitem.title}
@@ -190,6 +199,7 @@ export default function DashboardLayout({
               <Link
                 href="/"
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-orange-500"
+                onClick={handleNavItemClick}
               >
                 <Home className="h-5 w-5" />
                 Voltar para o site
@@ -197,6 +207,7 @@ export default function DashboardLayout({
               <Link
                 href="/login"
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-orange-500"
+                onClick={handleNavItemClick}
               >
                 <LogOut className="h-5 w-5" />
                 Sair
