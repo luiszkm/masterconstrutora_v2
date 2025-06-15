@@ -37,7 +37,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { useMobile } from "@/hooks/use-mobile"
 
 // Dados de exemplo para o dashboard
@@ -361,7 +360,6 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="font-medium">Filtrar dados</h4>
-        {isMobile && <ThemeToggle />}
       </div>
 
       <div className="space-y-2">
@@ -535,7 +533,7 @@ export default function DashboardPage() {
           )}
 
           {/* Botão de tema para desktop */}
-          {!isMobile && <ThemeToggle />}
+          {/* {!isMobile && <ThemeToggle />} */}
 
           {/* Menu para mobile */}
           {isMobile && (

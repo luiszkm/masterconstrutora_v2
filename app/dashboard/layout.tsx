@@ -219,7 +219,7 @@ export default function DashboardLayout({
           <Image src="/microphone-crowd.png" alt="Master Construtora Logo" width={32} height={32} className="rounded" />
           <span className="text-lg font-bold">Master Construtora</span>
         </div>
-        <ThemeToggle />
+        {/* <ThemeToggle /> */}
       </header>
 
       <div className="flex flex-1">
@@ -240,7 +240,7 @@ export default function DashboardLayout({
               />
               {isNavExpanded && <span className="text-lg font-bold">Master Construtora</span>}
             </Link>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex flex-col items-center ">
               <Button
                 variant="ghost"
                 size="icon"
