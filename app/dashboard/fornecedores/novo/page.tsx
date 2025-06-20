@@ -56,53 +56,7 @@ export default function NovoFornecedorPage() {
               <Label htmlFor="endereco">Endereço</Label>
               <Input id="endereco" placeholder="Endereço completo" />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="cidade">Cidade</Label>
-                <Input id="cidade" placeholder="Cidade" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
-                <Select>
-                  <SelectTrigger id="estado">
-                    <SelectValue placeholder="UF" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SP">SP</SelectItem>
-                    <SelectItem value="RJ">RJ</SelectItem>
-                    <SelectItem value="MG">MG</SelectItem>
-                    <SelectItem value="ES">ES</SelectItem>
-                    <SelectItem value="PR">PR</SelectItem>
-                    <SelectItem value="SC">SC</SelectItem>
-                    <SelectItem value="RS">RS</SelectItem>
-                    <SelectItem value="MS">MS</SelectItem>
-                    <SelectItem value="MT">MT</SelectItem>
-                    <SelectItem value="GO">GO</SelectItem>
-                    <SelectItem value="DF">DF</SelectItem>
-                    <SelectItem value="BA">BA</SelectItem>
-                    <SelectItem value="SE">SE</SelectItem>
-                    <SelectItem value="AL">AL</SelectItem>
-                    <SelectItem value="PE">PE</SelectItem>
-                    <SelectItem value="PB">PB</SelectItem>
-                    <SelectItem value="RN">RN</SelectItem>
-                    <SelectItem value="CE">CE</SelectItem>
-                    <SelectItem value="PI">PI</SelectItem>
-                    <SelectItem value="MA">MA</SelectItem>
-                    <SelectItem value="PA">PA</SelectItem>
-                    <SelectItem value="AP">AP</SelectItem>
-                    <SelectItem value="AM">AM</SelectItem>
-                    <SelectItem value="RR">RR</SelectItem>
-                    <SelectItem value="RO">RO</SelectItem>
-                    <SelectItem value="AC">AC</SelectItem>
-                    <SelectItem value="TO">TO</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cep">CEP</Label>
-                <Input id="cep" placeholder="00000-000" />
-              </div>
-            </div>
+        
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="contato">Nome do Contato</Label>

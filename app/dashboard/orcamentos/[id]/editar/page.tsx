@@ -243,11 +243,12 @@ export default function EditarOrcamentoPage({ params }: { params: { id: string }
                   <Input
                     id="numero"
                     value={orcamento.numero}
+                    disabled
                     onChange={(e) => atualizarOrcamento("numero", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="data">Data</Label>
+                  <Label htmlFor="data">Data de Emissão</Label>
                   <Input
                     id="data"
                     value={orcamento.data}
@@ -256,16 +257,9 @@ export default function EditarOrcamentoPage({ params }: { params: { id: string }
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+               
                 <div className="space-y-2">
-                  <Label htmlFor="cliente">Cliente</Label>
-                  <Input
-                    id="cliente"
-                    value={orcamento.cliente}
-                    onChange={(e) => atualizarOrcamento("cliente", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="projeto">Projeto</Label>
+                  <Label htmlFor="projeto">Obra</Label>
                   <Input
                     id="projeto"
                     value={orcamento.projeto}

@@ -326,7 +326,8 @@ export default function EditarMaterialPage({ params }: { params: { id: string } 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="codigo">Código</Label>
-                <Input id="codigo" placeholder="Código do material" value={formData.codigo} onChange={handleChange} />
+                <Input id="codigo" disabled
+                placeholder="Código do material" value={formData.codigo} onChange={handleChange} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome</Label>

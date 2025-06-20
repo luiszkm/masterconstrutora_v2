@@ -181,33 +181,7 @@ export default function NovoOrcamentoPage() {
       </div>
       <div className="grid gap-6">
         <form className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações do Cliente</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cliente">Nome do Cliente</Label>
-                  <Input id="cliente" placeholder="Nome completo do cliente" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="email@exemplo.com" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="telefone">Telefone</Label>
-                  <Input id="telefone" placeholder="(00) 00000-0000" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endereco">Endereço</Label>
-                  <Input id="endereco" placeholder="Endereço completo" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+         
 
           <Card>
             <CardHeader>
@@ -215,12 +189,23 @@ export default function NovoOrcamentoPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                
                 <div className="space-y-2">
-                  <Label htmlFor="nomeProjeto">Nome do Projeto</Label>
-                  <Input id="nomeProjeto" placeholder="Nome do projeto" />
+                  <Label htmlFor="tipoProjeto">Vinculo de obra</Label>
+                  <Select>
+                    <SelectTrigger id="tipoProjeto">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="construcao">Construção Nova</SelectItem>
+                      <SelectItem value="reforma">Reforma</SelectItem>
+                      <SelectItem value="interiores">Design de Interiores</SelectItem>
+                      <SelectItem value="paisagismo">Paisagismo</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipoProjeto">Tipo de Projeto</Label>
+                     <div className="space-y-2">
+                  <Label htmlFor="tipoProjeto">Etapa da obra</Label>
                   <Select>
                     <SelectTrigger id="tipoProjeto">
                       <SelectValue placeholder="Selecione o tipo" />
@@ -236,15 +221,10 @@ export default function NovoOrcamentoPage() {
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="dataInicio">Data de Início Prevista</Label>
+                  <Label htmlFor="dataInicio">Data de Emissao</Label>
                   <Input id="dataInicio" type="date" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="prazoExecucao">Prazo de Execução (meses)</Label>
-                  <Input id="prazoExecucao" type="number" min="1" />
-                </div>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="fornecedorPrincipal">Fornecedor Principal</Label>
                 <Select value={fornecedorPrincipal} onValueChange={setFornecedorPrincipal}>
                   <SelectTrigger id="fornecedorPrincipal">
@@ -259,10 +239,9 @@ export default function NovoOrcamentoPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="descricaoProjeto">Descrição do Projeto</Label>
-                <Textarea id="descricaoProjeto" placeholder="Descreva os detalhes do projeto" />
               </div>
+           
+            
             </CardContent>
           </Card>
 
@@ -483,15 +462,7 @@ export default function NovoOrcamentoPage() {
                 Adicionar Item
               </Button>
               <div className="flex justify-end">
-                <div className="w-1/3 space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>R$ {calcularSubtotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Impostos (10%):</span>
-                    <span>R$ {calcularImpostos().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </div>
+                <div className="w-1/3 space-y-2"> 
                   <div className="flex justify-between font-bold">
                     <span>Total:</span>
                     <span>R$ {calcularTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
