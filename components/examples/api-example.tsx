@@ -26,7 +26,6 @@ export function ApiExample() {
         description: `Total de ${result.total} funcionários encontrados`,
       })
 
-      console.log("Funcionários:", result)
     } catch (error: any) {
       toast({
         title: "Erro ao carregar funcionários",

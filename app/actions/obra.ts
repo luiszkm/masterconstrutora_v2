@@ -452,7 +452,6 @@ export async function concluirEtapa(obraId: number, etapaId: string) {
     dataFimPrevista: etapa.dataFimPrevista || new Date().toISOString().split("T")[0],
   }
 
-  console.log("POST para backend:", postData)
 
   revalidatePath("/dashboard/obras")
   return { success: true, data: obra }

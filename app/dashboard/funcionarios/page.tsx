@@ -13,7 +13,6 @@ export default async function FuncionariosPage() {
   // Fetch data on the server side
   const funcionariosApontamentosResult = await getFuncionariosApontamentos()
 
-  console.log("Funcionários e apontamentos:", funcionariosApontamentosResult)
 
   // Handle error if fetching fails
   if ("error" in funcionariosApontamentosResult) {

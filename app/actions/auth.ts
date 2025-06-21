@@ -29,17 +29,14 @@ export async function login(prevState: any, formData: FormData) {
     }
 
     const result = await response.json()
-    console.log("Resposta completa do backend:", JSON.stringify(result, null, 2))
 
     // Extrair o token da resposta - vamos tentar diferentes variações
     const accessToken = result.AccessToken || result.access_token || result.token || result.accessToken
     const userId = result.UserId || result.userId || result.user_id || email
 
-    console.log("Token extraído:", accessToken)
-    console.log("UserId extraído:", userId)
+ 
 
     if (!accessToken) {
-      console.log("Campos disponíveis na resposta:", Object.keys(result))
       return { success: false, message: "Token de acesso não recebido do servidor." }
     }
 

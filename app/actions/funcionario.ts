@@ -3,7 +3,7 @@
 import { revalidateTag } from "next/cache"
 import { cookies } from "next/headers"
 import { decrypt } from "@/app/lib/session" // Assumindo que decrypt está em app/lib/session
-import { removerMascaraMonetaria } from "../lib/masks"
+import { removerMascaraMonetaria } from "@/app/lib/masks" // Importar a função de máscara
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
 
@@ -19,6 +19,11 @@ export type FuncionarioBase = {
   dataContratacao?: string
   chavePix?: string
   observacoes?: string
+  avaliacaoDesempenho?: string // Pode ser "0" ou uma string representando a avaliação
+  motivoDesligamento?: string // Motivo do desligamento, se aplicável
+  desligamentoData?: string // Data do desligamento, se aplicável
+  status?: string // Status do funcionário (ativo, desligado, etc.)
+
 }
 
 // Tipo para os dados de pagamento do funcionário (para criação/atualização)
@@ -48,9 +53,14 @@ export type FuncionarioApontamento = {
   descontos: number
   adiantamento: number
   chavePix: string
-  avaliacao: number | null
+  avaliacaoDesempenho: string | null
+  observacoes: string
   statusApontamento: string
   apontamentoId: string | null // ID do apontamento de pagamento, se existir
+  // Adicionados para edição de apontamento
+  periodoInicio?: string | null // Data de início do período do apontamento
+  periodoFim?: string | null // Data de fim do período do apontamento
+  obraId?: string | null // ID da obra vinculada ao apontamento
 }
 
 // Tipo para a listagem simplificada de obras
@@ -119,7 +129,6 @@ export async function createFuncionario(prevState: any, formData: FormData) {
     observacoes: formData.get("observacoes") as string,
   }
 
-  console.log("Dados do funcionário a serem criados:", funcionarioData)
 
   if (!funcionarioData.nome) {
     return { success: false, message: "Nome é obrigatório.", funcionarioId: null }
@@ -149,7 +158,6 @@ export async function createFuncionario(prevState: any, formData: FormData) {
     revalidateTag("funcionarios")
 
     const result = await response.json()
-    console.log("Resposta do backend ao criar funcionário:", result)
 
     const funcionarioId = result.id || result.ID || result.funcionarioId || null
 
@@ -187,21 +195,18 @@ export async function createFuncionarioPayment(prevState: any, formData: FormDat
   console.log("ID do apontamento (se existir):", apontamentoId)
   console.log("Dados do formulário:", Object.fromEntries(formData.entries()))
 
-
   const paymentData: FuncionarioPaymentPayload = {
     funcionarioId: funcionarioId,
     diaria: removerMascaraMonetaria((formData.get("diaria") as string) || "0"),
-    diasTrabalhados: removerMascaraMonetaria((formData.get("diasTrabalhados") as string) || "0"),
+    diasTrabalhados: Number.parseInt((formData.get("diasTrabalhados") as string) || "0"), // Corrigido aqui
     valorAdicional: removerMascaraMonetaria((formData.get("valorAdicional") as string) || "0"),
     descontos: removerMascaraMonetaria((formData.get("descontos") as string) || "0"),
     adiantamento: removerMascaraMonetaria((formData.get("adiantamento") as string) || "0"),
-    valorTotal: removerMascaraMonetaria((formData.get("valorTotal") as string) || "0"),
+    valorTotal:  removerMascaraMonetaria((formData.get("valorTotal") as string) || "0"),
     periodoInicio: formData.get("periodoInicio") as string,
     periodoFim: formData.get("periodoFim") as string,
     obraId: formData.get("obraId") as string,
   }
-
-  console.log("Dados de pagamento do funcionário:", paymentData)
 
   if (!funcionarioId || !paymentData.periodoInicio || !paymentData.periodoFim) {
     return { success: false, message: "ID do funcionário e período de pagamento são obrigatórios." }
@@ -256,7 +261,7 @@ export async function createFuncionarioPayment(prevState: any, formData: FormDat
  */
 export async function getFuncionarios(): Promise<FuncionarioBase[] | { error: string }> {
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarioAttachment`, {
+    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios`, {
       method: "GET",
       next: { tags: ["funcionarios"] },
     })
@@ -294,7 +299,7 @@ export async function getFuncionarios(): Promise<FuncionarioBase[] | { error: st
  */
 export async function getFuncionarioById(id: string): Promise<FuncionarioBase | { error: string }> {
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarioAttachment/${id}`, {
+    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios/${id}`, {
       method: "GET",
       next: { tags: [`funcionario-${id}`] },
     })
@@ -331,24 +336,26 @@ export async function getFuncionarioById(id: string): Promise<FuncionarioBase | 
  * Atualiza um funcionário existente no backend (apenas dados básicos).
  */
 export async function updateFuncionario(id: string, prevState: any, formData: FormData) {
-  const funcionarioData: Partial<FuncionarioBase> = {
-    nome: formData.get("nome") as string,
-    cpf: formData.get("cpf") as string,
-    email: formData.get("email") as string,
-    telefone: formData.get("telefone") as string,
-    cargo: formData.get("cargo") as string,
-    departamento: formData.get("departamento") as string,
-    dataContratacao: formData.get("dataContratacao") as string,
-    chavePix: formData.get("chavePix") as string,
-    observacoes: formData.get("observacoes") as string,
-  }
-
-  if (!id) {
-    return { success: false, message: "ID do funcionário é obrigatório para atualização." }
-  }
 
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarioAttachment/${id}`, {
+    const funcionarioData: Partial<FuncionarioBase> = {
+      nome: formData.get("nome") as string,
+      cpf: formData.get("cpf") as string,
+      email: formData.get("email") as string,
+      telefone: formData.get("telefone") as string,
+      cargo: formData.get("cargo") as string,
+      departamento: formData.get("departamento") as string,
+      dataContratacao: formData.get("dataContratacao") as string,
+      chavePix: formData.get("chavePix") as string,
+      observacoes: formData.get("observacoes") as string,
+ 
+    }
+
+    if (!id) {
+      return { success: false, message: "ID do funcionário é obrigatório para atualização." }
+    }
+
+    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios/${id}`, {
       method: "PUT",
       body: JSON.stringify(funcionarioData),
     })
@@ -368,14 +375,69 @@ export async function updateFuncionario(id: string, prevState: any, formData: Fo
       return { success: false, message: errorMessage }
     }
 
-    revalidateTag("funcionarios")
-    revalidateTag(`funcionario-${id}`)
-    revalidateTag("funcionarios-apontamentos") // Revalida a lista principal
-
     const result = await response.json()
+    console.log("Funcionário atualizado com sucesso:", result)
+
     return { success: true, message: result.message || "Funcionário atualizado com sucesso!" }
   } catch (error) {
     console.error(`Erro ao atualizar funcionário com ID ${id}:`, error)
+
+    if (error instanceof Error && error.message === "Token de autenticação não encontrado") {
+      return { success: false, message: "Não autorizado. Faça login novamente." }
+    }
+
+    return { success: false, message: "Erro de conexão com o servidor. Tente novamente." }
+  }
+}
+
+// update apntamento de funcionario
+/**
+ * Atualiza um apontamento de funcionário existente no backend.
+ */
+export async function handleFuncionarioApontamentoSubmit( prevState: any, formData: FormData) {
+   const funcionarioId = formData.get("funcionarioId") as string
+  const apontamentoId = formData.get("apontamentoId") as string | null // Pode ser nulo para criação
+  try {
+    const funcionarioData: Partial<FuncionarioPaymentPayload> = {
+
+      // Campos numéricos e de seleção que precisam ser parseados
+      diaria: removerMascaraMonetaria(formData.get("diaria") as string),
+      diasTrabalhados: Number.parseInt((formData.get("diasTrabalhados") as string) || "0"),
+      valorAdicional: removerMascaraMonetaria(formData.get("valorAdicional") as string),
+      descontos: removerMascaraMonetaria(formData.get("descontos") as string),
+      adiantamento: removerMascaraMonetaria(formData.get("adiantamento") as string),
+      periodoFim: formData.get("periodoFim") as string,
+      periodoInicio: formData.get("periodoInicio") as string,
+    }
+
+  
+
+    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios/apontamentos/${apontamentoId}`, {
+      method: "PUT",
+      body: JSON.stringify(funcionarioData),
+    })
+
+    if (!response.ok) {
+      let errorMessage = "Erro ao atualizar funcionário."
+
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente."
+        }
+      }
+
+      return { success: false, message: errorMessage }
+    }
+
+    const result = await response.json()
+    console.log("Funcionário atualizado com sucesso:", result)
+
+    return { success: true, message: result.message || "Funcionário atualizado com sucesso!" }
+  } catch (error) {
+    console.error(`Erro ao atualizar funcionário com ID ${apontamentoId}:`, error)
 
     if (error instanceof Error && error.message === "Token de autenticação não encontrado") {
       return { success: false, message: "Não autorizado. Faça login novamente." }
@@ -394,7 +456,7 @@ export async function deleteFuncionario(id: string) {
   }
 
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarioAttachment/${id}`, {
+    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios/${id}`, {
       method: "DELETE",
     })
 
@@ -413,9 +475,8 @@ export async function deleteFuncionario(id: string) {
       return { success: false, message: errorMessage }
     }
 
-    // Comentado para evitar loops
-    // revalidateTag("funcionarios")
-    // revalidateTag("funcionarios-apontamentos")
+    revalidateTag("funcionarios")
+    revalidateTag("funcionarios-apontamentos")
 
     return { success: true, message: "Funcionário excluído com sucesso!" }
   } catch (error) {
@@ -428,7 +489,45 @@ export async function deleteFuncionario(id: string) {
     return { success: false, message: "Erro de conexão com o servidor. Tente novamente." }
   }
 }
+export async function AtivarFuncionario(id: string) {
+  if (!id) {
+    return { success: false, message: "ID do funcionário é obrigatório para exclusão." }
+  }
 
+  try {
+    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios/${id}/ativar`, {
+      method: "PATCH",
+    })
+
+    if (!response.ok) {
+      let errorMessage = "Erro ao ativar funcionário."
+
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente."
+        }
+      }
+
+      return { success: false, message: errorMessage }
+    }
+
+    revalidateTag("funcionarios")
+    revalidateTag("funcionarios-apontamentos")
+
+    return { success: true, message: "Funcionário ativado com sucesso!" }
+  } catch (error) {
+    console.error(`Erro ao ativado funcionário com ID ${id}:`, error)
+
+    if (error instanceof Error && error.message === "Token de autenticação não encontrado") {
+      return { success: false, message: "Não autorizado. Faça login novamente." }
+    }
+
+    return { success: false, message: "Erro de conexão com o servidor. Tente novamente." }
+  }
+}
 /**
  * Busca a lista de obras do backend.
  */

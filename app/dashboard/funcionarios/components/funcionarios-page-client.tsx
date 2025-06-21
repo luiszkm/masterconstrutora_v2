@@ -55,120 +55,13 @@ import { LogoutButton } from "@/components/logout-button"
 import { NumericFormat } from "react-number-format"
 import { useActionState } from "react"
 import {
-  createFuncionarioPayment,
+  handleFuncionarioApontamentoSubmit, // Renomeado aqui
   getObrasList,
   type ObraListItem,
   type FuncionarioApontamento,
+  createFuncionarioPayment,
 } from "@/app/actions/funcionario"
 import { aplicarMascaraMonetaria } from "@/app/lib/masks"
-
-// Histórico de pagamentos (mantidos para demonstração, pois o novo endpoint não cobre todos os detalhes)
-const historicoPagamentos = [
-  {
-    id: 1,
-    funcionarioId: "1", // Alterado para string para compatibilidade
-    data: "2023-05-15",
-    valor: 7200.0,
-    conta: "Banco do Brasil - Conta Principal",
-    quinzena: "Primeira quinzena de Maio/2023",
-    diasTrabalhados: 15,
-    valorAdicional: 300.0,
-    descontos: 100.0,
-    adiantamento: 0.0,
-    comprovante: "comprovante_joao_silva_maio1.pdf",
-  },
-  {
-    id: 2,
-    funcionarioId: "1",
-    data: "2023-05-30",
-    valor: 7500.0,
-    conta: "Banco do Brasil - Conta Principal",
-    quinzena: "Segunda quinzena de Maio/2023",
-    diasTrabalhados: 16,
-    valorAdicional: 400.0,
-    descontos: 100.0,
-    adiantamento: 0.0,
-    comprovante: "comprovante_joao_silva_maio2.pdf",
-  },
-  {
-    id: 3,
-    funcionarioId: "1",
-    data: "2023-06-15",
-    valor: 7300.0,
-    conta: "Banco do Brasil - Conta Principal",
-    quinzena: "Primeira quinzena de Junho/2023",
-    diasTrabalhados: 15,
-    valorAdicional: 350.0,
-    descontos: 150.0,
-    adiantamento: 0.0,
-    comprovante: null,
-  },
-  {
-    id: 4,
-    funcionarioId: "2",
-    data: "2023-05-15",
-    valor: 6400.0,
-    conta: "Banco do Brasil - Conta Principal",
-    quinzena: "Primeira quinzena de Maio/2023",
-    diasTrabalhados: 15,
-    valorAdicional: 0.0,
-    descontos: 0.0,
-    adiantamento: 0.0,
-    comprovante: "comprovante_maria_oliveira_maio1.pdf",
-  },
-  {
-    id: 5,
-    funcionarioId: "2",
-    data: "2023-05-30",
-    valor: 6400.0,
-    conta: "Banco do Brasil - Conta Principal",
-    quinzena: "Segunda quinzena de Maio/2023",
-    diasTrabalhados: 15,
-    valorAdicional: 0.0,
-    descontos: 0.0,
-    adiantamento: 0.0,
-    comprovante: "comprovante_maria_oliveira_maio.pdf",
-  },
-  {
-    id: 6,
-    funcionarioId: "3",
-    data: "2023-06-15",
-    valor: 5750.0,
-    conta: "Itaú - Conta Empresarial",
-    quinzena: "Primeira quinzena de Junho/2023",
-    diasTrabalhados: 15,
-    valorAdicional: 500.0,
-    descontos: 100.0,
-    adiantamento: 250.0,
-    comprovante: null,
-  },
-  {
-    id: 7,
-    funcionarioId: "4",
-    data: "2023-06-15",
-    valor: 8400.0,
-    conta: "Itaú - Conta Empresarial",
-    quinzena: "Primeira quinzena de Junho/2023",
-    diasTrabalhados: 15,
-    valorAdicional: 800.0,
-    descontos: 200.0,
-    adiantamento: 0.0,
-    comprovante: "comprovante_ana_pereira_junho1.pdf",
-  },
-  {
-    id: 8,
-    funcionarioId: "5",
-    data: "2023-06-15",
-    valor: 4840.0,
-    conta: "Itaú - Conta Empresarial",
-    quinzena: "Primeira quinzena de Junho/2023",
-    diasTrabalhados: 15,
-    valorAdicional: 0.0,
-    descontos: 60.0,
-    adiantamento: 200.0,
-    comprovante: null,
-  },
-]
 
 // Contas bancárias disponíveis
 const contasBancarias = [
@@ -213,6 +106,7 @@ function RatingStars({ rating }: { rating: number }) {
 
 // Client Component to handle state and interactions
 export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncionarios: FuncionarioApontamento[] }) {
+
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroDepartamento, setFiltroDepartamento] = useState<string[]>([])
@@ -244,13 +138,23 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     periodoFim: format(endOfMonth(new Date()), "yyyy-MM-dd"),
     obraId: "",
   })
+const actionWrapper = async (prevState: any, formData: FormData) => {
+  const paymentId = formData.get("apontamentoId")
+  if (!paymentId) {
+    return await createFuncionarioPayment(prevState, formData)
+  }
 
+  return await handleFuncionarioApontamentoSubmit(prevState, formData)
+}
   // State para a Server Action de pagamento
-  const [paymentState, paymentAction] = useActionState(createFuncionarioPayment, {
+  const [paymentState, paymentAction] = useActionState( actionWrapper 
+    , {
+    // Renomeado aqui
     success: false,
     message: "",
   })
 
+  
   // Novo estado para controlar a submissão do formulário
   const [isSubmittingForm, setIsSubmittingForm] = useState(false)
 
@@ -334,20 +238,6 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     return matchesSearch && matchesDepartamento && matchesCargo
   })
 
-  const historicoPagamentosFiltrados = historicoPagamentos.filter((pagamento) => {
-    if (!dateRange?.from) return true
-
-    const dataPagamento = new Date(pagamento.data)
-
-    if (dateRange.to) {
-      return isWithinInterval(dataPagamento, {
-        start: dateRange.from,
-        end: dateRange.to,
-      })
-    }
-
-    return format(dataPagamento, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
-  })
 
   const copiarChavePix = (chavePix: string) => {
     navigator.clipboard.writeText(chavePix)
@@ -472,12 +362,18 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
       valorAdicional: funcionario.valorAdicional,
       descontos: funcionario.descontos,
       adiantamento: funcionario.adiantamento,
-      periodoInicio: format(startOfMonth(new Date()), "yyyy-MM-dd"), // Pode ser ajustado para o período do apontamento
-      periodoFim: format(endOfMonth(new Date()), "yyyy-MM-dd"), // Pode ser ajustado para o período do apontamento
-      obraId: "", // Limpar obra selecionada ou carregar se o apontamento tiver
+      // Use o período existente se o apontamentoId existir, caso contrário, use o mês atual
+      periodoInicio:
+        funcionario.apontamentoId && funcionario.periodoInicio
+          ? funcionario.periodoInicio
+          : format(startOfMonth(new Date()), "yyyy-MM-dd"),
+      periodoFim:
+        funcionario.apontamentoId && funcionario.periodoFim
+          ? funcionario.periodoFim
+          : format(endOfMonth(new Date()), "yyyy-MM-dd"),
+      obraId: funcionario.apontamentoId && funcionario.obraId ? funcionario.obraId : "", // Use a obra existente ou limpe
     })
 
-    console.log("Abrindo diálogo de apontamento para:", funcionario)
     setDialogApontamentoAberto(true)
   }
 
@@ -520,8 +416,10 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     const valorAdicional = Number.parseFloat((formData.get("valorAdicional") as string) || "0")
     const descontos = Number.parseFloat((formData.get("descontos") as string) || "0")
     const adiantamento = Number.parseFloat((formData.get("adiantamento") as string) || "0")
-    const valorTotalCalculado = diaria * diasTrabalhados + valorAdicional - descontos - adiantamento
-    formData.append("valorTotal", valorTotalCalculado.toString())
+    const valorTotalCalculado = `${diaria * diasTrabalhados + valorAdicional - descontos - adiantamento}`
+    formData.append("valorTotal", String( "R$"+valorTotalCalculado) )
+
+
 
     paymentAction(formData)
   }
@@ -534,7 +432,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
           <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/dashboard/funcionarios/historico">
               <History className="mr-2 h-4 w-4" />
-              Histórico Completo
+              Histórico Funcionários
             </Link>
           </Button>
           <Button asChild className="w-full sm:w-auto">
@@ -550,7 +448,6 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
       <Tabs defaultValue="quinzena">
         <TabsList className="mb-4 grid w-full grid-cols-2 md:w-auto">
           <TabsTrigger value="quinzena">Quinzena Atual</TabsTrigger>
-          <TabsTrigger value="historico">Histórico de Pagamentos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="quinzena" className="space-y-4">
@@ -712,26 +609,11 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                         <TableCell>{funcionario.cargo}</TableCell>
                         <TableCell>{funcionario.departamento}</TableCell>
                         <TableCell>{funcionario.dataContratacao.split("T")[0]}</TableCell>
-                        <TableCell>
-                          {
-                            aplicarMascaraMonetaria(funcionario.valorDiaria)
-                          }
-                        </TableCell>
+                        <TableCell>{aplicarMascaraMonetaria(funcionario.valorDiaria)}</TableCell>
                         <TableCell>{funcionario.diasTrabalhados}</TableCell>
-                        <TableCell>
-                          {
-                            aplicarMascaraMonetaria(funcionario.valorAdicional)
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {
-                            aplicarMascaraMonetaria(funcionario.descontos)
-                          }
-                        </TableCell>
-                        <TableCell>
-                          
-                          {aplicarMascaraMonetaria(funcionario.adiantamento)}
-                        </TableCell>
+                        <TableCell>{aplicarMascaraMonetaria(funcionario.valorAdicional)}</TableCell>
+                        <TableCell>{aplicarMascaraMonetaria(funcionario.descontos)}</TableCell>
+                        <TableCell>{aplicarMascaraMonetaria(funcionario.adiantamento)}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -748,11 +630,11 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="cursor-help">
-                                  <RatingStars rating={funcionario.avaliacao || 0} />
+                                  <RatingStars rating={Number(funcionario.avaliacaoDesempenho) || 0} />
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-xs">
-                                <p>{funcionario.observacao || "Nenhuma observação."}</p>
+                                <p>{funcionario.observacoes || "Nenhuma observação."}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -761,10 +643,14 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                           <div className="flex items-center">
                             <div
                               className={`h-2 w-2 rounded-full mr-2 ${
-                                funcionario.statusApontamento === "EM_ABERTO" ? "bg-yellow-500" : "bg-green-500"
+                                funcionario.apontamentoId === null
+                                  ? "bg-gray-500" // Cor para SEM_APONTAMENTO
+                                  : funcionario.statusApontamento === "EM_ABERTO"
+                                    ? "bg-yellow-500"
+                                    : "bg-green-500"
                               }`}
                             />
-                            {funcionario.statusApontamento}
+                            {funcionario.apontamentoId === null ? "SEM_APONTAMENTO" : funcionario.statusApontamento}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -793,7 +679,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => abrirDialogoApontamento(funcionario)}>
                                 <CalendarDays className="mr-2 h-4 w-4" />
-                                Editar Apontamento
+                                {funcionario.apontamentoId === null ? "Criar Apontamento" : "Editar Apontamento"}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive">
@@ -812,124 +698,6 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
           </div>
         </TabsContent>
 
-        <TabsContent value="historico" className="space-y-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 bg-muted/40 rounded-lg">
-            <div>
-              <h3 className="text-lg font-medium">Histórico de Pagamentos</h3>
-              <p className="text-sm text-muted-foreground">Visualize todos os pagamentos realizados</p>
-            </div>
-            <div className="w-full md:w-auto">
-              <DateRangePicker
-                value={dateRange}
-                onChange={setDateRange}
-                placeholder="Filtrar por período"
-                align="end"
-                locale={ptBR}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-md border overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Funcionário</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Quinzena</TableHead>
-                    <TableHead className="min-w-[120px]">Dias Trabalhados</TableHead>
-                    <TableHead className="min-w-[140px]">Valor Adicional (R$)</TableHead>
-                    <TableHead className="min-w-[100px]">Descontos (R$)</TableHead>
-                    <TableHead className="min-w-[120px]">Adiantamento (R$)</TableHead>
-                    <TableHead>Conta</TableHead>
-                    <TableHead className="min-w-[120px]">Valor Total (R$)</TableHead>
-                    <TableHead className="min-w-[120px]">Comprovante</TableHead>
-                    <TableHead className="text-right min-w-[80px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {historicoPagamentosFiltrados.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="h-24 text-center">
-                        Nenhum pagamento encontrado no período selecionado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    historicoPagamentosFiltrados.map((pagamento) => {
-                      // Encontra o funcionário correspondente na lista de apontamentos
-                      const funcionario = initialFuncionarios.find((f) => f.id === pagamento.funcionarioId)
-                      return (
-                        <TableRow key={pagamento.id}>
-                          <TableCell className="font-medium">
-                            {funcionario?.nome || "Funcionário não encontrado"}
-                          </TableCell>
-                          <TableCell>{format(new Date(pagamento.data), "dd/MM/yyyy")}</TableCell>
-                          <TableCell>{pagamento.quinzena}</TableCell>
-                          <TableCell>{pagamento.diasTrabalhados}</TableCell>
-                          <TableCell>
-                            {pagamento.valorAdicional.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell>
-                            {pagamento.descontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell>
-                            {pagamento.adiantamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell>{pagamento.conta}</TableCell>
-                          <TableCell className="font-medium">
-                            R$ {pagamento.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell>
-                            {pagamento.comprovante ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="flex items-center gap-1 text-xs"
-                                onClick={() => exportarComprovante(pagamento.comprovante!)}
-                              >
-                                <span className="truncate max-w-[100px]">{pagamento.comprovante}</span>
-                                <Download className="h-3 w-3" />
-                              </Button>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">Não disponível</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Abrir menu</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <FileText className="mr-2 h-4 w-4" />
-                                  Ver Detalhes
-                                </DropdownMenuItem>
-                                {pagamento.comprovante && (
-                                  <DropdownMenuItem onClick={() => exportarComprovante(pagamento.comprovante!)}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Exportar Comprovante
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TabsContent>
       </Tabs>
 
       {/* Diálogo de Pagamento (existente) */}
@@ -1092,7 +860,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
             <form action={handleSubmitApontamento} className="py-4 space-y-4">
               <input type="hidden" name="funcionarioId" value={apontamentoFuncionario.id} />
               {apontamentoFuncionario.apontamentoId && (
-                <input type="hidden" name="apontamentoId" value={apontamentoFuncionario.apontamentoId} />
+                <input type="hidden" name="apontamentoId" value={apontamentoFuncionario?.apontamentoId || ""} />
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

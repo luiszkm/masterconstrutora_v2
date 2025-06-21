@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation"
 import { getFuncionarios, getJWTToken } from "@/app/actions/funcionario"
-import HistoricoFuncionariosClientPage from "./historico-funcionario-page-client"
+import ApontamentoFuncionariosClientPage from "./apontamento-client-page"
 
 // Server Component - handles data fetching and authentication
-export default async function FuncionariosPage() {
+export default async function ApontamentosPage() {
   // 1. Verificar autenticação no Server Component antes de qualquer outra coisa
   const jwtToken = await getJWTToken()
   if (!jwtToken) {
@@ -28,5 +28,5 @@ export default async function FuncionariosPage() {
 
   const initialFuncionarios = funcionariosApontamentosResult
 
-  return <HistoricoFuncionariosClientPage initialFuncionarios={initialFuncionarios} />
+  return <ApontamentoFuncionariosClientPage initialFuncionarios={initialFuncionarios} />
 }

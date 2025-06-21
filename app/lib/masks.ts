@@ -36,3 +36,18 @@ export function aplicarMascaraMonetaria(valor: number | string | null | undefine
     currency: 'BRL',
   });
 }
+
+export function formatDateToInput(date: string | Date | null | undefined): string {
+  if (!date) return ""
+
+  try {
+    const d = typeof date === "string" ? new Date(date) : date
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  } catch (error) {
+    console.error("Erro ao formatar data:", error)
+    return ""
+  }
+}
