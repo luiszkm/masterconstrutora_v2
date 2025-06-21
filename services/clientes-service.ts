@@ -1,5 +1,5 @@
-import { apiClient } from "@/lib/api-client"
-import { DEFAULT_CACHE_TIME } from "@/lib/api-config"
+import { apiClient } from "@/app/lib/api-client"
+import { DEFAULT_CACHE_TIME } from "@/app/lib/api-config"
 import type { Cliente, Obra, FilterOptions, PaginatedResponse } from "@/types/api-types"
 
 /**

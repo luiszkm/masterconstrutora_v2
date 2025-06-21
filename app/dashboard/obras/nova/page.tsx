@@ -1,17 +1,114 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Plus } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowLeft, Building, Calendar, MapPin, User, FileText } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "@/components/ui/use-toast"
+import { criarObra } from "@/app/actions/obra"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
+
+const responsaveisMock = ["Maria Oliveira", "Carlos Santos", "Ana Pereira", "Pedro Souza", "João Silva"]
 
 export default function NovaObraPage() {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  const [formData, setFormData] = useState({
+    nome: "",
+    cliente: "",
+    endereco: "",
+    dataInicio: "",
+    dataFim: "",
+    responsavel: "",
+    descricao: "",
+  })
+
+  const [funcionariosSelecionados, setFuncionariosSelecionados] = useState<number[]>([])
+
+  const funcionariosDisponiveis = [
+    { id: 1, nome: "João Silva", cargo: "Pedreiro" },
+    { id: 2, nome: "Maria Oliveira", cargo: "Engenheira Civil" },
+    { id: 3, nome: "Carlos Santos", cargo: "Eletricista" },
+    { id: 4, nome: "Ana Pereira", cargo: "Arquiteta" },
+    { id: 5, nome: "Pedro Souza", cargo: "Mestre de Obras" },
+  ]
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validações básicas
+    if (
+      !formData.nome ||
+      !formData.cliente ||
+      !formData.endereco ||
+      !formData.dataInicio ||
+      !formData.dataFim ||
+      !formData.responsavel
+    ) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validar datas
+    if (new Date(formData.dataInicio) >= new Date(formData.dataFim)) {
+      toast({
+        title: "Erro",
+        description: "A data de fim deve ser posterior à data de início.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    startTransition(async () => {
+      const form = new FormData()
+      Object.entries(formData).forEach(([key, value]) => {
+        form.append(key, value)
+      })
+
+      // Adicionar funcionários ao FormData
+      funcionariosSelecionados.forEach((funcionarioId) => {
+        form.append("funcionarios", funcionarioId.toString())
+      })
+
+      const result = await criarObra(form)
+
+      if (result.success) {
+        toast({
+          title: "Obra criada",
+          description: `A obra ${formData.nome} foi criada com sucesso.`,
+        })
+        router.push("/dashboard/obras")
+      } else {
+        toast({
+          title: "Erro",
+          description: result.error,
+          variant: "destructive",
+        })
+      }
+    })
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      {/* Header */}
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard/obras">
@@ -20,264 +117,209 @@ export default function NovaObraPage() {
         </Button>
         <h2 className="text-3xl font-bold tracking-tight">Nova Obra</h2>
       </div>
-      <Tabs defaultValue="informacoes" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="informacoes">Informações Gerais</TabsTrigger>
-          <TabsTrigger value="equipe">Equipe</TabsTrigger>
-          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
-          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-        </TabsList>
-        <TabsContent value="informacoes" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações da Obra</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="nomeObra">Nome da Obra</Label>
-                  <Input id="nomeObra" placeholder="Nome da obra" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipoObra">Tipo de Obra</Label>
-                  <Select>
-                    <SelectTrigger id="tipoObra">
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="residencial">Residencial</SelectItem>
-                      <SelectItem value="comercial">Comercial</SelectItem>
-                      <SelectItem value="industrial">Industrial</SelectItem>
-                      <SelectItem value="reforma">Reforma</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cliente">Cliente</Label>
-                  <Select>
-                    <SelectTrigger id="cliente">
-                      <SelectValue placeholder="Selecione o cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="roberto">Roberto Mendes</SelectItem>
-                      <SelectItem value="carla">Carla Oliveira</SelectItem>
-                      <SelectItem value="fernando">Fernando Almeida</SelectItem>
-                      <SelectItem value="juliana">Juliana Martins</SelectItem>
-                      <SelectItem value="ricardo">Ricardo Souza</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="responsavel">Responsável Técnico</Label>
-                  <Select>
-                    <SelectTrigger id="responsavel">
-                      <SelectValue placeholder="Selecione o responsável" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="joao">João Silva</SelectItem>
-                      <SelectItem value="maria">Maria Oliveira</SelectItem>
-                      <SelectItem value="pedro">Pedro Santos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endereco">Endereço da Obra</Label>
-                <Input id="endereco" placeholder="Endereço completo" />
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="cidade">Cidade</Label>
-                  <Input id="cidade" placeholder="Cidade" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estado">Estado</Label>
-                  <Select>
-                    <SelectTrigger id="estado">
-                      <SelectValue placeholder="UF" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SP">SP</SelectItem>
-                      <SelectItem value="RJ">RJ</SelectItem>
-                      <SelectItem value="MG">MG</SelectItem>
-                      <SelectItem value="ES">ES</SelectItem>
-                      <SelectItem value="PR">PR</SelectItem>
-                      <SelectItem value="SC">SC</SelectItem>
-                      <SelectItem value="RS">RS</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cep">CEP</Label>
-                  <Input id="cep" placeholder="00000-000" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="areaTotal">Área Total (m²)</Label>
-                  <Input id="areaTotal" type="number" min="0" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="areaConstruida">Área Construída (m²)</Label>
-                  <Input id="areaConstruida" type="number" min="0" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="numPavimentos">Número de Pavimentos</Label>
-                  <Input id="numPavimentos" type="number" min="1" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="dataInicio">Data de Início</Label>
-                  <Input id="dataInicio" type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dataPrevisaoFim">Previsão de Conclusão</Label>
-                  <Input id="dataPrevisaoFim" type="date" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="descricao">Descrição da Obra</Label>
-                <Textarea id="descricao" placeholder="Descreva os detalhes da obra" />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="equipe" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Equipe da Obra</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Selecione os Funcionários</Label>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
-                          <input type="checkbox" className="h-4 w-4" />
-                        </TableHead>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Cargo</TableHead>
-                        <TableHead>Departamento</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[
-                        { id: 1, nome: "João Silva", cargo: "Engenheiro Civil", departamento: "Projetos" },
-                        { id: 2, nome: "Maria Oliveira", cargo: "Arquiteta", departamento: "Design" },
-                        { id: 3, nome: "Pedro Santos", cargo: "Mestre de Obras", departamento: "Construção" },
-                        { id: 4, nome: "Ana Costa", cargo: "Gerente de Projetos", departamento: "Administração" },
-                        { id: 5, nome: "Carlos Ferreira", cargo: "Técnico em Segurança", departamento: "Segurança" },
-                      ].map((funcionario) => (
-                        <TableRow key={funcionario.id}>
-                          <TableCell>
-                            <input type="checkbox" className="h-4 w-4" />
-                          </TableCell>
-                          <TableCell>{funcionario.nome}</TableCell>
-                          <TableCell>{funcionario.cargo}</TableCell>
-                          <TableCell>{funcionario.departamento}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="cronograma" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cronograma da Obra</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label>Etapas da Obra</Label>
-                  <Button variant="outline" size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Etapa
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    { id: 1, etapa: "Fundação", inicio: "", fim: "", progresso: 0 },
-                    { id: 2, etapa: "Estrutura", inicio: "", fim: "", progresso: 0 },
-                    { id: 3, etapa: "Alvenaria", inicio: "", fim: "", progresso: 0 },
-                    { id: 4, etapa: "Instalações", inicio: "", fim: "", progresso: 0 },
-                    { id: 5, etapa: "Acabamentos", inicio: "", fim: "", progresso: 0 },
-                  ].map((etapa) => (
-                    <div key={etapa.id} className="grid grid-cols-1 gap-4 md:grid-cols-4 items-end border-b pb-4">
-                      <div className="space-y-2">
-                        <Label htmlFor={`etapa-${etapa.id}`}>Etapa</Label>
-                        <Input id={`etapa-${etapa.id}`} defaultValue={etapa.etapa} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`inicio-${etapa.id}`}>Data de Início</Label>
-                        <Input id={`inicio-${etapa.id}`} type="date" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`fim-${etapa.id}`}>Data de Conclusão</Label>
-                        <Input id={`fim-${etapa.id}`} type="date" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`progresso-${etapa.id}`}>Progresso (%)</Label>
-                        <Input id={`progresso-${etapa.id}`} type="number" min="0" max="100" defaultValue="0" />
-                      </div>
+
+      {/* Formulário */}
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Informações da Obra
+            </CardTitle>
+            <CardDescription>
+              Preencha os dados básicos da nova obra. As etapas serão criadas automaticamente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <Tabs defaultValue="informacoes" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="informacoes">Informações</TabsTrigger>
+                  <TabsTrigger value="funcionarios">Funcionários</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="informacoes">
+                  {/* Conteúdo do formulário atual aqui */}
+                  {/* Nome e Cliente */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome" className="flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        Nome da Obra *
+                      </Label>
+                      <Input
+                        id="nome"
+                        placeholder="Ex: Mansão Alphaville"
+                        value={formData.nome}
+                        onChange={(e) => handleInputChange("nome", e.target.value)}
+                        required
+                      />
                     </div>
-                  ))}
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cliente" className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Cliente *
+                      </Label>
+                      <Input
+                        id="cliente"
+                        placeholder="Nome do cliente"
+                        value={formData.cliente}
+                        onChange={(e) => handleInputChange("cliente", e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Endereço */}
+                  <div className="space-y-2">
+                    <Label htmlFor="endereco" className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Endereço *
+                    </Label>
+                    <Input
+                      id="endereco"
+                      placeholder="Endereço completo da obra"
+                      value={formData.endereco}
+                      onChange={(e) => handleInputChange("endereco", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* Datas e Responsável */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dataInicio" className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Data de Início *
+                      </Label>
+                      <Input
+                        id="dataInicio"
+                        type="date"
+                        value={formData.dataInicio}
+                        onChange={(e) => handleInputChange("dataInicio", e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dataFim" className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Data de Conclusão *
+                      </Label>
+                      <Input
+                        id="dataFim"
+                        type="date"
+                        value={formData.dataFim}
+                        onChange={(e) => handleInputChange("dataFim", e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="responsavel" className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Responsável *
+                      </Label>
+                      <Select
+                        value={formData.responsavel}
+                        onValueChange={(value) => handleInputChange("responsavel", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o responsável" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {responsaveisMock.map((responsavel) => (
+                            <SelectItem key={responsavel} value={responsavel}>
+                              {responsavel}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Descrição */}
+                  <div className="space-y-2">
+                    <Label htmlFor="descricao" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Descrição
+                    </Label>
+                    <Textarea
+                      id="descricao"
+                      placeholder="Descrição detalhada da obra (opcional)"
+                      value={formData.descricao}
+                      onChange={(e) => handleInputChange("descricao", e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Informações sobre etapas */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="font-medium text-blue-900 mb-2">Etapas da Obra</h3>
+                    <p className="text-sm text-blue-700 mb-3">
+                      As seguintes etapas serão criadas automaticamente, cada uma representando 20% da obra:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                      {["Fundações", "Estrutura", "Alvenaria", "Instalações", "Acabamentos"].map((etapa, index) => (
+                        <div key={etapa} className="flex items-center gap-2 text-sm text-blue-700">
+                          <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-xs font-medium">
+                            {index + 1}
+                          </div>
+                          {etapa}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="funcionarios">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Selecionar Funcionários</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Escolha os funcionários que serão alocados nesta obra.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {funcionariosDisponiveis.map((funcionario) => (
+                        <div key={funcionario.id} className="flex items-center space-x-2 p-3 border rounded-lg">
+                          <Checkbox
+                            id={`funcionario-${funcionario.id}`}
+                            checked={funcionariosSelecionados.includes(funcionario.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setFuncionariosSelecionados([...funcionariosSelecionados, funcionario.id])
+                              } else {
+                                setFuncionariosSelecionados(
+                                  funcionariosSelecionados.filter((id) => id !== funcionario.id),
+                                )
+                              }
+                            }}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor={`funcionario-${funcionario.id}`}
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              {funcionario.nome}
+                            </label>
+                            <p className="text-xs text-muted-foreground">{funcionario.cargo}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Botões */}
+              <div className="flex flex-col sm:flex-row gap-2 justify-end pt-4">
+                <Button variant="outline" asChild disabled={isPending}>
+                  <Link href="/dashboard/obras">Cancelar</Link>
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? "Criando..." : "Criar Obra"}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="financeiro" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações Financeiras</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="orcamentoTotal">Orçamento Total</Label>
-                  <Input id="orcamentoTotal" type="number" min="0" step="0.01" placeholder="0.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="valorContrato">Valor do Contrato</Label>
-                  <Input id="valorContrato" type="number" min="0" step="0.01" placeholder="0.00" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Forma de Pagamento</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a forma de pagamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="avista">À Vista</SelectItem>
-                    <SelectItem value="parcelado">Parcelado</SelectItem>
-                    <SelectItem value="medicao">Por Medição</SelectItem>
-                    <SelectItem value="personalizado">Personalizado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Observações Financeiras</Label>
-                <Textarea placeholder="Observações sobre o financeiro da obra" />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      <div className="flex gap-2 justify-end">
-        <Button variant="outline" asChild>
-          <Link href="/dashboard/obras">Cancelar</Link>
-        </Button>
-        <Button type="submit">Salvar Obra</Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

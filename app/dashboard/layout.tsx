@@ -23,9 +23,11 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useState } from "react"
+import { useActionState, useState } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Toaster } from "@/components/ui/toaster"
+import { logout } from "../actions/auth"
+import { LogoutButton } from "@/components/logout-button"
 
 interface NavItem {
   title: string
@@ -118,6 +120,7 @@ export default function DashboardLayout({
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
   const [isNavExpanded, setIsNavExpanded] = useState(true)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [state, formAction, isPending] = useActionState(logout, null)
 
   const toggleSubmenu = (title: string) => {
     if (openSubmenu === title) {
@@ -189,6 +192,7 @@ export default function DashboardLayout({
                           onClick={handleNavItemClick}
                         >
                           <Plus className="h-4 w-4" />
+                          on
                           {subitem.title}
                         </Link>
                       ))}
@@ -204,14 +208,7 @@ export default function DashboardLayout({
                 <Home className="h-5 w-5" />
                 Voltar para o site
               </Link>
-              <Link
-                href="/login"
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-orange-500"
-                onClick={handleNavItemClick}
-              >
-                <LogOut className="h-5 w-5" />
-                Sair
-              </Link>
+            <LogoutButton/>
             </nav>
           </SheetContent>
         </Sheet>
@@ -294,13 +291,8 @@ export default function DashboardLayout({
                 <Home className={`${isNavExpanded ? "h-5 w-5" : "h-6 w-6"} transition-all duration-200`} />
                 {isNavExpanded && <span>Voltar para o site</span>}
               </Link>
-              <Link
-                href="/login"
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-orange-500"
-              >
-                <LogOut className={`${isNavExpanded ? "h-5 w-5" : "h-6 w-6"} transition-all duration-200`} />
-                {isNavExpanded && <span>Sair</span>}
-              </Link>
+                        <LogoutButton/>
+
             </div>
           </nav>
         </aside>

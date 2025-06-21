@@ -32,7 +32,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 
-// Dados de exemplo - funcionários ativos
+// Dados de exemplo - funcionários ativos (mantidos para demonstração)
 const funcionariosAtivos = [
   {
     id: 1,
@@ -95,7 +95,7 @@ const funcionariosAtivos = [
   },
 ]
 
-// Dados de exemplo - ex-funcionários
+// Dados de exemplo - ex-funcionários (mantidos para demonstração)
 const exFuncionarios = [
   {
     id: 6,
@@ -193,17 +193,14 @@ const motivosDemissao = [
 
 // Componente para exibir as estrelas de avaliação
 function RatingStars({ rating }: { rating: number }) {
-  // Arredonda para o meio mais próximo (0, 0.5, 1, 1.5, etc.)
   const roundedRating = Math.round(rating * 2) / 2
 
   return (
     <div className="flex items-center">
       {[1, 2, 3, 4, 5].map((star) => {
         if (star <= roundedRating) {
-          // Estrela cheia
           return <Star key={star} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
         } else if (star - 0.5 === roundedRating) {
-          // Meia estrela (simulada com uma estrela preenchida parcialmente)
           return (
             <div key={star} className="relative h-4 w-4">
               <Star className="absolute h-4 w-4 text-yellow-400" />
@@ -213,7 +210,6 @@ function RatingStars({ rating }: { rating: number }) {
             </div>
           )
         } else {
-          // Estrela vazia
           return <Star key={star} className="h-4 w-4 text-yellow-400" />
         }
       })}
@@ -223,62 +219,42 @@ function RatingStars({ rating }: { rating: number }) {
 }
 
 export default function HistoricoFuncionariosPage() {
-  // Estado para pesquisa
   const [searchTerm, setSearchTerm] = useState("")
-
-  // Estado para filtros
   const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroDepartamento, setFiltroDepartamento] = useState<string[]>([])
   const [filtroCargo, setFiltroCargo] = useState<string[]>([])
   const [filtroStatus, setFiltroStatus] = useState<string[]>([])
   const [filtroMotivoDemissao, setFiltroMotivoDemissao] = useState<string[]>([])
-
-  // Estado para o filtro de data
   const [dateRangeContratacao, setDateRangeContratacao] = useState<DateRange | undefined>(undefined)
   const [dateRangeDemissao, setDateRangeDemissao] = useState<DateRange | undefined>(undefined)
-
-  // Estado para seleção de funcionários
   const [selectedFuncionarios, setSelectedFuncionarios] = useState<number[]>([])
-
-  // Estado para o diálogo de replicação
   const [dialogReplicacaoAberto, setDialogReplicacaoAberto] = useState(false)
   const [proximaQuinzena, setProximaQuinzena] = useState("")
 
-  // Determinar a quinzena atual
   const hoje = new Date()
   const diaAtual = hoje.getDate()
   const ehPrimeiraQuinzena = diaAtual <= 15
 
-  // Calcular a próxima quinzena
   const proximaQuinzenaTexto = ehPrimeiraQuinzena
     ? `Segunda quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
     : `Primeira quinzena de ${format(addMonths(hoje, 1), "MMMM/yyyy", { locale: ptBR })}`
 
-  // Função para filtrar todos os funcionários (ativos e inativos)
   const todosFuncionariosFiltrados = todosFuncionarios.filter((funcionario) => {
-    // Filtro por termo de pesquisa
     const matchesSearch =
       funcionario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       funcionario.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       funcionario.departamento.toLowerCase().includes(searchTerm.toLowerCase())
 
-    // Filtro por departamento
     const matchesDepartamento = filtroDepartamento.length === 0 || filtroDepartamento.includes(funcionario.departamento)
-
-    // Filtro por cargo
     const matchesCargo = filtroCargo.length === 0 || filtroCargo.includes(funcionario.cargo)
-
-    // Filtro por status
     const matchesStatus = filtroStatus.length === 0 || filtroStatus.includes(funcionario.status)
 
-    // Filtro por motivo de demissão (apenas para inativos)
     const matchesMotivoDemissao =
       filtroMotivoDemissao.length === 0 ||
       (funcionario.status === "Inativo" &&
         "motivoDemissao" in funcionario &&
-        filtroMotivoDemissao.includes(funcionario.motivoDemissao as string))
+        filtroMotivoDemissao.includes((funcionario as any).motivoDemissao as string))
 
-    // Filtro por data de contratação
     let matchesDataContratacao = true
     if (dateRangeContratacao?.from) {
       const dataContratacao = parseISO(funcionario.dataContratacao.split("/").reverse().join("-"))
@@ -294,7 +270,6 @@ export default function HistoricoFuncionariosPage() {
       }
     }
 
-    // Filtro por data de demissão (apenas para inativos)
     let matchesDataDemissao = true
     if (dateRangeDemissao?.from && funcionario.dataDemissao) {
       const dataDemissao = parseISO(funcionario.dataDemissao.split("/").reverse().join("-"))
@@ -320,7 +295,6 @@ export default function HistoricoFuncionariosPage() {
     )
   })
 
-  // Função para alternar seleção de departamento no filtro
   const toggleDepartamento = (departamento: string) => {
     setFiltroDepartamento((current) => {
       if (current.includes(departamento)) {
@@ -331,7 +305,6 @@ export default function HistoricoFuncionariosPage() {
     })
   }
 
-  // Função para alternar seleção de cargo no filtro
   const toggleCargo = (cargo: string) => {
     setFiltroCargo((current) => {
       if (current.includes(cargo)) {
@@ -342,7 +315,6 @@ export default function HistoricoFuncionariosPage() {
     })
   }
 
-  // Função para alternar seleção de status no filtro
   const toggleStatus = (status: string) => {
     setFiltroStatus((current) => {
       if (current.includes(status)) {
@@ -353,7 +325,6 @@ export default function HistoricoFuncionariosPage() {
     })
   }
 
-  // Função para alternar seleção de motivo de demissão no filtro
   const toggleMotivoDemissao = (motivo: string) => {
     setFiltroMotivoDemissao((current) => {
       if (current.includes(motivo)) {
@@ -364,7 +335,6 @@ export default function HistoricoFuncionariosPage() {
     })
   }
 
-  // Função para limpar todos os filtros
   const limparFiltros = () => {
     setFiltroDepartamento([])
     setFiltroCargo([])
@@ -375,7 +345,6 @@ export default function HistoricoFuncionariosPage() {
     setDateRangeDemissao(undefined)
   }
 
-  // Função para selecionar/deselecionar todos os funcionários
   const toggleSelectAll = () => {
     if (selectedFuncionarios.length === todosFuncionariosFiltrados.length) {
       setSelectedFuncionarios([])
@@ -384,7 +353,6 @@ export default function HistoricoFuncionariosPage() {
     }
   }
 
-  // Função para selecionar/deselecionar um funcionário
   const toggleSelectFuncionario = (id: number) => {
     setSelectedFuncionarios((prev) => {
       if (prev.includes(id)) {
@@ -395,7 +363,6 @@ export default function HistoricoFuncionariosPage() {
     })
   }
 
-  // Função para abrir o diálogo de replicação
   const abrirDialogoReplicacao = () => {
     if (selectedFuncionarios.length === 0) {
       toast({
@@ -406,7 +373,6 @@ export default function HistoricoFuncionariosPage() {
       return
     }
 
-    // Verificar se há funcionários inativos selecionados
     const funcionariosInativos = selectedFuncionarios.filter(
       (id) => todosFuncionarios.find((f) => f.id === id)?.status === "Inativo",
     )
@@ -424,28 +390,21 @@ export default function HistoricoFuncionariosPage() {
     setDialogReplicacaoAberto(true)
   }
 
-  // Função para replicar funcionários para a próxima quinzena
   const replicarFuncionarios = () => {
-    // Aqui você implementaria a lógica real para replicar os funcionários
-    // para a próxima quinzena no seu backend
-
-    // Fechar o diálogo
     setDialogReplicacaoAberto(false)
 
-    // Mostrar toast de sucesso
     toast({
       title: "Funcionários Replicados",
       description: `${selectedFuncionarios.length} funcionário(s) replicado(s) com sucesso para a ${proximaQuinzena}.`,
       action: <ToastAction altText="Fechar">Fechar</ToastAction>,
     })
 
-    // Limpar seleção
     setSelectedFuncionarios([])
   }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
             <Link href="/dashboard/funcionarios">
@@ -453,14 +412,14 @@ export default function HistoricoFuncionariosPage() {
               <span className="sr-only">Voltar</span>
             </Link>
           </Button>
-          <h2 className="text-3xl font-bold tracking-tight">Histórico de Funcionários</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Histórico de Funcionários</h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={abrirDialogoReplicacao}
             disabled={selectedFuncionarios.length === 0}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap w-full"
           >
             <CopyPlus className="mr-2 h-4 w-4" />
             Replicar para Próxima Quinzena
@@ -473,26 +432,26 @@ export default function HistoricoFuncionariosPage() {
           <h3 className="text-lg font-medium">Todos os Funcionários</h3>
           <p className="text-sm text-muted-foreground">Visualize todos os funcionários ativos e inativos</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <DateRangePicker
             value={dateRangeContratacao}
             onChange={setDateRangeContratacao}
-            placeholder="Filtrar por data de contratação"
+            placeholder="Contratação"
             align="end"
             locale={ptBR}
           />
           <DateRangePicker
             value={dateRangeDemissao}
             onChange={setDateRangeDemissao}
-            placeholder="Filtrar por data de demissão"
+            placeholder="Demissão"
             align="end"
             locale={ptBR}
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-col md:flex-row items-center gap-2">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -504,7 +463,7 @@ export default function HistoricoFuncionariosPage() {
         </div>
         <Popover open={filtroAberto} onOpenChange={setFiltroAberto}>
           <PopoverTrigger asChild>
-            <Button variant="outline">
+            <Button variant="outline" className="w-full md:w-auto">
               <Filter className="mr-2 h-4 w-4" />
               Filtrar
               <ChevronDown className="ml-2 h-4 w-4" />
@@ -626,15 +585,15 @@ export default function HistoricoFuncionariosPage() {
                     aria-label="Selecionar todos"
                   />
                 </TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Departamento</TableHead>
-                <TableHead>Data de Contratação</TableHead>
-                <TableHead>Data de Demissão</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Avaliação</TableHead>
-                <TableHead>Motivo de Saída</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="min-w-[120px]">Nome</TableHead>
+                <TableHead className="min-w-[120px]">Cargo</TableHead>
+                <TableHead className="min-w-[120px]">Departamento</TableHead>
+                <TableHead className="min-w-[140px]">Data de Contratação</TableHead>
+                <TableHead className="min-w-[140px]">Data de Demissão</TableHead>
+                <TableHead className="min-w-[80px]">Status</TableHead>
+                <TableHead className="min-w-[100px]">Avaliação</TableHead>
+                <TableHead className="min-w-[150px]">Motivo de Saída</TableHead>
+                <TableHead className="text-right min-w-[80px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -757,11 +716,13 @@ export default function HistoricoFuncionariosPage() {
               </ul>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogReplicacaoAberto(false)}>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => setDialogReplicacaoAberto(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button onClick={replicarFuncionarios}>Confirmar Replicação</Button>
+            <Button onClick={replicarFuncionarios} className="w-full sm:w-auto">
+              Confirmar Replicação
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

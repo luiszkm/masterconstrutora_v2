@@ -1,9 +1,7 @@
 import { revalidateTag } from "next/cache"
 import { type NextRequest, NextResponse } from "next/server"
 
-/**
- * Rota de API para revalidar o cache do Next.js
- */
+
 export async function POST(request: NextRequest) {
   try {
     const { tags } = await request.json()

@@ -410,49 +410,6 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
-
-      <div className="space-y-2">
-        <h5 className="text-sm font-medium">Departamentos</h5>
-        <div className="space-y-2">
-          {dadosFuncionarios.distribuicaoPorDepartamento.map((dept) => (
-            <div key={dept.departamento} className="flex items-center space-x-2">
-              <Checkbox
-                id={`dept-${dept.departamento}`}
-                checked={filtroDepartamentos.includes(dept.departamento)}
-                onCheckedChange={() => toggleFiltroDepartamento(dept.departamento)}
-              />
-              <Label
-                htmlFor={`dept-${dept.departamento}`}
-                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {dept.departamento}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h5 className="text-sm font-medium">Categorias de Materiais</h5>
-        <div className="space-y-2">
-          {dadosMateriais.distribuicaoPorCategoria.map((cat) => (
-            <div key={cat.categoria} className="flex items-center space-x-2">
-              <Checkbox
-                id={`cat-${cat.categoria}`}
-                checked={filtroCategorias.includes(cat.categoria)}
-                onCheckedChange={() => toggleFiltroCategoria(cat.categoria)}
-              />
-              <Label
-                htmlFor={`cat-${cat.categoria}`}
-                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {cat.categoria}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="flex justify-between">
         <Button variant="outline" size="sm" onClick={limparFiltros}>
           Limpar Filtros
