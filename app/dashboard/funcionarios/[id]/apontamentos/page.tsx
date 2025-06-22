@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
-import {  getApontamentos } from "@/app/actions/funcionario"
-import  ApontamentosFuncionariosClient  from "./apontamentos-funcionarios-client"
+import { getFuncionariosApontamentosById, getFuncionarioById } from "@/app/actions/funcionario"
+import  ApontamentosFuncionarioClient  from "./apontamentos-funcionario-client"
 
 export default async function ApontamentosFuncionarioPage({ params }: { params: { id: string } }) {
   const { id } = params
@@ -8,7 +8,7 @@ export default async function ApontamentosFuncionarioPage({ params }: { params: 
 
 
   // Buscar apontamentos do funcionário
-  const apontamentosResult = await getApontamentos()
+  const apontamentosResult = await getFuncionariosApontamentosById(id)
   if ("error" in apontamentosResult) {
     if (apontamentosResult.error.includes("Não autorizado")) {
       redirect("/login")
@@ -25,5 +25,5 @@ export default async function ApontamentosFuncionarioPage({ params }: { params: 
 
   console.log("apontamentosResult", apontamentosResult)
 
-  return <ApontamentosFuncionariosClient apontamentos={apontamentosResult} />
+  return <ApontamentosFuncionarioClient apontamentos={apontamentosResult} />
 }

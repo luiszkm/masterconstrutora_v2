@@ -33,7 +33,7 @@ import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import type { FuncionarioBase } from "@/app/actions/funcionario" // Importar a Server Action
 import { deleteFuncionario, AtivarFuncionario } from "@/app/actions/funcionario" // Importar a nova Server Action
-import { formatDateToInput } from "@/app/lib/masks"
+import { replicarFuncionariosQuinzena } from "@/app/actions/apontamentos"
 
 // Departamentos disponíveis para filtro
 const departamentos = ["Projetos", "Design", "Construção", "Administração", "Segurança"]
@@ -113,6 +113,7 @@ export default function HistoricoFuncionariosClientPage({
   const [selectedFuncionarios, setSelectedFuncionarios] = useState<string[]>([]) // Alterado para string
   const [dialogReplicacaoAberto, setDialogReplicacaoAberto] = useState(false)
   const [proximaQuinzena, setProximaQuinzena] = useState("")
+  const [isReplicating, setIsReplicating] = useState(false)
 
   const hoje = new Date()
   const diaAtual = hoje.getDate()
@@ -134,6 +135,11 @@ export default function HistoricoFuncionariosClientPage({
     const matchesCargo = filtroCargo.length === 0 || (funcionario.cargo && filtroCargo.includes(funcionario.cargo))
     const matchesStatus = filtroStatus.length === 0 || (funcionario.status && filtroStatus.includes(funcionario.status))
 
+    const matchesMotivoDemissao =
+      filtroMotivoDemissao.length === 0 ||
+      (funcionario.status === "Inativo" &&
+        funcionario.motivoDesligamento && // Alterado de motivoDesligamento para motivoDemissao
+        filtroMotivoDemissao.includes(funcionario.motivoDesligamento)) // Alterado de motivoDesligamento para motivoDemissao
 
     let matchesDataContratacao = true
     if (dateRangeContratacao?.from && funcionario.dataContratacao) {
@@ -172,6 +178,7 @@ export default function HistoricoFuncionariosClientPage({
       matchesDepartamento &&
       matchesCargo &&
       matchesStatus &&
+      matchesMotivoDemissao &&
       matchesDataContratacao &&
       matchesDataDemissao
     )
@@ -207,7 +214,15 @@ export default function HistoricoFuncionariosClientPage({
     })
   }
 
-  
+  const toggleMotivoDemissao = (motivo: string) => {
+    setFiltroMotivoDemissao((current) => {
+      if (current.includes(motivo)) {
+        return current.filter((m) => m !== motivo)
+      } else {
+        return [...current, motivo]
+      }
+    })
+  }
 
   const limparFiltros = () => {
     setFiltroDepartamento([])
@@ -264,16 +279,63 @@ export default function HistoricoFuncionariosClientPage({
     setDialogReplicacaoAberto(true)
   }
 
-  const replicarFuncionarios = () => {
+  const replicarFuncionarios = async () => {
+    if (selectedFuncionarios.length === 0) return
+
+    console.log("Replicando funcionários:", selectedFuncionarios)
+
+    setIsReplicating(true)
     setDialogReplicacaoAberto(false)
 
-    toast({
-      title: "Funcionários Replicados",
-      description: `${selectedFuncionarios.length} funcionário(s) replicado(s) com sucesso para a ${proximaQuinzena}.`,
-      action: <ToastAction altText="Fechar">Fechar</ToastAction>,
-    })
+    try {
+      const result = await replicarFuncionariosQuinzena(selectedFuncionarios)
+      console.log("Resultado da replicação:", result)
+      if (result.success) {
+        const { resumo, sucessos, falhas } = result
 
-    setSelectedFuncionarios([])
+        // Criar mensagem detalhada baseada nos resultados
+        let mensagem = `Replicação concluída!\n`
+        mensagem += `Total processado: ${resumo.totalSolicitado}\n`
+        mensagem += `Sucessos: ${resumo.totalSucesso}\n`
+        mensagem += `Falhas: ${resumo.totalFalha}`
+
+        if (falhas && falhas.length > 0) {
+          mensagem += `\n\nFalhas encontradas:`
+          falhas.forEach((falha: any) => {
+            const funcionario = initialFuncionarios.find((f) => f.id === falha.funcionarioId)
+            mensagem += `\n• ${funcionario?.nome || "Funcionário"}: ${falha.motivo}`
+          })
+        }
+
+        toast({
+          title: resumo.totalFalha > 0 ? "Replicação com avisos" : "Sucesso!",
+          description: mensagem,
+          variant: resumo.totalFalha > 0 ? "destructive" : "default",
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+
+        // Limpar seleção apenas se houve pelo menos um sucesso
+        if (resumo.totalSucesso > 0) {
+          setSelectedFuncionarios([])
+        }
+      } else {
+        toast({
+          title: "Erro",
+          description: result.message,
+          variant: "destructive",
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao replicar funcionários. Tente novamente.",
+        variant: "destructive",
+        action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+      })
+    } finally {
+      setIsReplicating(false)
+    }
   }
 
   const abrirDialogoExclusao = (funcionario: FuncionarioBase) => {
@@ -497,6 +559,7 @@ export default function HistoricoFuncionariosClientPage({
                 <TableHead className="min-w-[140px]">Data de Demissão</TableHead>
                 <TableHead className="min-w-[80px]">Status</TableHead>
                 <TableHead className="min-w-[100px]">Avaliação</TableHead>
+                <TableHead className="min-w-[150px]">Motivo de Saída</TableHead>
                 <TableHead className="text-right min-w-[80px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -523,9 +586,9 @@ export default function HistoricoFuncionariosClientPage({
                     <TableCell className="font-medium">{funcionario.nome}</TableCell>
                     <TableCell>{funcionario.cargo}</TableCell>
                     <TableCell>{funcionario.departamento}</TableCell>
-                    <TableCell>{formatDateToInput(funcionario.dataContratacao)}</TableCell>
+                    <TableCell>{funcionario.dataContratacao}</TableCell>
                     <TableCell>
-                      {formatDateToInput(funcionario.desligamentoData) || <span className="text-muted-foreground italic">Não aplicável</span>}
+                      {funcionario.desligamentoData || <span className="text-muted-foreground italic">Não aplicável</span>}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -549,7 +612,13 @@ export default function HistoricoFuncionariosClientPage({
                         </Tooltip>
                       </TooltipProvider>
                     </TableCell>
-                   
+                    <TableCell>
+                      {funcionario.status === "Inativo" && funcionario.motivoDesligamento ? (
+                        <span>{funcionario.motivoDesligamento}</span>
+                      ) : (
+                        <span className="text-muted-foreground italic">Não aplicável</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -563,12 +632,6 @@ export default function HistoricoFuncionariosClientPage({
                             <Link href={`/dashboard/funcionarios/${funcionario.id}/editar`}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
-                            </Link>
-                          </DropdownMenuItem>
-                               <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/funcionarios/${funcionario.id}/apontamentos`}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              apontamentos
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -634,8 +697,8 @@ export default function HistoricoFuncionariosClientPage({
             <Button variant="outline" onClick={() => setDialogReplicacaoAberto(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button onClick={replicarFuncionarios} className="w-full sm:w-auto">
-              Confirmar Replicação
+            <Button onClick={replicarFuncionarios} disabled={isReplicating} className="w-full sm:w-auto">
+              {isReplicating ? "Replicando..." : "Confirmar Replicação"}
             </Button>
           </DialogFooter>
         </DialogContent>

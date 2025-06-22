@@ -58,6 +58,10 @@ const navItems: NavItem[] = [
         title: "Histórico",
         href: "/dashboard/funcionarios/historico",
       },
+         {
+        title: "Apontamentos",
+        href: "/dashboard/funcionarios/apontamentos",
+      },
     ],
   },
   {
