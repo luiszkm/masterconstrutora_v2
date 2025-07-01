@@ -12,10 +12,12 @@ import { NumericFormat } from "react-number-format"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast" // Importar useToast
+import router from "next/router"
+import { useRouter } from "next/navigation"
 
 export default function NovoFuncionarioPage() {
   const { toast } = useToast() // Inicializar useToast
-
+const{push} = useRouter()
   const [employeeId, setEmployeeId] = useState<string | null>(null)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
 
@@ -50,8 +52,7 @@ export default function NovoFuncionarioPage() {
         description: paymentFormState.message,
         variant: "default",
       })
-      // Opcional: Redirecionar após salvar o pagamento
-      // router.push('/dashboard/funcionarios');
+      push('/dashboard/funcionarios');
     } else if (paymentFormState?.success === false) {
       toast({
         title: "Erro",

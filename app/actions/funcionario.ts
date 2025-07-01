@@ -288,7 +288,7 @@ export async function createFuncionarioPayment(
         }
       }
 
-      return { success: false, message: errorMessage };
+      return { success: false, message: errorMessage };      
     }
 
     revalidateTag(`funcionario-${funcionarioId}`);
