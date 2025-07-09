@@ -1,74 +1,94 @@
 import type { EtapaObra } from "@/app/actions/obra"
 
-// Função para calcular percentual de evolução (cada etapa = 20%)
+// Calcular evolução da obra baseado nas etapas concluídas
 export function calcularEvolucao(etapas: EtapaObra[]): number {
+  if (etapas.length === 0) return 0
+
   const etapasConcluidas = etapas.filter((etapa) => etapa.concluida).length
-  return etapasConcluidas * 20
+  return Math.round((etapasConcluidas / etapas.length) * 100)
 }
 
-// Função para obter etapa atual
+// Obter etapa atual (primeira não concluída ou última se todas concluídas)
 export function obterEtapaAtual(etapas: EtapaObra[]): string {
   const etapaAtual = etapas.find((etapa) => !etapa.concluida)
-  return etapaAtual ? etapaAtual.nome : "Concluída"
+  return etapaAtual ? etapaAtual.nome : etapas[etapas.length - 1]?.nome || "N/A"
 }
 
-// Função para obter próxima etapa disponível para conclusão
+// Obter próxima etapa a ser concluída
 export function obterProximaEtapa(etapas: EtapaObra[]): EtapaObra | null {
-  // Encontra a primeira etapa não concluída
-  for (let i = 0; i < etapas.length; i++) {
-    const etapa = etapas[i]
+  return etapas.find((etapa) => !etapa.concluida) || null
+}
 
-    if (!etapa.concluida) {
-      // Verifica se todas as etapas anteriores estão concluídas
-      const etapasAnteriores = etapas.slice(0, i)
-      const todasAnterioresConcluidas = etapasAnteriores.every((e) => e.concluida)
+// Verificar se pode concluir uma etapa (etapas anteriores devem estar concluídas)
+export function podeConclurEtapa(etapas: EtapaObra[], etapaId: string): boolean {
+  const etapaIndex = etapas.findIndex((e) => e.id === etapaId)
+  if (etapaIndex === -1) return false
 
-      if (todasAnterioresConcluidas) {
-        return etapa
-      }
+  // Verificar se todas as etapas anteriores estão concluídas
+  for (let i = 0; i < etapaIndex; i++) {
+    if (!etapas[i].concluida) {
+      return false
     }
   }
 
-  return null
+  return true
 }
 
-// Função para verificar se pode concluir uma etapa
-export function podeConclurEtapa(etapas: EtapaObra[], etapaId: string): boolean {
-  const etapaIndex = etapas.findIndex((e) => e.id === etapaId)
-
-  if (etapaIndex === -1) return false
-
-  // Primeira etapa sempre pode ser concluída
-  if (etapaIndex === 0) return true
-
-  // Verifica se todas as etapas anteriores estão concluídas
-  const etapasAnteriores = etapas.slice(0, etapaIndex)
-  return etapasAnteriores.every((e) => e.concluida)
-}
-
-// Função para obter cor do progresso
-export function getProgressColor(percentual: number): string {
-  if (percentual < 20) return "bg-red-500"
-  if (percentual < 40) return "bg-orange-500"
-  if (percentual < 60) return "bg-yellow-500"
-  if (percentual < 80) return "bg-blue-500"
-  return "bg-green-500"
-}
-
-// Função para formatar status da obra
-export function formatarStatusObra(status: string): {
-  label: string
-  variant: "default" | "secondary" | "destructive" | "outline"
-  className?: string
-} {
-  switch (status) {
-    case "Concluída":
-      return { label: "Concluída", variant: "default", className: "bg-green-500" }
-    case "Em andamento":
-      return { label: "Em andamento", variant: "secondary", className: "bg-blue-500" }
-    case "Pausada":
-      return { label: "Pausada", variant: "outline", className: "bg-yellow-500" }
-    default:
-      return { label: status, variant: "outline" }
+// Formatar status da obra para exibição
+export function formatarStatusObra(status: string) {
+  const statusMap = {
+    "Em andamento": {
+      label: "Em Andamento",
+      variant: "default" as const,
+      className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+    },
+    Concluída: {
+      label: "Concluída",
+      variant: "default" as const,
+      className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+    },
+    Pausada: {
+      label: "Pausada",
+      variant: "secondary" as const,
+      className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+    },
   }
+
+  return (
+    statusMap[status as keyof typeof statusMap] || {
+      label: status,
+      variant: "outline" as const,
+      className: "",
+    }
+  )
+}
+
+// Obter cor da barra de progresso baseada na evolução
+export function getProgressColor(evolucao: number): string {
+  if (evolucao >= 80) return "bg-green-500"
+  if (evolucao >= 60) return "bg-blue-500"
+  if (evolucao >= 40) return "bg-yellow-500"
+  if (evolucao >= 20) return "bg-orange-500"
+  return "bg-red-500"
+}
+
+// Calcular dias restantes para conclusão
+export function calcularDiasRestantes(dataFim: string): number {
+  const hoje = new Date()
+  const fim = new Date(dataFim)
+  const diffTime = fim.getTime() - hoje.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays
+}
+
+// Verificar se obra está atrasada
+export function obraAtrasada(etapas: EtapaObra[]): boolean {
+  const hoje = new Date().toISOString().split("T")[0]
+
+  return etapas.some((etapa) => {
+    if (!etapa.concluida && etapa.dataFimPrevista) {
+      return etapa.dataFimPrevista < hoje
+    }
+    return false
+  })
 }

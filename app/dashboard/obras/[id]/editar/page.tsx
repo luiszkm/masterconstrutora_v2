@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Building, Calendar, MapPin, User, FileText, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
-import { obterObra, atualizarObra, type Obra } from "@/app/actions/obra"
+import { getObrasList, atualizarObra, type Obra, getObraById } from "@/app/actions/obra"
 
 const responsaveisMock = ["Maria Oliveira", "Carlos Santos", "Ana Pereira", "Pedro Souza", "João Silva"]
 
@@ -38,7 +38,7 @@ export default function EditarObraPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     const carregarObra = async () => {
       try {
-        const result = await obterObra(Number.parseInt(params.id))
+        const result = await getObraById(Number.parseInt(params.id))
         if (result.success) {
           const obraData = result.data
           setObra(obraData)

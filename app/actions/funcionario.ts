@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-import { cookies } from "next/headers";
-import { decrypt } from "@/app/lib/session"; // Assumindo que decrypt está em app/lib/session
-import { removerMascaraMonetaria } from "@/app/lib/masks"; // Importar a função de máscara
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+import { removerMascaraMonetaria } from "@/app/lib/masks"; // Importar a função de máscara
+import { makeAuthenticatedRequest, API_URL } from "./common";
+
 
 // Tipo para os dados básicos do funcionário
 export type FuncionarioBase = {
@@ -77,57 +76,9 @@ export type FuncionarioApontamento = {
   obraId?: string | null; // ID da obra vinculada ao apontamento
 };
 
-// Tipo para a listagem simplificada de obras
-export type ObraListItem = {
-  id: string;
-  nome: string;
-  cliente: string;
-  status: string;
-};
 
-/**
- * Função auxiliar para obter o token JWT da sessão
- * Exportada para ser usada diretamente em Server Components.
- */
-export async function getJWTToken(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
-  const payload = await decrypt(sessionCookie);
 
-  if (!payload || !payload.jwtToken) {
-    return null;
-  }
 
-  return payload.jwtToken;
-}
-
-/**
- * Função auxiliar para fazer requisições autenticadas
- */
-async function makeAuthenticatedRequest(
-  url: string,
-  options: RequestInit = {}
-) {
-  const jwtToken = await getJWTToken();
-
-  if (!jwtToken) {
-    // Se o token não for encontrado, lançamos um erro.
-    // O Server Component que chama esta função deve lidar com o redirecionamento.
-    throw new Error("Token de autenticação não encontrado");
-  }
-
-  const headers = {
-    "Content-Type": "application/json",
-    Cookie: `jwt-token=${jwtToken}`,
-    ...options.headers,
-  };
-
-  return fetch(url, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-}
 
 /**
  * Cria um novo funcionário no backend (apenas dados básicos).
@@ -689,48 +640,7 @@ export async function AtivarFuncionario(id: string) {
 /**
  * Busca a lista de obras do backend.
  */
-export async function getObrasList(): Promise<
-  ObraListItem[] | { error: string }
-> {
-  try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/obras`, {
-      method: "GET",
-      next: { tags: ["obras-list"] }, // Tag para revalidação de cache
-    });
 
-    if (!response.ok) {
-      let errorMessage = "Erro ao buscar lista de obras.";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente.";
-        }
-      }
-      return { error: errorMessage };
-    }
-
-    const result = await response.json();
-    if (result && Array.isArray(result.dados)) {
-      return result.dados as ObraListItem[];
-    } else {
-      console.error("Formato inesperado da resposta da API de obras:", result);
-      return { error: "Formato de dados de obras inesperado." };
-    }
-  } catch (error) {
-    console.error("Erro ao buscar lista de obras:", error);
-    if (
-      error instanceof Error &&
-      error.message === "Token de autenticação não encontrado"
-    ) {
-      return { error: "Não autorizado. Faça login novamente." };
-    }
-    return {
-      error: "Erro de conexão com o servidor ao buscar obras. Tente novamente.",
-    };
-  }
-}
 
 /**
  * Busca a lista de apontamentos de funcionários do backend.

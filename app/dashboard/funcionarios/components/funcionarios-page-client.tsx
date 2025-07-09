@@ -56,12 +56,11 @@ import { NumericFormat } from "react-number-format"
 import { useActionState } from "react"
 import {
   handleFuncionarioApontamentoSubmit,
-  getObrasList,
-  type ObraListItem,
   type FuncionarioApontamento,
 } from "@/app/actions/funcionario"
 import { aplicarMascaraMonetaria } from "@/app/lib/masks"
 import { getContasBancarias, pagarApontamentosQuinzena } from "@/app/actions/apontamentos"
+import { getObrasList, ObraListItem } from "@/app/actions/obra"
 
 // Histórico de pagamentos (mantidos para demonstração, pois o novo endpoint não cobre todos os detalhes)
 const historicoPagamentos = [
@@ -206,8 +205,6 @@ function RatingStars({ rating }: { rating: number }) {
 
 // Client Component to handle state and interactions
 export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncionarios: FuncionarioApontamento[] }) {
-  console.log("Funcionários e apontamentos:", initialFuncionarios)
-
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroDepartamento, setFiltroDepartamento] = useState<string[]>([])

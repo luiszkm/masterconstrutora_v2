@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
-import { obterObra } from "@/app/actions/obra"
+import { getObraById } from "@/app/actions/obra"
 import { ObraDetalhes } from "./components/obra-detalhes"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -11,7 +11,9 @@ interface ObraDetalhesPageProps {
 }
 
 async function ObraDetalhesContent({ id }: { id: string }) {
-  const result = await obterObra(Number.parseInt(id))
+  const result = await getObraById(id)
+
+  console.log("Resultado da busca de obra:", result)
 
   if (!result.success || !result.data) {
     notFound()

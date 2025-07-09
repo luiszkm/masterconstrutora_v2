@@ -33,48 +33,7 @@ import { calcularEvolucao, obterEtapaAtual, obterProximaEtapa } from "@/app/lib/
 import type { Obra } from "@/app/actions/obra"
 
 // Dados mockados para relacionamentos
-const funcionariosMock = [
-  {
-    id: 1,
-    nome: "João Silva",
-    cargo: "Pedreiro",
-    telefone: "(11) 99999-1111",
-    email: "joao@email.com",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 2,
-    nome: "Maria Oliveira",
-    cargo: "Engenheira Civil",
-    telefone: "(11) 99999-2222",
-    email: "maria@email.com",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 3,
-    nome: "Carlos Santos",
-    cargo: "Eletricista",
-    telefone: "(11) 99999-3333",
-    email: "carlos@email.com",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 4,
-    nome: "Ana Pereira",
-    cargo: "Arquiteta",
-    telefone: "(11) 99999-4444",
-    email: "ana@email.com",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 5,
-    nome: "Pedro Souza",
-    cargo: "Mestre de Obras",
-    telefone: "(11) 99999-5555",
-    email: "pedro@email.com",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-]
+
 
 const orcamentosMock = [
   {
@@ -181,7 +140,7 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const proximaEtapa = obterProximaEtapa(obra.etapas)
 
   // Obter dados relacionados
-  const funcionariosObra = funcionariosMock.filter((f) => obra.funcionarios.includes(f.id))
+  const funcionariosObra = obra.funcionarios.filter((f) => obra.funcionarios.includes(f.id))
   const orcamentosObra = orcamentosMock.filter((o) => obra.orcamentos.includes(o.id))
   const fornecedoresObra = fornecedoresMock.slice(0, 3) // Mock: primeiros 3 fornecedores
   const materiaisObra = materiaisMock // Mock: todos os materiais
@@ -327,13 +286,6 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                 Endereço
               </div>
               <p>{obra.endereco}</p>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <User className="h-4 w-4" />
-                Responsável
-              </div>
-              <p>{obra.responsavel}</p>
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">

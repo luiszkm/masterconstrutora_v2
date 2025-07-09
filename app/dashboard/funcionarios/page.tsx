@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
-import { getFuncionariosApontamentos, getJWTToken } from "@/app/actions/funcionario"
+import { getFuncionariosApontamentos } from "@/app/actions/funcionario"
 import { FuncionariosPageClient } from "./components/funcionarios-page-client"
+import { getJWTToken } from "@/app/actions/common"
 
 // Server Component - handles data fetching and authentication
 export default async function FuncionariosPage() {
