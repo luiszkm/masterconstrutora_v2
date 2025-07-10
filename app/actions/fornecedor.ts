@@ -9,26 +9,24 @@ export interface MaterialTipo {
 }
 
 export interface Fornecedor {
-  id: number
+  ID: string;
+  Nome: string;
+  CNPJ: string;
+  Categorias: categoria[]; 
+  Contato: string;
+  Email: string;
+  Status: string;
+  Website: string | null;
+  Endereco: string;
+  NomeAtendente: string | null;
+  Avaliacao: number;
+  Observacoes: string;
+  orcamentosCount: number;
+}
+
+type categoria ={
+  id: string
   nome: string
-  cnpj: string
-  categoria: string
-  website: string
-  endereco: string
-  cidade: string
-  estado: string
-  cep: string
-  contato: string
-  cargo: string
-  email: string
-  telefone: string
-  status: "Ativo" | "Inativo"
-  avaliacao: number
-  orcamentos: number
-  observacoes: string
-  materiais: MaterialTipo[]
-  createdAt: string
-  updatedAt: string
 }
 
 // Dados mockados
@@ -175,8 +173,8 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Listar todos os fornecedores
 export async function getFornecedores(): Promise<Fornecedor[]> {
-  await delay(500) // Simular delay de rede
-  return fornecedoresMock
+
+  
 }
 
 // Buscar fornecedor por ID

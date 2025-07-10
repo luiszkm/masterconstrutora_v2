@@ -1,13 +1,14 @@
 import { Star } from "lucide-react"
 import EditarFuncionarioClient from "./editar-funcionario-client"
 import { redirect } from "next/navigation"
-import { getFuncionarioById, getJWTToken } from "@/app/actions/funcionario"
+import { getFuncionarioById,  } from "@/app/actions/funcionario"
+import { getJWTToken } from "@/app/actions/apontamentos"
 
 
 
 export default async function EditarFuncionarioPage({ params }: { params: { id: string } }) {
   // Aguardar params se necessário
-  const { id } = await params
+  const { id } =  params
 
   // Verificar autenticação
   const token = await getJWTToken()

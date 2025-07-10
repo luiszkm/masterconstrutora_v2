@@ -9,7 +9,6 @@ import {
   Plus,
   Search,
   Edit,
-  Trash2,
   MoreHorizontal,
   FileText,
   Filter,
@@ -47,7 +46,6 @@ import { toast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Actions
 import {
@@ -55,8 +53,9 @@ import {
   excluirObra,
   alocarFuncionario,
   linkarOrcamento,
+  concluirProximaEtapa,
   type ObraListItem,
-  ObraListResponse,
+  type ObraListResponse,
 } from "@/app/actions/obra"
 
 // Dados mockados estruturados para fácil transição
@@ -98,8 +97,8 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
   const [alocarDialogAberto, setAlocarDialogAberto] = useState(false)
   const [linkarDialogAberto, setLinkarDialogAberto] = useState(false)
   const [obraSelecionada, setObraSelecionada] = useState<ObraListItem | null>(null)
-  const [funcionarioSelecionado, setFuncionarioSelecionado] = useState("")
-  const [orcamentoSelecionado, setOrcamentoSelecionado] = useState("")
+  const [funcionariosSelecionados, setFuncionariosSelecionados] = useState<string[]>([])
+  const [orcamentosSelecionados, setOrcamentosSelecionados] = useState<string[]>([])
 
   const carregarObras = async (page = 1) => {
     setLoading(true)
@@ -226,31 +225,40 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
 
   // Ação: Alocar funcionário
   const handleAlocarFuncionario = async () => {
-    if (!obraSelecionada || !funcionarioSelecionado) return
+    if (!obraSelecionada || funcionariosSelecionados.length === 0) return
 
     try {
-      const result = await alocarFuncionario(obraSelecionada.id, Number.parseInt(funcionarioSelecionado))
-      if (result.success) {
-        const funcionario = mockData.funcionarios.find((f) => f.id === Number.parseInt(funcionarioSelecionado))
+      // Alocar cada funcionário selecionado
+      const result = await alocarFuncionario(obraSelecionada.id, funcionariosSelecionados)
+
+      if (result?.success) {
+        const funcionariosNomes = funcionariosSelecionados
+          .map((id) => mockData.funcionarios.find((f) => f.id === Number.parseInt(id))?.nome)
+          .filter(Boolean)
+          .join(", ")
+
         toast({
-          title: "Funcionário Alocado",
-          description: `${funcionario?.nome} foi alocado à obra ${obraSelecionada.nome}`,
+          title: "Funcionários Alocados",
+          description: `${funcionariosNomes} foram alocados à obra ${obraSelecionada.nome}`,
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
-        carregarObras(paginacao.currentPage)
-        setAlocarDialogAberto(false)
-        setFuncionarioSelecionado("")
-      } else {
+      }
+
+      if (result?.success === false && result?.message) {
         toast({
-          title: "Erro",
-          description: result.error,
+          title: "Alguns erros ocorreram",
+          description: `funcionário(s) não puderam ser alocados`,
           variant: "destructive",
         })
       }
+
+      carregarObras(paginacao.currentPage)
+      setAlocarDialogAberto(false)
+      setFuncionariosSelecionados([])
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao alocar funcionário",
+        description: "Erro ao alocar funcionários",
         variant: "destructive",
       })
     }
@@ -258,31 +266,45 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
 
   // Ação: Linkar orçamento
   const handleLinkarOrcamento = async () => {
-    if (!obraSelecionada || !orcamentoSelecionado) return
+    if (!obraSelecionada || orcamentosSelecionados.length === 0) return
 
     try {
-      const result = await linkarOrcamento(obraSelecionada.id, Number.parseInt(orcamentoSelecionado))
-      if (result.success) {
-        const orcamento = mockData.orcamentos.find((o) => o.id === Number.parseInt(orcamentoSelecionado))
+      // Linkar cada orçamento selecionado
+      const resultados = await Promise.all(
+        orcamentosSelecionados.map((orcamentoId) => linkarOrcamento(obraSelecionada.id, Number.parseInt(orcamentoId))),
+      )
+
+      const sucessos = resultados.filter((r) => r.success)
+      const erros = resultados.filter((r) => !r.success)
+
+      if (sucessos.length > 0) {
+        const orcamentosNumeros = orcamentosSelecionados
+          .map((id) => mockData.orcamentos.find((o) => o.id === Number.parseInt(id))?.numero)
+          .filter(Boolean)
+          .join(", ")
+
         toast({
-          title: "Orçamento Linkado",
-          description: `Orçamento ${orcamento?.numero} foi linkado à obra ${obraSelecionada.nome}`,
+          title: "Orçamentos Linkados",
+          description: `${orcamentosNumeros} foram linkados à obra ${obraSelecionada.nome}`,
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
-        carregarObras(paginacao.currentPage)
-        setLinkarDialogAberto(false)
-        setOrcamentoSelecionado("")
-      } else {
+      }
+
+      if (erros.length > 0) {
         toast({
-          title: "Erro",
-          description: result.error,
+          title: "Alguns erros ocorreram",
+          description: `${erros.length} orçamento(s) não puderam ser linkados`,
           variant: "destructive",
         })
       }
+
+      carregarObras(paginacao.currentPage)
+      setLinkarDialogAberto(false)
+      setOrcamentosSelecionados([])
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao linkar orçamento",
+        description: "Erro ao linkar orçamentos",
         variant: "destructive",
       })
     }
@@ -357,6 +379,18 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
     if (page >= 1 && page <= paginacao.totalPages) {
       carregarObras(page)
     }
+  }
+
+  const toggleFuncionario = (funcionarioId: string) => {
+    setFuncionariosSelecionados((current) =>
+      current.includes(funcionarioId) ? current.filter((id) => id !== funcionarioId) : [...current, funcionarioId],
+    )
+  }
+
+  const toggleOrcamento = (orcamentoId: string) => {
+    setOrcamentosSelecionados((current) =>
+      current.includes(orcamentoId) ? current.filter((id) => id !== orcamentoId) : [...current, orcamentoId],
+    )
   }
 
   if (loading) {
@@ -643,10 +677,6 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleExcluirObra(obra)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -706,44 +736,52 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
 
       {/* Diálogo: Alocar Funcionário */}
       <Dialog open={alocarDialogAberto} onOpenChange={setAlocarDialogAberto}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Alocar Funcionário</DialogTitle>
+            <DialogTitle>Alocar Funcionários</DialogTitle>
             <DialogDescription>
-              Selecione um funcionário para alocar na obra "{obraSelecionada?.nome}".
+              Selecione um ou mais funcionários para alocar na obra "{obraSelecionada?.nome}".
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="funcionario">Funcionário</Label>
-              <Select value={funcionarioSelecionado} onValueChange={setFuncionarioSelecionado}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um funcionário" />
-                </SelectTrigger>
-                <SelectContent>
+              <Label>Funcionários Disponíveis</Label>
+              <ScrollArea className="h-48 border rounded-md p-2">
+                <div className="space-y-2">
                   {mockData.funcionarios
                     .filter((f) => f.disponivel)
                     .map((funcionario) => (
-                      <SelectItem key={funcionario.id} value={funcionario.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <div>
-                            <div className="font-medium">{funcionario.nome}</div>
-                            <div className="text-sm text-muted-foreground">{funcionario.cargo}</div>
-                          </div>
+                      <div
+                        key={funcionario.id}
+                        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted cursor-pointer"
+                        onClick={() => toggleFuncionario(funcionario.id.toString())}
+                      >
+                        <Checkbox
+                          checked={funcionariosSelecionados.includes(funcionario.id.toString())}
+                          onCheckedChange={() => toggleFuncionario(funcionario.id.toString())}
+                        />
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <div className="font-medium">{funcionario.nome}</div>
+                          <div className="text-sm text-muted-foreground">{funcionario.cargo}</div>
                         </div>
-                      </SelectItem>
+                      </div>
                     ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </ScrollArea>
+              {funcionariosSelecionados.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  {funcionariosSelecionados.length} funcionário(s) selecionado(s)
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAlocarDialogAberto(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleAlocarFuncionario} disabled={!funcionarioSelecionado}>
-              Alocar
+            <Button onClick={handleAlocarFuncionario} disabled={funcionariosSelecionados.length === 0}>
+              Alocar {funcionariosSelecionados.length > 0 ? `(${funcionariosSelecionados.length})` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -751,44 +789,54 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
 
       {/* Diálogo: Linkar Orçamento */}
       <Dialog open={linkarDialogAberto} onOpenChange={setLinkarDialogAberto}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Linkar Orçamento</DialogTitle>
-            <DialogDescription>Selecione um orçamento para linkar na obra "{obraSelecionada?.nome}".</DialogDescription>
+            <DialogTitle>Linkar Orçamentos</DialogTitle>
+            <DialogDescription>
+              Selecione um ou mais orçamentos para linkar na obra "{obraSelecionada?.nome}".
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="orcamento">Orçamento</Label>
-              <Select value={orcamentoSelecionado} onValueChange={setOrcamentoSelecionado}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um orçamento" />
-                </SelectTrigger>
-                <SelectContent>
+              <Label>Orçamentos Aprovados</Label>
+              <ScrollArea className="h-48 border rounded-md p-2">
+                <div className="space-y-2">
                   {mockData.orcamentos
                     .filter((o) => o.status === "aprovado")
                     .map((orcamento) => (
-                      <SelectItem key={orcamento.id} value={orcamento.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          <div>
-                            <div className="font-medium">{orcamento.numero}</div>
-                            <div className="text-sm text-muted-foreground">
-                              R$ {orcamento.valor.toLocaleString("pt-BR")}
-                            </div>
+                      <div
+                        key={orcamento.id}
+                        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted cursor-pointer"
+                        onClick={() => toggleOrcamento(orcamento.id.toString())}
+                      >
+                        <Checkbox
+                          checked={orcamentosSelecionados.includes(orcamento.id.toString())}
+                          onCheckedChange={() => toggleOrcamento(orcamento.id.toString())}
+                        />
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <div className="font-medium">{orcamento.numero}</div>
+                          <div className="text-sm text-muted-foreground">
+                            R$ {orcamento.valor.toLocaleString("pt-BR")}
                           </div>
                         </div>
-                      </SelectItem>
+                      </div>
                     ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </ScrollArea>
+              {orcamentosSelecionados.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  {orcamentosSelecionados.length} orçamento(s) selecionado(s)
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkarDialogAberto(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleLinkarOrcamento} disabled={!orcamentoSelecionado}>
-              Linkar
+            <Button onClick={handleLinkarOrcamento} disabled={orcamentosSelecionados.length === 0}>
+              Linkar {orcamentosSelecionados.length > 0 ? `(${orcamentosSelecionados.length})` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>

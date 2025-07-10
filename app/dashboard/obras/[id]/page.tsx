@@ -13,7 +13,6 @@ interface ObraDetalhesPageProps {
 async function ObraDetalhesContent({ id }: { id: string }) {
   const result = await getObraById(id)
 
-  console.log("Resultado da busca de obra:", result)
 
   if (!result.success || !result.data) {
     notFound()

@@ -12,10 +12,20 @@ export interface ObraData {
   dataFim: string;
   descricao: string;
 }
-export interface Obra extends ObraData {
+export interface ObraDetails {
+  id: string;
+  nome: string;
+  cliente: string;
+  endereco: string;
+  dataInicio: string;
+  dataFim: string;
+  descricao: string;
+  status: "Em andamento" | "Concluída" | "Pausada";
+}
+export interface Obra extends ObraDetails {
   etapas: EtapaObra[];
-  orcamentos: number[];
-  funcionarios: number[];
+  orcamentos: orcamentoObra[];
+  funcionarios: Funcionario[];
 }
 export type EtapaObra = {
   id: string;
@@ -26,6 +36,18 @@ export type EtapaObra = {
   dataInicioReal?: string;
   dataFimReal?: string;
 };
+
+type orcamentoObra={
+  funcionarioId: number;
+  nomeFuncionario: string;
+  dataInicioAlocacao: string;
+}
+
+type Funcionario = {
+  funcionarioId: number;
+  nomeFuncionario: string;
+  dataInicioAlocacao: string;}
+
 
 // Tipo para a listagem simplificada de obras
 export type ObraListItem = {
@@ -183,7 +205,6 @@ export async function criarObra(formData: FormData) {
           body: JSON.stringify(funcionariosSelecionados),
         }
       );
-      console.log("funcionariosResponse", funcionariosResponse);
       if (!response.ok) {
         let errorMessage = "Erro ao associar funcionários à obra.";
         try {
@@ -230,25 +251,21 @@ export async function criarObra(formData: FormData) {
 }
 
 // Atualizar obra
-export async function atualizarObra(id: number, formData: FormData) {
+export async function atualizarObra(id: string, formData: FormData) {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  const obraIndex = obrasMock.findIndex((o) => o.id === id);
-  if (obraIndex === -1) {
-    return { success: false, error: "Obra não encontrada" };
-  }
 
   const nome = formData.get("nome") as string;
   const cliente = formData.get("cliente") as string;
   const endereco = formData.get("endereco") as string;
   const dataInicio = formData.get("dataInicio") as string;
   const dataFim = formData.get("dataFim") as string;
-  const responsavel = formData.get("responsavel") as string;
   const descricao = formData.get("descricao") as string;
   const status = formData.get("status") as
     | "Em andamento"
     | "Concluída"
-    | "Pausada";
+    | "Pausada"
+    | "Em Planejamento";
 
   // Validações
   if (
@@ -256,8 +273,7 @@ export async function atualizarObra(id: number, formData: FormData) {
     !cliente ||
     !endereco ||
     !dataInicio ||
-    !dataFim ||
-    !responsavel
+    !dataFim
   ) {
     return {
       success: false,
@@ -265,20 +281,60 @@ export async function atualizarObra(id: number, formData: FormData) {
     };
   }
 
-  obrasMock[obraIndex] = {
-    ...obrasMock[obraIndex],
-    nome,
-    cliente,
-    endereco,
-    dataInicio,
-    dataFim,
-    responsavel,
-    descricao,
-    status,
-  };
+  try {
 
+    const response = await makeAuthenticatedRequest(
+      `${API_URL}/obras/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          nome,
+          cliente,
+          endereco,
+          dataInicio,
+          dataFim,
+          descricao,
+          status,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = "Erro ao atualizar obra.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente.";
+        }
+      }
+      return { success: false, error: errorMessage };
+    }
+
+    revalidateTag(`obra-${id}`);
+    revalidatePath("/dashboard/obras");
+
+    return { success: true, message: "Obra atualizada com sucesso!" };
+    
+  } catch (error) {
+    console.error("Erro ao atualizar obra:", error);
+    if (
+      error instanceof Error &&
+      error.message === "Token de autenticação não encontrado"
+    ) {
+      return { success: false, error: "Não autorizado. Faça login novamente." };
+    }
+    return {
+      success: false,
+      error: "Erro de conexão com o servidor ao atualizar obra. Tente novamente.",
+    };
+    
+  }
+
+ 
   revalidatePath("/dashboard/obras");
-  return { success: true, data: obrasMock[obraIndex] };
+  
 }
 
 // Obter obra por ID
@@ -305,6 +361,7 @@ export async function getObraById(
     }
 
     const result = await response.json();
+    console.log("Dados da obra:", result);
     // Validação da estrutura da resposta
       return { success: true, data: result as Obra };
    
@@ -319,3 +376,35 @@ export async function getObraById(
     return { success: false, error: "Erro de conexão com o servidor ao buscar obra. Tente novamente." };
   }
 }
+// alocar funcionário à obra
+export async function alocarFuncionario(obraId: string, funcionarioIds: string[]) {
+    const funcionariosSelecionados = {
+    funcionarioIds: funcionarioIds,
+    dataInicioAlocacao: new Date().toISOString().split("T")[0], // Data atual no formato YYYY-MM-DD
+  };
+
+  const response = await makeAuthenticatedRequest(
+        `${API_URL}/obras/${obraId}/alocacoes`,
+        {
+          method: "POST",
+          body: JSON.stringify(funcionariosSelecionados),
+        }
+      );
+      if (!response.ok) {
+        let errorMessage = "Erro ao associar funcionários à obra.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente.";
+        }
+      }
+        return { success: false, message: errorMessage, obraId: null };
+      }
+
+      revalidateTag(`obra-${obraId}`);
+      revalidatePath("/dashboard/obras");
+    }
+  
+

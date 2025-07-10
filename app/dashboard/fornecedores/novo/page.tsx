@@ -182,10 +182,6 @@ export default function NovoFornecedorPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="website">Website</Label>
-                <Input id="website" name="website" placeholder="www.exemplo.com.br" />
-              </div>
             </div>
           </CardContent>
         </Card>

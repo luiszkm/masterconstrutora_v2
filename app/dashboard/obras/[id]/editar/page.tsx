@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState, useEffect, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useTransition, use } from "react"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,16 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Building, Calendar, MapPin, User, FileText, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
-import { getObrasList, atualizarObra, type Obra, getObraById } from "@/app/actions/obra"
+import { atualizarObra, type Obra, getObraById } from "@/app/actions/obra"
 
 const responsaveisMock = ["Maria Oliveira", "Carlos Santos", "Ana Pereira", "Pedro Souza", "João Silva"]
 
-export default function EditarObraPage({ params }: { params: { id: string } }) {
+export default function EditarObraPage() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const params = useParams() as { id: string }
   const [loading, setLoading] = useState(true)
   const [obra, setObra] = useState<Obra | null>(null)
-
+  const obraId = params.id
   const [formData, setFormData] = useState({
     nome: "",
     cliente: "",
@@ -33,12 +34,11 @@ export default function EditarObraPage({ params }: { params: { id: string } }) {
     descricao: "",
     status: "Em andamento" as "Em andamento" | "Concluída" | "Pausada",
   })
-
   // Carregar dados da obra
   useEffect(() => {
     const carregarObra = async () => {
       try {
-        const result = await getObraById(Number.parseInt(params.id))
+        const result = await getObraById(obraId)
         if (result.success) {
           const obraData = result.data
           setObra(obraData)
@@ -46,9 +46,9 @@ export default function EditarObraPage({ params }: { params: { id: string } }) {
             nome: obraData.nome,
             cliente: obraData.cliente,
             endereco: obraData.endereco,
-            dataInicio: obraData.dataInicio,
-            dataFim: obraData.dataFim,
-            responsavel: obraData.responsavel,
+            dataInicio: new Date(obraData.dataInicio).toISOString().split("T")[0],
+            dataFim: new Date(obraData.dataFim).toISOString().split("T")[0],
+            responsavel: "",
             descricao: obraData.descricao,
             status: obraData.status,
           })
@@ -88,9 +88,7 @@ export default function EditarObraPage({ params }: { params: { id: string } }) {
       !formData.cliente ||
       !formData.endereco ||
       !formData.dataInicio ||
-      !formData.dataFim ||
-      !formData.responsavel
-    ) {
+      !formData.dataFim    ) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios.",
@@ -115,7 +113,7 @@ export default function EditarObraPage({ params }: { params: { id: string } }) {
         form.append(key, value)
       })
 
-      const result = await atualizarObra(Number.parseInt(params.id), form)
+      const result = await atualizarObra(params.id, form)
 
       if (result.success) {
         toast({
@@ -267,29 +265,9 @@ export default function EditarObraPage({ params }: { params: { id: string } }) {
                     required
                   />
                 </div>
+             
                 <div className="space-y-2">
-                  <Label htmlFor="responsavel" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Responsável *
-                  </Label>
-                  <Select
-                    value={formData.responsavel}
-                    onValueChange={(value) => handleInputChange("responsavel", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o responsável" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {responsaveisMock.map((responsavel) => (
-                        <SelectItem key={responsavel} value={responsavel}>
-                          {responsavel}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status"className="flex items-center gap-2">Status</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value: "Em andamento" | "Concluída" | "Pausada") =>
@@ -300,6 +278,8 @@ export default function EditarObraPage({ params }: { params: { id: string } }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                                            <SelectItem value="Em Planejamento">Em Planejamento</SelectItem>
+
                       <SelectItem value="Em andamento">Em andamento</SelectItem>
                       <SelectItem value="Pausada">Pausada</SelectItem>
                       <SelectItem value="Concluída">Concluída</SelectItem>

@@ -32,9 +32,6 @@ import { concluirEtapa } from "@/app/actions/obra"
 import { calcularEvolucao, obterEtapaAtual, obterProximaEtapa } from "@/app/lib/obra-utils"
 import type { Obra } from "@/app/actions/obra"
 
-// Dados mockados para relacionamentos
-
-
 const orcamentosMock = [
   {
     id: 1,
@@ -134,14 +131,14 @@ interface ObraDetalhesProps {
 
 export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const [isPending, startTransition] = useTransition()
-
   const evolucao = calcularEvolucao(obra.etapas)
   const etapaAtual = obterEtapaAtual(obra.etapas)
   const proximaEtapa = obterProximaEtapa(obra.etapas)
 
   // Obter dados relacionados
-  const funcionariosObra = obra.funcionarios.filter((f) => obra.funcionarios.includes(f.id))
-  const orcamentosObra = orcamentosMock.filter((o) => obra.orcamentos.includes(o.id))
+  const funcionariosObra = obra.funcionarios
+
+  const orcamentosObra = obra.orcamentos
   const fornecedoresObra = fornecedoresMock.slice(0, 3) // Mock: primeiros 3 fornecedores
   const materiaisObra = materiaisMock // Mock: todos os materiais
 
@@ -394,20 +391,19 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                   <p className="text-center text-muted-foreground py-8">Nenhum funcionário alocado nesta obra.</p>
                 ) : (
                   funcionariosObra.map((funcionario) => (
-                    <div key={funcionario.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={funcionario.funcionarioId} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
                         <Avatar>
-                          <AvatarImage src={funcionario.avatar || "/placeholder.svg"} alt={funcionario.nome} />
+                          <AvatarImage src={ "/placeholder.svg"} alt={funcionario.nomeFuncionario} />
                           <AvatarFallback>
-                            {funcionario.nome
+                            {funcionario.nomeFuncionario
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <h3 className="font-medium">{funcionario.nome}</h3>
-                          <p className="text-sm text-muted-foreground">{funcionario.cargo}</p>
+                          <h3 className="font-medium">{funcionario.nomeFuncionario}</h3>
                           <div className="flex items-center gap-4 mt-1">
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Phone className="h-3 w-3" />
@@ -421,7 +417,7 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                         </div>
                       </div>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/dashboard/funcionarios/${funcionario.id}/editar`}>
+                        <Link href={`/dashboard/funcionarios/${funcionario.funcionarioId}/editar`}>
                           <ExternalLink className="mr-2 h-4 w-4" />
                           Ver Detalhes
                         </Link>
