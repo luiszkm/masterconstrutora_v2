@@ -1,8 +1,3 @@
-/**
- * Função auxiliar para obter o token JWT da sessão
- * Exportada para ser usada diretamente em Server Components.
- */
-
 import { cookies } from "next/headers";
 import { decrypt } from "../lib/session";
 
@@ -20,9 +15,6 @@ export async function getJWTToken(): Promise<string | null> {
   return payload.jwtToken;
 }
 
-/**
- * Função auxiliar para fazer requisições autenticadas
- */
 export async function makeAuthenticatedRequest(
   url: string,
   options: RequestInit = {}
@@ -46,4 +38,40 @@ export async function makeAuthenticatedRequest(
     headers,
     credentials: "include",
   });
+}
+
+
+export interface Meterial {
+  id: string;
+  nome: string;
+}
+
+export async function GetMaterials (): Promise<{
+  success: boolean;
+  message: string;
+  materials?: Meterial[];
+}> {
+  try {
+    const response = await makeAuthenticatedRequest(`${API_URL}/materiais`);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        message: errorData.message || "Erro ao buscar materiais",
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      message: "Materiais obtidos com sucesso",
+      materials: data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Erro desconhecido",
+    };
+  }
 }
