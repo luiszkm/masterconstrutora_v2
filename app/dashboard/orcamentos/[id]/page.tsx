@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation"
 import { getJWTToken } from "@/app/actions/common"
 import { getOrcamentoById } from "@/app/actions/orcamento"
-import { EditarOrcamentoClient } from "./editar-orcamento-client"
+import { OrcamentoDetalhesClient } from "./orcamento-detalhes-client"
 
-export default async function EditarOrcamentoPage({ params }: { params: { id: string } }) {
+export default async function OrcamentoDetalhesPage({ params }: { params: { id: string } }) {
   // Verificar autenticação no Server Component
   const jwtToken = await getJWTToken()
   if (!jwtToken) {
@@ -12,6 +12,8 @@ export default async function EditarOrcamentoPage({ params }: { params: { id: st
 
   // Fetch data on the server side
   const orcamentoResult = await getOrcamentoById(params.id)
+
+  console.log("Orçamento Detalhado:", orcamentoResult)
 
   // Handle error if fetching fails
   if ("error" in orcamentoResult) {
@@ -25,5 +27,5 @@ export default async function EditarOrcamentoPage({ params }: { params: { id: st
     )
   }
 
-  return <EditarOrcamentoClient orcamento={orcamentoResult} />
+  return <OrcamentoDetalhesClient orcamento={orcamentoResult} />
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,149 +16,186 @@ import {
   ChevronUp,
   ChevronDown,
   Package,
-  BarChart2,
   AlertCircle,
   Building,
+  Calendar,
+  DollarSign,
+  FileText,
+  Loader2,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Ban,
 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-
-// Tipo para material em orçamento
-type MaterialOrcamento = {
-  id: number
-  nome: string
-  quantidade: number
-  unidade: string
-  valorUnitario: number
-  valorTotal: number
-  fornecedor: string
-}
-
-// Tipo para orçamento
-type Orcamento = {
-  id: number
-  numero: string
-  cliente: string
-  projeto: string
-  valor: string
-  data: string
-  status: string
-  fornecedor: string // Adicionado campo de fornecedor principal
-  materiais: MaterialOrcamento[]
-}
-
-// Lista de todos os tipos de materiais disponíveis no sistema
-const tiposMateriais = [
-  "Cimento",
-  "Areia",
-  "Brita",
-  "Aço",
-  "Tintas",
-  "Mármores",
-  "Granitos",
-  "Porcelanatos",
-  "Cabos",
-  "Disjuntores",
-  "Quadros Elétricos",
-  "Tubos PVC",
-  "Conexões",
-  "Registros",
-  "Caixas d'água",
-  "Madeira Maciça",
-  "Compensados",
-  "MDF",
-  "Portas",
-  "Deck",
-  "Telhas",
-  "Vidros",
-  "Ferragens",
-  "Impermeabilizantes",
-  "Argamassas",
-  "Gesso",
-  "Drywall",
-  "Isolantes",
-  "Pisos Laminados",
-  "Pisos Vinílicos",
-]
-
-// Lista de fornecedores disponíveis
-const fornecedores = [
-  "Materiais Premium Ltda",
-  "Mármores & Granitos SA",
-  "Elétrica Total",
-  "Hidráulica Express",
-  "Madeiras Nobres",
-]
-
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { deleteOrcamento, updateOrcamentoStatus } from "@/app/actions/orcamento"
+import type { Orcamento } from "@/types/orcamento"
 
 // Tipo para ordenação
 type SortConfig = {
-  key: string
+  key: keyof Orcamento | ""
   direction: "asc" | "desc"
 }
 
 // Tipo para filtros
 type Filters = {
-  [key: string]: string | string[]
+  status: string
+  valorMin: string
+  valorMax: string
+  dataInicio: string
+  dataFim: string
 }
 
-export default function OrcamentoPageClient({orcamentosIniciais }: {orcamentosIniciais: Orcamento[]}) {
-  // Estado para orçamentos
-  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(orcamentosIniciais)
+export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos: Orcamento[] }) {
+  // Estados principais
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(initialOrcamentos)
+  const [filteredOrcamentos, setFilteredOrcamentos] = useState<Orcamento[]>(initialOrcamentos)
+  const [loading, setLoading] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
-  // Estado para ordenação
+  // Estados para ordenação e filtros
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "", direction: "asc" })
+  const [filters, setFilters] = useState<Filters>({
+    status: "",
+    valorMin: "",
+    valorMax: "",
+    dataInicio: "",
+    dataFim: "",
+  })
 
-  // Estado para filtros
-  const [filters, setFilters] = useState<Filters>({})
+  // Estados para pesquisa
+  const [searchTerm, setSearchTerm] = useState("")
 
-  // Estado para orçamentos filtrados
-  const [filteredOrcamentos, setFilteredOrcamentos] = useState(orcamentos)
+  // Estados para diálogos
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [orcamentoToDelete, setOrcamentoToDelete] = useState<Orcamento | null>(null)
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [orcamentoToUpdate, setOrcamentoToUpdate] = useState<Orcamento | null>(null)
+  const [newStatus, setNewStatus] = useState<"Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado">("Em Aberto")
 
-  // Estado para pesquisa de material
-  const [searchMaterial, setSearchMaterial] = useState("")
+  // Estados para popovers
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
-  // Estado para o orçamento selecionado para adicionar material
-  const [orcamentoSelecionado, setOrcamentoSelecionado] = useState<Orcamento | null>(null)
+  // Aplicar filtros e pesquisa
+  useEffect(() => {
+    let result = orcamentos
 
-  // Estado para o diálogo de adicionar material
-  const [dialogOpen, setDialogOpen] = useState(false)
+    // Filtro por pesquisa geral
+    if (searchTerm) {
+      result = result.filter(
+        (orcamento) =>
+          orcamento.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          orcamento.id.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
 
-  // Estado para o novo material
-  const [novoMaterial, setNovoMaterial] = useState("")
-  const [novoFornecedor, setNovoFornecedor] = useState("")
-  const [novaQuantidade, setNovaQuantidade] = useState<number>(0)
-  const [novoValorUnitario, setNovoValorUnitario] = useState<number>(0)
-  const [novaUnidade, setNovaUnidade] = useState("")
+    // Filtros específicos
+    if (filters.status) {
+      result = result.filter((orcamento) => orcamento.status === filters.status)
+    }
 
-  // Estado para erro de material duplicado
-  const [materialDuplicado, setMaterialDuplicado] = useState(false)
+    if (filters.valorMin) {
+      const valorMin = Number.parseFloat(filters.valorMin)
+      result = result.filter((orcamento) => orcamento.valorTotal >= valorMin)
+    }
+
+    if (filters.valorMax) {
+      const valorMax = Number.parseFloat(filters.valorMax)
+      result = result.filter((orcamento) => orcamento.valorTotal <= valorMax)
+    }
+
+    if (filters.dataInicio) {
+      result = result.filter((orcamento) => new Date(orcamento.dataEmissao) >= new Date(filters.dataInicio))
+    }
+
+    if (filters.dataFim) {
+      result = result.filter((orcamento) => new Date(orcamento.dataEmissao) <= new Date(filters.dataFim))
+    }
+
+    setFilteredOrcamentos(result)
+  }, [orcamentos, searchTerm, filters])
+
+  // Função para renderizar badge de status
+  const renderStatusBadge = (status: string) => {
+    const statusConfig = {
+      "Em Aberto": { variant: "outline" as const, icon: Clock, color: "text-yellow-600" },
+      Aprovado: { variant: "default" as const, icon: CheckCircle, color: "text-green-600" },
+      Rejeitado: { variant: "destructive" as const, icon: XCircle, color: "text-red-600" },
+      Cancelado: { variant: "secondary" as const, icon: Ban, color: "text-gray-600" },
+    }
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig["Em Aberto"]
+    const Icon = config.icon
+
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-1">
+        <Icon className="h-3 w-3" />
+        {status}
+      </Badge>
+    )
+  }
+
+  // Função para formatar data
+  const formatarData = (dataString: string) => {
+    const data = new Date(dataString)
+    return data.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+  }
+
+  // Função para formatar valor
+  const formatarValor = (valor: number) => {
+    return valor.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    })
+  }
 
   // Função para ordenar
-  const requestSort = (key: string) => {
+  const requestSort = (key: keyof Orcamento) => {
     let direction: "asc" | "desc" = "asc"
     if (sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc"
     }
     setSortConfig({ key, direction })
 
-    // Aplicar ordenação
     const sortedData = [...filteredOrcamentos].sort((a, b) => {
-      // @ts-ignore - Ignorando erro de tipagem para acessar propriedades dinâmicas
-      if (a[key] < b[key]) {
+      const aValue = a[key]
+      const bValue = b[key]
+
+      if (aValue === null && bValue === null) return 0
+      if (aValue === null) return direction === "asc" ? 1 : -1
+      if (bValue === null) return direction === "asc" ? -1 : 1
+
+      if (aValue < bValue) {
         return direction === "asc" ? -1 : 1
       }
-      // @ts-ignore - Ignorando erro de tipagem para acessar propriedades dinâmicas
-      if (a[key] > b[key]) {
+      if (aValue > bValue) {
         return direction === "asc" ? 1 : -1
       }
       return 0
@@ -167,148 +204,89 @@ export default function OrcamentoPageClient({orcamentosIniciais }: {orcamentosIn
     setFilteredOrcamentos(sortedData)
   }
 
-  // Função para aplicar filtros
-  const applyFilters = () => {
-    let result = orcamentos
+  // Função para limpar filtros
+  const clearFilters = () => {
+    setFilters({
+      status: "",
+      valorMin: "",
+      valorMax: "",
+      dataInicio: "",
+      dataFim: "",
+    })
+    setSearchTerm("")
+    setFiltersOpen(false)
+  }
 
-    // Aplicar pesquisa de material
-    if (searchMaterial) {
-      result = result.filter((orcamento) =>
-        orcamento.materiais.some((material) => material.nome.toLowerCase().includes(searchMaterial.toLowerCase())),
-      )
-    }
+  // Função para excluir orçamento
+  const handleDelete = async () => {
+    if (!orcamentoToDelete) return
 
-    // Aplicar filtros específicos
-    Object.keys(filters).forEach((key) => {
-      const filterValue = filters[key]
-      if (filterValue && Array.isArray(filterValue) && filterValue.length > 0) {
-        // Para filtros de array (como materiais)
-        if (key === "materiais") {
-          result = result.filter((orcamento) =>
-            orcamento.materiais.some((material) => filterValue.includes(material.nome)),
-          )
-        } else if (key === "fornecedores") {
-          result = result.filter((orcamento) =>
-            orcamento.materiais.some((material) => filterValue.includes(material.fornecedor)),
-          )
-        }
-      } else if (filterValue && typeof filterValue === "string" && filterValue !== "") {
-        // Para filtros de string
-        result = result.filter((orcamento) => {
-          // @ts-ignore - Ignorando erro de tipagem para acessar propriedades dinâmicas
-          const value = orcamento[key]
-          if (typeof value === "string") {
-            return value.toLowerCase().includes(filterValue.toLowerCase())
-          }
-          return false
+    startTransition(async () => {
+      const result = await deleteOrcamento(orcamentoToDelete.id)
+
+      if (result.success) {
+        toast({
+          title: "Orçamento excluído",
+          description: result.message,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+
+        // Atualizar lista local
+        const updatedOrcamentos = orcamentos.filter((o) => o.id !== orcamentoToDelete.id)
+        setOrcamentos(updatedOrcamentos)
+        setFilteredOrcamentos(updatedOrcamentos)
+      } else {
+        toast({
+          title: "Erro ao excluir orçamento",
+          description: result.message,
+          variant: "destructive",
         })
       }
+
+      setDeleteDialogOpen(false)
+      setOrcamentoToDelete(null)
     })
-
-    setFilteredOrcamentos(result)
   }
 
-  // Aplicar filtros quando mudam
-  useState(() => {
-    applyFilters()
-  }, [filters, searchMaterial])
+  // Função para atualizar status
+  const handleUpdateStatus = async () => {
+    if (!orcamentoToUpdate) return
 
-  // Obter todos os tipos de materiais únicos
-  const allMateriais = Array.from(new Set(orcamentos.flatMap((o) => o.materiais.map((m) => m.nome)))).sort()
+    startTransition(async () => {
+      const result = await updateOrcamentoStatus(orcamentoToUpdate.id, newStatus)
 
-  // Obter todos os fornecedores únicos
-  const allFornecedores = Array.from(new Set(orcamentos.flatMap((o) => o.materiais.map((m) => m.fornecedor)))).sort()
+      if (result.success) {
+        toast({
+          title: "Status atualizado",
+          description: result.message,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
 
-  // Função para abrir o diálogo de adicionar material
-  const abrirDialogoAdicionarMaterial = (orcamento: Orcamento) => {
-    setOrcamentoSelecionado(orcamento)
-    setNovoMaterial("")
-    setNovoFornecedor("")
-    setNovaQuantidade(0)
-    setNovoValorUnitario(0)
-    setNovaUnidade("")
-    setMaterialDuplicado(false)
-    setDialogOpen(true)
-  }
-
-  // Função para adicionar material ao orçamento
-  const adicionarMaterial = () => {
-    if (
-      !orcamentoSelecionado ||
-      !novoMaterial ||
-      !novoFornecedor ||
-      novaQuantidade <= 0 ||
-      novoValorUnitario <= 0 ||
-      !novaUnidade
-    )
-      return
-
-    // Verificar se o material já existe para este orçamento
-    const materialExistente = orcamentoSelecionado.materiais.some(
-      (m) =>
-        m.nome.toLowerCase() === novoMaterial.toLowerCase() &&
-        m.fornecedor.toLowerCase() === novoFornecedor.toLowerCase(),
-    )
-
-    if (materialExistente) {
-      setMaterialDuplicado(true)
-      return
-    }
-
-    // Calcular valor total
-    const valorTotal = novaQuantidade * novoValorUnitario
-
-    // Criar novo material
-    const novoMaterialObj: MaterialOrcamento = {
-      id: Math.max(...orcamentoSelecionado.materiais.map((m) => m.id), 0) + 1,
-      nome: novoMaterial,
-      quantidade: novaQuantidade,
-      unidade: novaUnidade,
-      valorUnitario: novoValorUnitario,
-      valorTotal: valorTotal,
-      fornecedor: novoFornecedor,
-    }
-
-    // Atualizar orçamentos
-    const orcamentosAtualizados = orcamentos.map((o) => {
-      if (o.id === orcamentoSelecionado.id) {
-        return {
-          ...o,
-          materiais: [...o.materiais, novoMaterialObj],
-        }
+        // Atualizar lista local
+        const updatedOrcamentos = orcamentos.map((o) =>
+          o.id === orcamentoToUpdate.id ? { ...o, status: newStatus } : o,
+        )
+        setOrcamentos(updatedOrcamentos)
+      } else {
+        toast({
+          title: "Erro ao atualizar status",
+          description: result.message,
+          variant: "destructive",
+        })
       }
-      return o
-    })
 
-    // Atualizar estado
-    setOrcamentos(orcamentosAtualizados)
-    setFilteredOrcamentos(
-      filteredOrcamentos.map((o) => {
-        if (o.id === orcamentoSelecionado.id) {
-          return {
-            ...o,
-            materiais: [...o.materiais, novoMaterialObj],
-          }
-        }
-        return o
-      }),
-    )
-
-    // Fechar diálogo
-    setDialogOpen(false)
-
-    // Mostrar toast de sucesso
-    toast({
-      title: "Material adicionado com sucesso",
-      description: `${novoMaterial} foi adicionado ao orçamento ${orcamentoSelecionado.numero}.`,
-      action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+      setStatusDialogOpen(false)
+      setOrcamentoToUpdate(null)
     })
   }
 
   // Renderizar cabeçalho da tabela com ordenação
-  const renderSortableHeader = (key: string, label: string) => (
-    <TableHead>
-      <button className="flex items-center gap-1 hover:text-primary" onClick={() => requestSort(key)}>
+  const renderSortableHeader = (key: keyof Orcamento, label: string) => (
+    <TableHead className="cursor-pointer select-none">
+      <button
+        className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
+        onClick={() => requestSort(key)}
+      >
         {label}
         {sortConfig.key === key ? (
           sortConfig.direction === "asc" ? (
@@ -323,438 +301,402 @@ export default function OrcamentoPageClient({orcamentosIniciais }: {orcamentosIn
     </TableHead>
   )
 
-  // Obter sugestões de materiais para a pesquisa
-  const materialSuggestions = tiposMateriais
-    .filter((material) => material.toLowerCase().includes(searchMaterial.toLowerCase()))
-    .slice(0, 5)
-
-  // Unidades de medida disponíveis
-  const unidadesMedida = ["Saco 50kg", "m³", "m²", "m", "kg", "un", "L", "Barra", "Rolo", "Pacote", "Caixa"]
+  // Calcular estatísticas
+  const stats = {
+    total: orcamentos.length,
+    emAberto: orcamentos.filter((o) => o.status === "Em Aberto").length,
+    aprovados: orcamentos.filter((o) => o.status === "Aprovado").length,
+    valorTotal: orcamentos.reduce((total, o) => total + o.valorTotal, 0),
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex flex-col items-start md:flex-row md:items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Orçamentos</h2>
-        <Button asChild>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Orçamentos</h2>
+          <p className="text-muted-foreground">Gerencie todos os orçamentos do sistema</p>
+        </div>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/dashboard/orcamentos/novo">
             <Plus className="mr-2 h-4 w-4" />
             Novo Orçamento
           </Link>
         </Button>
       </div>
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Popover open={searchMaterial.length > 0 && materialSuggestions.length > 0}>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Em Aberto</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats.emAberto}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Aprovados</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.aprovados}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatarValor(stats.valorTotal)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Pesquisa Geral */}
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por número do orçamento..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Filtros Avançados */}
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
-              <Input
-                type="search"
-                placeholder="Buscar orçamentos por material..."
-                className="w-full pl-8"
-                value={searchMaterial}
-                onChange={(e) => setSearchMaterial(e.target.value)}
-              />
+              <Button variant="outline" className="w-full sm:w-auto bg-transparent">
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros
+                {(filters.status || filters.valorMin || filters.valorMax || filters.dataInicio || filters.dataFim) && (
+                  <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
+                    {
+                      [filters.status, filters.valorMin, filters.valorMax, filters.dataInicio, filters.dataFim].filter(
+                        Boolean,
+                      ).length
+                    }
+                  </Badge>
+                )}
+              </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-              <Command>
-                <CommandList>
-                  <CommandGroup>
-                    {materialSuggestions.map((material) => (
-                      <CommandItem
-                        key={material}
-                        onSelect={() => {
-                          setSearchMaterial(material)
-                        }}
-                      >
-                        <Package className="mr-2 h-4 w-4" />
-                        {material}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
+            <PopoverContent className="w-80 p-0" align="end">
+              <div className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Filtros Avançados</h4>
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Limpar
+                  </Button>
+                </div>
+
+                <Separator />
+
+                {/* Filtro por Status */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Select
+                    value={filters.status}
+                    onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value === "all" ? "" : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os status</SelectItem>
+                      <SelectItem value="Em Aberto">Em Aberto</SelectItem>
+                      <SelectItem value="Aprovado">Aprovado</SelectItem>
+                      <SelectItem value="Rejeitado">Rejeitado</SelectItem>
+                      <SelectItem value="Cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Valor */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Faixa de Valor</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Valor mín."
+                      value={filters.valorMin}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, valorMin: e.target.value }))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Valor máx."
+                      value={filters.valorMax}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, valorMax: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Filtro por Data */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Período</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="date"
+                      value={filters.dataInicio}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, dataInicio: e.target.value }))}
+                    />
+                    <Input
+                      type="date"
+                      value={filters.dataFim}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, dataFim: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtros
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80">
-            <div className="space-y-4">
-              <h4 className="font-medium">Filtrar por</h4>
-
-              <div className="space-y-2">
-                <h5 className="text-sm font-medium">Status</h5>
-                <Command>
-                  <CommandList>
-                    <CommandGroup>
-                      {["Aprovado", "Pendente", "Em análise", "Recusado"].map((status) => (
-                        <CommandItem key={status}>
-                          <Checkbox
-                            id={`status-${status}`}
-                            checked={filters.status === status}
-                            onCheckedChange={(checked) => {
-                              setFilters({
-                                ...filters,
-                                status: checked ? status : "",
-                              })
-                            }}
-                          />
-                          <label htmlFor={`status-${status}`} className="ml-2 text-sm">
-                            {status}
-                          </label>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </div>
-
-              <div className="space-y-2">
-                <h5 className="text-sm font-medium">Materiais</h5>
-                <Command>
-                  <CommandInput placeholder="Buscar material..." />
-                  <CommandList className="max-h-40 overflow-auto">
-                    <CommandEmpty>Nenhum material encontrado.</CommandEmpty>
-                    <CommandGroup>
-                      {allMateriais.map((material) => (
-                        <CommandItem key={material}>
-                          <Checkbox
-                            id={`material-${material}`}
-                            checked={
-                              filters.materiais &&
-                              Array.isArray(filters.materiais) &&
-                              filters.materiais.includes(material)
-                            }
-                            onCheckedChange={(checked) => {
-                              const currentMateriais = Array.isArray(filters.materiais) ? [...filters.materiais] : []
-                              setFilters({
-                                ...filters,
-                                materiais: checked
-                                  ? [...currentMateriais, material]
-                                  : currentMateriais.filter((m) => m !== material),
-                              })
-                            }}
-                          />
-                          <label htmlFor={`material-${material}`} className="ml-2 text-sm">
-                            {material}
-                          </label>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </div>
-
-              <div className="space-y-2">
-                <h5 className="text-sm font-medium">Fornecedores</h5>
-                <Command>
-                  <CommandInput placeholder="Buscar fornecedor..." />
-                  <CommandList className="max-h-40 overflow-auto">
-                    <CommandEmpty>Nenhum fornecedor encontrado.</CommandEmpty>
-                    <CommandGroup>
-                      {allFornecedores.map((fornecedor) => (
-                        <CommandItem key={fornecedor}>
-                          <Checkbox
-                            id={`fornecedor-${fornecedor}`}
-                            checked={
-                              filters.fornecedores &&
-                              Array.isArray(filters.fornecedores) &&
-                              filters.fornecedores.includes(fornecedor)
-                            }
-                            onCheckedChange={(checked) => {
-                              const currentFornecedores = Array.isArray(filters.fornecedores)
-                                ? [...filters.fornecedores]
-                                : []
-                              setFilters({
-                                ...filters,
-                                fornecedores: checked
-                                  ? [...currentFornecedores, fornecedor]
-                                  : currentFornecedores.filter((f) => f !== fornecedor),
-                              })
-                            }}
-                          />
-                          <label htmlFor={`fornecedor-${fornecedor}`} className="ml-2 text-sm">
-                            {fornecedor}
-                          </label>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </div>
-
-              <div className="flex justify-between">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFilters({})
-                    setSearchMaterial("")
-                    setFilteredOrcamentos(orcamentos)
-                  }}
-                >
-                  Limpar Filtros
-                </Button>
-                <Button size="sm" onClick={() => applyFilters()}>
-                  Aplicar Filtros
-                </Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <Button variant="outline" asChild>
-          <Link href="/dashboard/orcamentos/comparar">
-            <BarChart2 className="mr-2 h-4 w-4" />
-            Comparar
-          </Link>
-        </Button>
       </div>
+
+      {/* Results Info */}
+      {(searchTerm ||
+        filters.status ||
+        filters.valorMin ||
+        filters.valorMax ||
+        filters.dataInicio ||
+        filters.dataFim) && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>
+            Mostrando {filteredOrcamentos.length} de {orcamentos.length} orçamentos
+          </span>
+          {filteredOrcamentos.length !== orcamentos.length && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Limpar filtros
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Table */}
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {renderSortableHeader("numero", "Número")}
-              {renderSortableHeader("cliente", "Cliente")}
-              {renderSortableHeader("projeto", "Projeto")}
-              {renderSortableHeader("valor", "Valor")}
-              {renderSortableHeader("data", "Data")}
-              {renderSortableHeader("fornecedor", "Fornecedor")}
-              <TableHead>Materiais</TableHead>
-              {renderSortableHeader("status", "Status")}
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredOrcamentos.length === 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
-                  Nenhum orçamento encontrado com o material especificado.
-                </TableCell>
+                {renderSortableHeader("numero", "Número")}
+                <TableHead>Fornecedor</TableHead>
+                <TableHead>Etapa</TableHead>
+                <TableHead className="hidden md:table-cell">Itens</TableHead>
+                {renderSortableHeader("valorTotal", "Valor Total")}
+                {renderSortableHeader("dataEmissao", "Data")}
+                {renderSortableHeader("status", "Status")}
+                <TableHead className="text-right w-[100px]">Ações</TableHead>
               </TableRow>
-            ) : (
-              filteredOrcamentos.map((orcamento) => (
-                <TableRow key={orcamento.id}>
-                  <TableCell className="font-medium">{orcamento.numero}</TableCell>
-                  <TableCell>{orcamento.cliente}</TableCell>
-                  <TableCell>{orcamento.projeto}</TableCell>
-                  <TableCell>{orcamento.valor}</TableCell>
-                  <TableCell>{orcamento.data}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4 text-muted-foreground" />
-                      {orcamento.fornecedor}
+            </TableHeader>
+            <TableBody>
+              {filteredOrcamentos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                      <p>Nenhum orçamento encontrado</p>
+                      {(searchTerm ||
+                        filters.status ||
+                        filters.valorMin ||
+                        filters.valorMax ||
+                        filters.dataInicio ||
+                        filters.dataFim) && (
+                        <Button variant="outline" size="sm" onClick={clearFilters}>
+                          Limpar filtros
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Package className="mr-2 h-4 w-4" />
-                          {orcamento.materiais.length} tipos
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium">Materiais do Orçamento</h4>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => abrirDialogoAdicionarMaterial(orcamento)}
-                            >
-                              <Plus className="mr-1 h-3 w-3" />
-                              Adicionar
-                            </Button>
-                          </div>
-                          <div className="max-h-60 overflow-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Material</TableHead>
-                                  <TableHead>Qtd</TableHead>
-                                  <TableHead>Valor</TableHead>
-                                  <TableHead>Fornecedor</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {orcamento.materiais.map((material) => (
-                                  <TableRow key={material.id}>
-                                    <TableCell className="py-1">{material.nome}</TableCell>
-                                    <TableCell className="py-1">
-                                      {material.quantidade} {material.unidade}
-                                    </TableCell>
-                                    <TableCell className="py-1">
-                                      R$ {material.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                                    </TableCell>
-                                    <TableCell className="py-1">{material.fornecedor}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        orcamento.status === "Aprovado"
-                          ? "default"
-                          : orcamento.status === "Pendente"
-                            ? "outline"
-                            : orcamento.status === "Em análise"
-                              ? "secondary"
-                              : "destructive"
-                      }
-                    >
-                      {orcamento.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Abrir menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/orcamentos/${orcamento.id}/editar`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="mr-2 h-4 w-4" />
-                          Exportar PDF
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredOrcamentos.map((orcamento) => (
+                  <TableRow key={orcamento.id}>
+                    <TableCell className="font-medium min-w-[150px]">
+                      <div>
+                        <div className="font-medium">{orcamento.numero}</div>
+                        <div className="text-xs text-muted-foreground">ID: {orcamento.id.slice(0, 8)}...</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-[120px]">
+                      <div className="flex items-center gap-1">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          ID: {orcamento.fornecedorId.slice(0, 8)}...
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-[120px]">
+                      <div className="flex items-center gap-1">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell min-w-[80px]">
+                      <Badge variant="outline">{orcamento.itensCount} itens</Badge>
+                    </TableCell>
+                    <TableCell className="font-medium min-w-[120px]">{formatarValor(orcamento.valorTotal)}</TableCell>
+                    <TableCell className="min-w-[100px]">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatarData(orcamento.dataEmissao)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-[120px]">{renderStatusBadge(orcamento.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled={isPending}>
+                            {isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">Abrir menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/orcamentos/${orcamento.id}`}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/orcamentos/${orcamento.id}/editar`}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setOrcamentoToUpdate(orcamento)
+                              setNewStatus(orcamento.status)
+                              setStatusDialogOpen(true)
+                            }}
+                          >
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Alterar Status
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>
+                            <Download className="mr-2 h-4 w-4" />
+                            Exportar PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              setOrcamentoToDelete(orcamento)
+                              setDeleteDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
-      {/* Diálogo para adicionar material */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Material ao Orçamento</DialogTitle>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o orçamento "{orcamentoToDelete?.numero}"? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setOrcamentoToDelete(null)
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Update Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Status do Orçamento</DialogTitle>
+            <DialogDescription>Altere o status do orçamento "{orcamentoToUpdate?.numero}".</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {materialDuplicado && (
-              <div className="rounded-md bg-destructive/15 p-3 text-destructive">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <p className="text-sm font-medium">
-                    Este material já está associado a este orçamento com o mesmo fornecedor.
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="material">Material</Label>
-                <Select value={novoMaterial} onValueChange={setNovoMaterial}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um material" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiposMateriais.map((material) => (
-                      <SelectItem key={material} value={material}>
-                        {material}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fornecedor">Fornecedor</Label>
-                <Select value={novoFornecedor} onValueChange={setNovoFornecedor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um fornecedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fornecedores.map((fornecedor) => (
-                      <SelectItem key={fornecedor} value={fornecedor}>
-                        {fornecedor}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="quantidade">Quantidade</Label>
-                <Input
-                  id="quantidade"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={novaQuantidade || ""}
-                  onChange={(e) => setNovaQuantidade(Number(e.target.value))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="unidade">Unidade</Label>
-                <Select value={novaUnidade} onValueChange={setNovaUnidade}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unidadesMedida.map((unidade) => (
-                      <SelectItem key={unidade} value={unidade}>
-                        {unidade}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="valorUnitario">Valor Unitário (R$)</Label>
-                <Input
-                  id="valorUnitario"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={novoValorUnitario || ""}
-                  onChange={(e) => setNovoValorUnitario(Number(e.target.value))}
-                />
-              </div>
-            </div>
             <div className="space-y-2">
-              <Label>Valor Total</Label>
-              <div className="rounded-md border px-3 py-2 text-right font-medium">
-                R$ {(novaQuantidade * novoValorUnitario).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-              </div>
+              <Label htmlFor="status">Novo Status</Label>
+              <Select
+                value={newStatus}
+                onValueChange={(value) => setNewStatus(value as "Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Em Aberto">Em Aberto</SelectItem>
+                  <SelectItem value="Aprovado">Aprovado</SelectItem>
+                  <SelectItem value="Rejeitado">Rejeitado</SelectItem>
+                  <SelectItem value="Cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStatusDialogOpen(false)
+                setOrcamentoToUpdate(null)
+              }}
+            >
               Cancelar
             </Button>
-            <Button
-              onClick={adicionarMaterial}
-              disabled={
-                !novoMaterial || !novoFornecedor || novaQuantidade <= 0 || novoValorUnitario <= 0 || !novaUnidade
-              }
-            >
-              Adicionar
+            <Button onClick={handleUpdateStatus} disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Atualizando...
+                </>
+              ) : (
+                "Atualizar Status"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

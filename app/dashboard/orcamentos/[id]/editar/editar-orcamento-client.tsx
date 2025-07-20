@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -11,15 +10,17 @@ import { InputMonetario } from "@/components/ui/input-monetario"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Plus, Trash2, Loader2, Building, Layers } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Loader2, Building, Layers, User, Save } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/app/lib/utils"
-import { createOrcamento, getFornecedores, getCategorias, getObras, getEtapasByObra } from "@/app/actions/orcamento"
+import { updateOrcamento, getFornecedores, getCategorias, getObras, getEtapasByObra } from "@/app/actions/orcamento"
+import type { OrcamentoDetalhado } from "@/types/orcamento"
 import type { FornecedorOrcamento } from "@/types/fornecedor"
 
 // Tipo para categoria da API
@@ -44,7 +45,6 @@ type Obra = {
 type Etapa = {
   ID: string
   Nome: string
-  // outros campos da etapa se necessário
 }
 
 // Tipo para item do orçamento baseado no payload da API
@@ -73,6 +73,7 @@ const unidadesMedida = [
   "caixa",
   "peça",
   "conjunto",
+  "lata",
 ]
 
 // Condições de pagamento
@@ -85,10 +86,15 @@ const condicoesPagamento = [
   "90 dias",
   "Parcelado em 2x",
   "Parcelado em 3x",
+  "45 dias após a entrega",
   "Personalizado",
 ]
 
-export default function NovoOrcamentoPage() {
+interface EditarOrcamentoClientProps {
+  orcamento: OrcamentoDetalhado
+}
+
+export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -104,25 +110,25 @@ export default function NovoOrcamentoPage() {
 
   // Estados para seleção de obra e etapa
   const [obraSelecionada, setObraSelecionada] = useState("")
-  const [etapaSelecionada, setEtapaSelecionada] = useState("")
+  const [etapaSelecionada, setEtapaSelecionada] = useState(orcamento.etapa.id)
 
   // Estados para formulário
-  const [fornecedorSelecionado, setFornecedorSelecionado] = useState("")
+  const [fornecedorSelecionado, setFornecedorSelecionado] = useState(orcamento.fornecedor.id)
   const [condicoesPagamentoSelecionada, setCondicoesPagamentoSelecionada] = useState("")
   const [observacoes, setObservacoes] = useState("")
 
-  // Estados para itens
-  const [itens, setItens] = useState<ItemOrcamento[]>([
-    {
-      id: "1",
-      nomeProduto: "",
-      unidadeDeMedida: "",
-      categoria: "",
-      quantidade: 1,
-      valorUnitario: 0,
-      valorTotal: 0,
-    },
-  ])
+  // Estados para itens - converter da estrutura da API para estrutura local
+  const [itens, setItens] = useState<ItemOrcamento[]>(
+    orcamento.itens.map((item, index) => ({
+      id: `item-${index}`,
+      nomeProduto: item.ProdutoNome || "",
+      unidadeDeMedida: item.UnidadeDeMedida || "",
+      categoria: item.Categoria || "",
+      quantidade: item.Quantidade,
+      valorUnitario: item.ValorUnitario,
+      valorTotal: item.Quantidade * item.ValorUnitario,
+    })),
+  )
 
   // Estados para popovers
   const [categoriaAberta, setCategoriaAberta] = useState<string | null>(null)
@@ -142,6 +148,11 @@ export default function NovoOrcamentoPage() {
 
         if (!("error" in obrasData)) {
           setObras(obrasData)
+          // Encontrar a obra atual baseada na etapa
+          const obraAtual = obrasData.find((obra) => obra.id === orcamento.obra?.id)
+          if (obraAtual) {
+            setObraSelecionada(obraAtual.id)
+          }
         } else {
           toast({
             title: "Erro ao carregar obras",
@@ -183,14 +194,13 @@ export default function NovoOrcamentoPage() {
     }
 
     loadInitialData()
-  }, [])
+  }, [orcamento])
 
   // Carregar etapas quando uma obra for selecionada
   useEffect(() => {
     async function loadEtapas() {
       if (!obraSelecionada) {
         setEtapas([])
-        setEtapaSelecionada("")
         return
       }
 
@@ -221,11 +231,6 @@ export default function NovoOrcamentoPage() {
     }
 
     loadEtapas()
-  }, [obraSelecionada])
-
-  // Limpar etapa selecionada quando obra mudar
-  useEffect(() => {
-    setEtapaSelecionada("")
   }, [obraSelecionada])
 
   // Função para adicionar um novo item
@@ -316,8 +321,11 @@ export default function NovoOrcamentoPage() {
 
     startTransition(async () => {
       // Preparar dados conforme o payload da API
-      const orcamentoData = {
+      const updateData = {
         fornecedorId: fornecedorSelecionado,
+        etapaId: etapaSelecionada,
+        observacoes: observacoes || undefined,
+        condicoesPagamento: condicoesPagamentoSelecionada,
         itens: itensValidos.map((item) => ({
           nomeProduto: item.nomeProduto,
           unidadeDeMedida: item.unidadeDeMedida,
@@ -325,22 +333,20 @@ export default function NovoOrcamentoPage() {
           quantidade: item.quantidade,
           valorUnitario: item.valorUnitario,
         })),
-        condicoesPagamento: condicoesPagamentoSelecionada,
-        observacoes: observacoes || undefined,
       }
 
-      const result = await createOrcamento(etapaSelecionada, orcamentoData)
+      const result = await updateOrcamento(orcamento.id, updateData)
 
       if (result.success) {
         toast({
-          title: "Orçamento criado",
+          title: "Orçamento atualizado",
           description: result.message,
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
-        router.push("/dashboard/orcamentos")
+        router.push(`/dashboard/orcamentos/${orcamento.id}`)
       } else {
         toast({
-          title: "Erro ao criar orçamento",
+          title: "Erro ao atualizar orçamento",
           description: result.message,
           variant: "destructive",
         })
@@ -363,17 +369,55 @@ export default function NovoOrcamentoPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-6">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/dashboard/orcamentos">
+          <Link href={`/dashboard/orcamentos/${orcamento.id}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Novo Orçamento</h2>
-          <p className="text-muted-foreground">Selecione a obra e etapa para criar o orçamento</p>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Editar Orçamento</h2>
+          <p className="text-muted-foreground">
+            Editando orçamento {orcamento.numero} • Valor atual:{" "}
+            {orcamento.valorTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Informações Atuais */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações Atuais</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground">Número</Label>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono">
+                    {orcamento.numero}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                <div className="flex items-center gap-2">
+                  <Badge variant={orcamento.status === "Em Aberto" ? "outline" : "default"}>{orcamento.status}</Badge>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground">Data de Emissão</Label>
+                <p className="text-sm">
+                  {new Date(orcamento.dataEmissao).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Seleção de Obra e Etapa */}
         <Card>
           <CardHeader>
@@ -403,6 +447,7 @@ export default function NovoOrcamentoPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {orcamento.obra && <p className="text-xs text-muted-foreground">Obra atual: {orcamento.obra.nome}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="etapa">Etapa *</Label>
@@ -434,6 +479,7 @@ export default function NovoOrcamentoPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <p className="text-xs text-muted-foreground">Etapa atual: {orcamento.etapa.nome}</p>
               </div>
             </div>
             {obraSelecionada && etapas.length === 0 && !loadingEtapas && (
@@ -451,36 +497,40 @@ export default function NovoOrcamentoPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fornecedor">Fornecedor *</Label>
-                <Select
-                  value={fornecedorSelecionado}
-                  onValueChange={setFornecedorSelecionado}
-                  required
-                  disabled={loadingFornecedores}
-                >
-                  <SelectTrigger id="fornecedor">
-                    <SelectValue
-                      placeholder={loadingFornecedores ? "Carregando fornecedores..." : "Selecione o fornecedor"}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fornecedores.length === 0 ? (
-                      <SelectItem value="" disabled>
-                        {loadingFornecedores ? "Carregando..." : "Nenhum fornecedor encontrado"}
-                      </SelectItem>
-                    ) : (
-                      fornecedores.map((fornecedor) => (
-                        <SelectItem key={fornecedor.id} value={fornecedor.id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{fornecedor.nome}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {fornecedor.categorias.map((cat) => cat.Nome).join(", ")} • {fornecedor.status}
-                            </span>
-                          </div>
+                <div className="relative">
+                  <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Select
+                    value={fornecedorSelecionado}
+                    onValueChange={setFornecedorSelecionado}
+                    required
+                    disabled={loadingFornecedores}
+                  >
+                    <SelectTrigger id="fornecedor" className="pl-8">
+                      <SelectValue
+                        placeholder={loadingFornecedores ? "Carregando fornecedores..." : "Selecione o fornecedor"}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fornecedores.length === 0 ? (
+                        <SelectItem value="" disabled>
+                          {loadingFornecedores ? "Carregando..." : "Nenhum fornecedor encontrado"}
                         </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                      ) : (
+                        fornecedores.map((fornecedor) => (
+                          <SelectItem key={fornecedor.id} value={fornecedor.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{fornecedor.nome}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {fornecedor.categorias.map((cat) => cat.Nome).join(", ")} • {fornecedor.status}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">Fornecedor atual: {orcamento.fornecedor.nome}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="condicoesPagamento">Condições de Pagamento *</Label>
@@ -528,7 +578,7 @@ export default function NovoOrcamentoPage() {
                           <Input
                             value={item.nomeProduto}
                             onChange={(e) => atualizarItem(item.id, "nomeProduto", e.target.value)}
-                            placeholder="Ex: Cimento Votoran CP II 50kg"
+                            placeholder="Ex: Cimento CPII 50kg"
                             className="min-w-[200px]"
                           />
                         </TableCell>
@@ -691,10 +741,28 @@ export default function NovoOrcamentoPage() {
               </Button>
 
               <div className="w-full sm:w-1/3 space-y-2 bg-muted/50 p-4 rounded-lg">
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total:</span>
-                  <span>R$ {calcularTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Valor Original:</span>
+                  <span>R$ {orcamento.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </div>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Novo Total:</span>
+                  <span className={calcularTotal() !== orcamento.valorTotal ? "text-orange-600" : "text-green-600"}>
+                    R$ {calcularTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {calcularTotal() !== orcamento.valorTotal && (
+                  <div className="flex justify-between text-sm">
+                    <span>Diferença:</span>
+                    <span className={calcularTotal() > orcamento.valorTotal ? "text-red-600" : "text-green-600"}>
+                      {calcularTotal() > orcamento.valorTotal ? "+" : ""}
+                      R${" "}
+                      {Math.abs(calcularTotal() - orcamento.valorTotal).toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -712,7 +780,7 @@ export default function NovoOrcamentoPage() {
                 id="observacoes"
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
-                placeholder="Ex: Material a ser entregue na obra B."
+                placeholder="Ex: Orçamento revisado em 20/07/2025. Valores e quantidades atualizados."
                 rows={3}
               />
             </div>
@@ -722,7 +790,7 @@ export default function NovoOrcamentoPage() {
         {/* Botões de ação */}
         <div className="flex flex-col sm:flex-row gap-2 justify-end">
           <Button variant="outline" asChild className="w-full sm:w-auto bg-transparent">
-            <Link href="/dashboard/orcamentos">Cancelar</Link>
+            <Link href={`/dashboard/orcamentos/${orcamento.id}`}>Cancelar</Link>
           </Button>
           <Button type="submit" disabled={isPending || !etapaSelecionada} className="w-full sm:w-auto">
             {isPending ? (
@@ -731,7 +799,10 @@ export default function NovoOrcamentoPage() {
                 Salvando...
               </>
             ) : (
-              "Salvar Orçamento"
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Salvar Alterações
+              </>
             )}
           </Button>
         </div>

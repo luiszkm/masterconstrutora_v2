@@ -4,6 +4,44 @@ import { revalidatePath } from "next/cache"
 import { API_URL, makeAuthenticatedRequest } from "./common"
 import type { Fornecedor, CreateFornecedor } from "@/types/fornecedor"
 
+// Tipo para categoria da API
+type Categoria = {
+  ID: string
+  Nome: string
+  createdAt: string
+  updatedAt: string
+}
+
+export async function getCategorias(): Promise<Categoria[] | { error: string }> {
+  try {
+    const response = await makeAuthenticatedRequest(`${API_URL}/categorias`, {
+      method: "GET",
+      next: { tags: ["categorias"] },
+    })
+
+    if (!response.ok) {
+      let errorMessage = "Erro ao buscar categorias."
+
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente."
+        }
+      }
+
+      return { error: errorMessage }
+    }
+
+    const data: Categoria[] = await response.json()
+    return data
+  } catch (error) {
+    console.error("Erro ao buscar categorias:", error)
+    return { error: "Erro de conexão com o servidor. Tente novamente." }
+  }
+}
+
 export async function getFornecedores(): Promise<Fornecedor[] | { error: string }> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/fornecedores`, {

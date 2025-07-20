@@ -20,12 +20,30 @@ export type Fornecedor = {
   orcamentosCount: number
 }
 
+export type FornecedorOrcamento = {
+  id: string
+  nome: string
+  cnpj: string
+  contato: string
+  email: string
+  status: "Ativo" | "Inativo"
+  endereco: string | null
+  avaliacao: number | null
+  observacoes: string | null
+  categorias: {
+    ID: string
+    Nome: string
+    createdAt: string
+    updatedAt: string
+  }[]
+  orcamentosCount: number
+}
 export type CreateFornecedor = {
   Nome: string
   Contato: string
   Email: string
   CNPJ: string
-  Avaliacao?: number
+  Avaliacao?: number | null
   Observacoes?: string
   Website?: string
   Endereco?: string

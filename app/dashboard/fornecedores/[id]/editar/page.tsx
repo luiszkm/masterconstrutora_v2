@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -14,82 +13,54 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
-import { ArrowLeft, Plus, X, Loader2 } from "lucide-react"
-import { getFornecedorById, updateFornecedor, type Fornecedor } from "@/app/actions/fornecedor"
+import { ArrowLeft, X, Loader2, Globe, MapPin } from "lucide-react"
+import { getFornecedorById, updateFornecedor, getCategorias } from "@/app/actions/fornecedor"
+import type { Fornecedor } from "@/types/fornecedor"
 
-// Lista de categorias disponíveis
-const categorias = [
-  "Materiais de Construção",
-  "Material Elétrico",
-  "Material Hidráulico",
-  "Madeiras",
-  "Revestimentos",
-  "Ferragens",
-  "Tintas e Vernizes",
-  "Vidros e Esquadrias",
-  "Telhas e Coberturas",
-  "Pisos e Acabamentos",
-]
-
-// Lista de materiais disponíveis
-const tiposMateriais = [
-  "Cimento",
-  "Areia",
-  "Brita",
-  "Aço",
-  "Tintas",
-  "Mármores",
-  "Granitos",
-  "Porcelanatos",
-  "Cabos",
-  "Disjuntores",
-  "Quadros Elétricos",
-  "Tubos PVC",
-  "Conexões",
-  "Registros",
-  "Caixas d'água",
-  "Madeira Maciça",
-  "Compensados",
-  "MDF",
-  "Portas",
-  "Deck",
-  "Telhas",
-  "Vidros",
-  "Ferragens",
-  "Impermeabilizantes",
-  "Argamassas",
-  "Gesso",
-  "Drywall",
-  "Isolantes",
-  "Pisos Laminados",
-  "Pisos Vinílicos",
-]
+// Tipo para categoria da API
+type Categoria = {
+  ID: string
+  Nome: string
+  createdAt: string
+  updatedAt: string
+}
 
 export default function EditarFornecedorPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)
   const [fornecedor, setFornecedor] = useState<Fornecedor | null>(null)
+  const [categorias, setCategorias] = useState<Categoria[]>([])
 
-  // Estados do formulário
+  // Estados do formulário baseados na estrutura real da API
   const [formData, setFormData] = useState({
-    nome: "",
-    categoria: "",
-    contato: "",
-    email: "",
-    telefone: "",
-    endereco: "",
-    cep: "",
-    cidade: "",
-    estado: "",
-    cnpj: "",
-    status: "Ativo" as "Ativo" | "Inativo",
-    avaliacao: 5,
-    observacoes: "",
+    Nome: "",
+    Contato: "",
+    Email: "",
+    CNPJ: "",
+    Website: "",
+    Endereco: "",
+    NomeAtendente: "",
+    Avaliacao: null as number | null,
+    Observacoes: "",
   })
 
-  const [materiaisSelecionados, setMateriaisSelecionados] = useState<string[]>([])
-  const [novoMaterial, setNovoMaterial] = useState("")
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([])
+
+  // Carregar categorias disponíveis
+  useEffect(() => {
+    async function loadCategorias() {
+      try {
+        const categoriasData = await getCategorias()
+        if (!("error" in categoriasData)) {
+          setCategorias(categoriasData)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar categorias:", error)
+      }
+    }
+    loadCategorias()
+  }, [])
 
   // Carregar dados do fornecedor
   useEffect(() => {
@@ -99,21 +70,17 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
         if (data) {
           setFornecedor(data)
           setFormData({
-            nome: data.nome,
-            categoria: data.categoria,
-            contato: data.contato,
-            email: data.email,
-            telefone: data.telefone,
-            endereco: data.endereco,
-            cep: data.cep,
-            cidade: data.cidade,
-            estado: data.estado,
-            cnpj: data.cnpj,
-            status: data.status,
-            avaliacao: data.avaliacao,
-            observacoes: data.observacoes || "",
+            Nome: data.Nome,
+            Contato: data.Contato,
+            Email: data.Email,
+            CNPJ: data.CNPJ,
+            Website: data.Website || "",
+            Endereco: data.Endereco || "",
+            NomeAtendente: data.NomeAtendente || "",
+            Avaliacao: data.Avaliacao,
+            Observacoes: data.Observacoes || "",
           })
-          setMateriaisSelecionados(data.materiais.map((m) => m.nome))
+          setCategoriasSelecionadas(data.Categorias.map((cat) => cat.ID))
         } else {
           toast({
             title: "Fornecedor não encontrado",
@@ -137,49 +104,50 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
   }, [params.id, router])
 
   // Função para atualizar dados do formulário
-  const updateFormData = (field: string, value: string | number) => {
+  const updateFormData = (field: string, value: string | number | null) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }))
   }
 
-  // Função para adicionar material
-  const adicionarMaterial = (material: string) => {
-    if (material && !materiaisSelecionados.includes(material)) {
-      setMateriaisSelecionados((prev) => [...prev, material])
-      setNovoMaterial("")
+  // Função para adicionar categoria
+  const adicionarCategoria = (categoriaId: string) => {
+    if (categoriaId && !categoriasSelecionadas.includes(categoriaId)) {
+      setCategoriasSelecionadas((prev) => [...prev, categoriaId])
     }
   }
 
-  // Função para remover material
-  const removerMaterial = (material: string) => {
-    setMateriaisSelecionados((prev) => prev.filter((m) => m !== material))
+  // Função para remover categoria
+  const removerCategoria = (categoriaId: string) => {
+    setCategoriasSelecionadas((prev) => prev.filter((id) => id !== categoriaId))
   }
 
   // Função para submeter o formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (materiaisSelecionados.length === 0) {
+    if (categoriasSelecionadas.length === 0) {
       toast({
         title: "Erro de validação",
-        description: "Selecione pelo menos um material",
+        description: "Selecione pelo menos uma categoria",
         variant: "destructive",
       })
       return
     }
 
     startTransition(async () => {
-      const materiais = materiaisSelecionados.map((nome, index) => ({
-        id: index + 1,
-        nome,
-      }))
-
-      const result = await updateFornecedor(params.id, {
+      const updateData = {
         ...formData,
-        materiais,
-      })
+        categoriaIds: categoriasSelecionadas,
+        // Converter campos vazios para null
+        Website: formData.Website || null,
+        Endereco: formData.Endereco || null,
+        NomeAtendente: formData.NomeAtendente || null,
+        Observacoes: formData.Observacoes || null,
+      }
+
+      const result = await updateFornecedor(params.id, updateData)
 
       if (result.success) {
         toast({
@@ -240,30 +208,21 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                     <Label htmlFor="nome">Nome da Empresa *</Label>
                     <Input
                       id="nome"
-                      value={formData.nome}
-                      onChange={(e) => updateFormData("nome", e.target.value)}
-                      placeholder="Ex: Construtora Silva & Cia"
+                      value={formData.Nome}
+                      onChange={(e) => updateFormData("Nome", e.target.value)}
+                      placeholder="Ex: Casa do Construtor Center"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="categoria">Categoria *</Label>
-                    <Select
-                      value={formData.categoria}
-                      onValueChange={(value) => updateFormData("categoria", value)}
+                    <Label htmlFor="cnpj">CNPJ *</Label>
+                    <Input
+                      id="cnpj"
+                      value={formData.CNPJ}
+                      onChange={(e) => updateFormData("CNPJ", e.target.value)}
+                      placeholder="00.000.000/0000-00"
                       required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categorias.map((categoria) => (
-                          <SelectItem key={categoria} value={categoria}>
-                            {categoria}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                 </div>
 
@@ -272,20 +231,19 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                     <Label htmlFor="contato">Pessoa de Contato *</Label>
                     <Input
                       id="contato"
-                      value={formData.contato}
-                      onChange={(e) => updateFormData("contato", e.target.value)}
-                      placeholder="Ex: João Silva"
+                      value={formData.Contato}
+                      onChange={(e) => updateFormData("Contato", e.target.value)}
+                      placeholder="Ex: Carlos Andrade"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cnpj">CNPJ *</Label>
+                    <Label htmlFor="nomeAtendente">Nome do Atendente</Label>
                     <Input
-                      id="cnpj"
-                      value={formData.cnpj}
-                      onChange={(e) => updateFormData("cnpj", e.target.value)}
-                      placeholder="00.000.000/0000-00"
-                      required
+                      id="nomeAtendente"
+                      value={formData.NomeAtendente}
+                      onChange={(e) => updateFormData("NomeAtendente", e.target.value)}
+                      placeholder="Ex: Maria Silva"
                     />
                   </div>
                 </div>
@@ -294,8 +252,8 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                   <Label htmlFor="observacoes">Observações</Label>
                   <Textarea
                     id="observacoes"
-                    value={formData.observacoes}
-                    onChange={(e) => updateFormData("observacoes", e.target.value)}
+                    value={formData.Observacoes}
+                    onChange={(e) => updateFormData("Observacoes", e.target.value)}
                     placeholder="Informações adicionais sobre o fornecedor..."
                     rows={3}
                   />
@@ -315,61 +273,37 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                     <Input
                       id="email"
                       type="email"
-                      value={formData.email}
-                      onChange={(e) => updateFormData("email", e.target.value)}
-                      placeholder="contato@empresa.com.br"
+                      value={formData.Email}
+                      onChange={(e) => updateFormData("Email", e.target.value)}
+                      placeholder="comercial@empresa.com.br"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="telefone">Telefone *</Label>
-                    <Input
-                      id="telefone"
-                      value={formData.telefone}
-                      onChange={(e) => updateFormData("telefone", e.target.value)}
-                      placeholder="(11) 99999-9999"
-                      required
-                    />
+                    <Label htmlFor="website">Website</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="website"
+                        value={formData.Website}
+                        onChange={(e) => updateFormData("Website", e.target.value)}
+                        placeholder="https://www.empresa.com.br"
+                        className="pl-8"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="endereco">Endereço</Label>
-                  <Input
-                    id="endereco"
-                    value={formData.endereco}
-                    onChange={(e) => updateFormData("endereco", e.target.value)}
-                    placeholder="Rua, número, bairro"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cep">CEP</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="cep"
-                      value={formData.cep}
-                      onChange={(e) => updateFormData("cep", e.target.value)}
-                      placeholder="00000-000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cidade">Cidade</Label>
-                    <Input
-                      id="cidade"
-                      value={formData.cidade}
-                      onChange={(e) => updateFormData("cidade", e.target.value)}
-                      placeholder="São Paulo"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="estado">Estado</Label>
-                    <Input
-                      id="estado"
-                      value={formData.estado}
-                      onChange={(e) => updateFormData("estado", e.target.value)}
-                      placeholder="SP"
-                      maxLength={2}
+                      id="endereco"
+                      value={formData.Endereco}
+                      onChange={(e) => updateFormData("Endereco", e.target.value)}
+                      placeholder="Rua, número, bairro, cidade"
+                      className="pl-8"
                     />
                   </div>
                 </div>
@@ -387,30 +321,23 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: "Ativo" | "Inativo") => updateFormData("status", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Ativo">Ativo</SelectItem>
-                      <SelectItem value="Inativo">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={fornecedor.Status === "Ativo" ? "default" : "secondary"}>{fornecedor.Status}</Badge>
+                    <span className="text-sm text-muted-foreground">(Use as ações da lista para alterar)</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="avaliacao">Avaliação</Label>
                   <Select
-                    value={formData.avaliacao.toString()}
-                    onValueChange={(value) => updateFormData("avaliacao", Number.parseFloat(value))}
+                    value={formData.Avaliacao?.toString() || "0"}
+                    onValueChange={(value) => updateFormData("Avaliacao", value ? Number.parseFloat(value) : null)}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione uma avaliação" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="0">Sem avaliação</SelectItem>
                       <SelectItem value="5">5 estrelas</SelectItem>
                       <SelectItem value="4.5">4.5 estrelas</SelectItem>
                       <SelectItem value="4">4 estrelas</SelectItem>
@@ -424,66 +351,68 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                   </Select>
                 </div>
 
-                <div className="text-sm text-muted-foreground">
-                  <p>Orçamentos: {fornecedor.orcamentos}</p>
-                  <p>Criado em: {new Date(fornecedor.createdAt).toLocaleDateString("pt-BR")}</p>
-                  <p>Atualizado em: {new Date(fornecedor.updatedAt).toLocaleDateString("pt-BR")}</p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>Orçamentos: {fornecedor.orcamentosCount}</p>
+                  <p>ID: {fornecedor.ID}</p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Materiais */}
+            {/* Categorias */}
             <Card>
               <CardHeader>
-                <CardTitle>Materiais Fornecidos</CardTitle>
+                <CardTitle>Categorias</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Adicionar Material</Label>
+                  <Label>Adicionar Categoria</Label>
                   <div className="flex gap-2">
-                    <Select value={novoMaterial} onValueChange={setNovoMaterial}>
+                    <Select
+                      onValueChange={(value) => {
+                        adicionarCategoria(value)
+                      }}
+                    >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Selecione um material" />
+                        <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        {tiposMateriais
-                          .filter((material) => !materiaisSelecionados.includes(material))
-                          .map((material) => (
-                            <SelectItem key={material} value={material}>
-                              {material}
+                        {categorias
+                          .filter((categoria) => !categoriasSelecionadas.includes(categoria.ID))
+                          .map((categoria) => (
+                            <SelectItem key={categoria.ID} value={categoria.ID}>
+                              {categoria.Nome}
                             </SelectItem>
                           ))}
                       </SelectContent>
                     </Select>
-                    <Button
-                      type="button"
-                      size="icon"
-                      onClick={() => adicionarMaterial(novoMaterial)}
-                      disabled={!novoMaterial}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
 
-                {materiaisSelecionados.length > 0 && (
+                {categoriasSelecionadas.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Materiais Selecionados</Label>
+                    <Label>Categorias Selecionadas</Label>
                     <div className="flex flex-wrap gap-2">
-                      {materiaisSelecionados.map((material) => (
-                        <Badge key={material} variant="secondary" className="flex items-center gap-1">
-                          {material}
-                          <button
-                            type="button"
-                            onClick={() => removerMaterial(material)}
-                            className="ml-1 hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
+                      {categoriasSelecionadas.map((categoriaId) => {
+                        const categoria = categorias.find((cat) => cat.ID === categoriaId)
+                        return (
+                          <Badge key={categoriaId} variant="secondary" className="flex items-center gap-1">
+                            {categoria?.Nome || "Categoria não encontrada"}
+                            <button
+                              type="button"
+                              onClick={() => removerCategoria(categoriaId)}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        )
+                      })}
                     </div>
                   </div>
+                )}
+
+                {categoriasSelecionadas.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhuma categoria selecionada</p>
                 )}
               </CardContent>
             </Card>
