@@ -27,6 +27,9 @@ import {
   XCircle,
   Clock,
   Ban,
+  User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -51,8 +54,8 @@ import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { deleteOrcamento, updateOrcamentoStatus } from "@/app/actions/orcamento"
-import type { Orcamento } from "@/types/orcamento"
+import { deleteOrcamento, updateOrcamentoStatus, getOrcamentos } from "@/app/actions/orcamento"
+import type { Orcamento, OrcamentosResponse } from "@/types/orcamento"
 
 // Tipo para ordenação
 type SortConfig = {
@@ -63,23 +66,36 @@ type SortConfig = {
 // Tipo para filtros
 type Filters = {
   status: string
+  fornecedor: string
+  obra: string
   valorMin: string
   valorMax: string
   dataInicio: string
   dataFim: string
 }
 
-export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos: Orcamento[] }) {
-  // Estados principais
-  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(initialOrcamentos)
-  const [filteredOrcamentos, setFilteredOrcamentos] = useState<Orcamento[]>(initialOrcamentos)
+interface OrcamentosPageClientProps {
+  initialData: OrcamentosResponse
+}
+
+export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps) {
+  // Estados principais - garantir que sempre sejam arrays
+  const [data, setData] = useState<OrcamentosResponse>(initialData)
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(initialData.dados || [])
+  const [filteredOrcamentos, setFilteredOrcamentos] = useState<Orcamento[]>(initialData.dados || [])
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(initialData.paginacao?.currentPage || 1)
+  const [pageSize, setPageSize] = useState(initialData.paginacao?.pageSize || 20)
 
   // Estados para ordenação e filtros
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "", direction: "asc" })
   const [filters, setFilters] = useState<Filters>({
     status: "",
+    fornecedor: "",
+    obra: "",
     valorMin: "",
     valorMax: "",
     dataInicio: "",
@@ -99,8 +115,42 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
   // Estados para popovers
   const [filtersOpen, setFiltersOpen] = useState(false)
 
-  // Aplicar filtros e pesquisa
+  // Função para carregar dados da API
+  const loadOrcamentos = async (page: number = currentPage, size: number = pageSize) => {
+    setLoading(true)
+    try {
+      const result = await getOrcamentos(page, size)
+      if ("error" in result) {
+        toast({
+          title: "Erro ao carregar orçamentos",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        setData(result)
+        const novosOrcamentos = result.dados || []
+        setOrcamentos(novosOrcamentos)
+        setFilteredOrcamentos(novosOrcamentos)
+        setCurrentPage(result.paginacao?.currentPage || 1)
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar orçamentos",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Aplicar filtros e pesquisa (apenas nos dados atuais da página)
   useEffect(() => {
+    if (!Array.isArray(orcamentos)) {
+      setFilteredOrcamentos([])
+      return
+    }
+
     let result = orcamentos
 
     // Filtro por pesquisa geral
@@ -108,13 +158,24 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
       result = result.filter(
         (orcamento) =>
           orcamento.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          orcamento.id.toLowerCase().includes(searchTerm.toLowerCase()),
+          orcamento.fornecedorNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          orcamento.obraNome.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
     // Filtros específicos
     if (filters.status) {
       result = result.filter((orcamento) => orcamento.status === filters.status)
+    }
+
+    if (filters.fornecedor) {
+      result = result.filter((orcamento) =>
+        orcamento.fornecedorNome.toLowerCase().includes(filters.fornecedor.toLowerCase()),
+      )
+    }
+
+    if (filters.obra) {
+      result = result.filter((orcamento) => orcamento.obraNome.toLowerCase().includes(filters.obra.toLowerCase()))
     }
 
     if (filters.valorMin) {
@@ -208,6 +269,8 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
   const clearFilters = () => {
     setFilters({
       status: "",
+      fornecedor: "",
+      obra: "",
       valorMin: "",
       valorMax: "",
       dataInicio: "",
@@ -215,6 +278,19 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
     })
     setSearchTerm("")
     setFiltersOpen(false)
+  }
+
+  // Função para navegar entre páginas
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= data.paginacao.totalPages) {
+      loadOrcamentos(newPage, pageSize)
+    }
+  }
+
+  // Função para alterar tamanho da página
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
+    loadOrcamentos(1, newSize) // Volta para primeira página
   }
 
   // Função para excluir orçamento
@@ -231,10 +307,8 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
 
-        // Atualizar lista local
-        const updatedOrcamentos = orcamentos.filter((o) => o.id !== orcamentoToDelete.id)
-        setOrcamentos(updatedOrcamentos)
-        setFilteredOrcamentos(updatedOrcamentos)
+        // Recarregar dados da página atual
+        await loadOrcamentos(currentPage, pageSize)
       } else {
         toast({
           title: "Erro ao excluir orçamento",
@@ -301,13 +375,19 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
     </TableHead>
   )
 
-  // Calcular estatísticas
+  // Calcular estatísticas baseadas nos dados da API
   const stats = {
-    total: orcamentos.length,
-    emAberto: orcamentos.filter((o) => o.status === "Em Aberto").length,
-    aprovados: orcamentos.filter((o) => o.status === "Aprovado").length,
-    valorTotal: orcamentos.reduce((total, o) => total + o.valorTotal, 0),
+    total: data.paginacao?.totalItens || 0,
+    emAberto: Array.isArray(orcamentos) ? orcamentos.filter((o) => o.status === "Em Aberto").length : 0,
+    aprovados: Array.isArray(orcamentos) ? orcamentos.filter((o) => o.status === "Aprovado").length : 0,
+    valorTotal: Array.isArray(orcamentos) ? orcamentos.reduce((total, o) => total + o.valorTotal, 0) : 0,
   }
+
+  // Obter listas únicas para filtros (baseado nos dados atuais)
+  const uniqueFornecedores = Array.isArray(orcamentos)
+    ? Array.from(new Set(orcamentos.map((o) => o.fornecedorNome))).sort()
+    : []
+  const uniqueObras = Array.isArray(orcamentos) ? Array.from(new Set(orcamentos.map((o) => o.obraNome))).sort() : []
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -315,7 +395,9 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Orçamentos</h2>
-          <p className="text-muted-foreground">Gerencie todos os orçamentos do sistema</p>
+          <p className="text-muted-foreground">
+            Gerencie todos os orçamentos do sistema • {data.paginacao.totalItens} orçamentos encontrados
+          </p>
         </div>
         <Button asChild className="w-full sm:w-auto">
           <Link href="/dashboard/orcamentos/novo">
@@ -334,6 +416,9 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">
+              Página {data.paginacao.currentPage} de {data.paginacao.totalPages}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -343,6 +428,7 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{stats.emAberto}</div>
+            <p className="text-xs text-muted-foreground">Nesta página</p>
           </CardContent>
         </Card>
         <Card>
@@ -352,6 +438,7 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.aprovados}</div>
+            <p className="text-xs text-muted-foreground">Nesta página</p>
           </CardContent>
         </Card>
         <Card>
@@ -361,6 +448,7 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatarValor(stats.valorTotal)}</div>
+            <p className="text-xs text-muted-foreground">Nesta página</p>
           </CardContent>
         </Card>
       </div>
@@ -373,7 +461,7 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar por número do orçamento..."
+              placeholder="Buscar por número, fornecedor ou obra..."
               className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -386,13 +474,9 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
               <Button variant="outline" className="w-full sm:w-auto bg-transparent">
                 <Filter className="mr-2 h-4 w-4" />
                 Filtros
-                {(filters.status || filters.valorMin || filters.valorMax || filters.dataInicio || filters.dataFim) && (
+                {Object.values(filters).filter(Boolean).length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
-                    {
-                      [filters.status, filters.valorMin, filters.valorMax, filters.dataInicio, filters.dataFim].filter(
-                        Boolean,
-                      ).length
-                    }
+                    {Object.values(filters).filter(Boolean).length}
                   </Badge>
                 )}
               </Button>
@@ -424,6 +508,50 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
                       <SelectItem value="Aprovado">Aprovado</SelectItem>
                       <SelectItem value="Rejeitado">Rejeitado</SelectItem>
                       <SelectItem value="Cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Fornecedor */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Fornecedor</Label>
+                  <Select
+                    value={filters.fornecedor}
+                    onValueChange={(value) =>
+                      setFilters((prev) => ({ ...prev, fornecedor: value === "all" ? "" : value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os fornecedores" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os fornecedores</SelectItem>
+                      {uniqueFornecedores.map((fornecedor) => (
+                        <SelectItem key={fornecedor} value={fornecedor}>
+                          {fornecedor}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Obra */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Obra</Label>
+                  <Select
+                    value={filters.obra}
+                    onValueChange={(value) => setFilters((prev) => ({ ...prev, obra: value === "all" ? "" : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas as obras" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as obras</SelectItem>
+                      {uniqueObras.map((obra) => (
+                        <SelectItem key={obra} value={obra}>
+                          {obra}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -470,15 +598,10 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
       </div>
 
       {/* Results Info */}
-      {(searchTerm ||
-        filters.status ||
-        filters.valorMin ||
-        filters.valorMax ||
-        filters.dataInicio ||
-        filters.dataFim) && (
+      {(searchTerm || Object.values(filters).some(Boolean)) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
-            Mostrando {filteredOrcamentos.length} de {orcamentos.length} orçamentos
+            Mostrando {filteredOrcamentos.length} de {orcamentos.length} orçamentos desta página
           </span>
           {filteredOrcamentos.length !== orcamentos.length && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -495,8 +618,8 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
             <TableHeader>
               <TableRow>
                 {renderSortableHeader("numero", "Número")}
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>Etapa</TableHead>
+                {renderSortableHeader("fornecedorNome", "Fornecedor")}
+                {renderSortableHeader("obraNome", "Obra")}
                 <TableHead className="hidden md:table-cell">Itens</TableHead>
                 {renderSortableHeader("valorTotal", "Valor Total")}
                 {renderSortableHeader("dataEmissao", "Data")}
@@ -505,18 +628,22 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrcamentos.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Carregando orçamentos...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredOrcamentos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="h-8 w-8 text-muted-foreground" />
                       <p>Nenhum orçamento encontrado</p>
-                      {(searchTerm ||
-                        filters.status ||
-                        filters.valorMin ||
-                        filters.valorMax ||
-                        filters.dataInicio ||
-                        filters.dataFim) && (
+                      {(searchTerm || Object.values(filters).some(Boolean)) && (
                         <Button variant="outline" size="sm" onClick={clearFilters}>
                           Limpar filtros
                         </Button>
@@ -533,21 +660,31 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
                         <div className="text-xs text-muted-foreground">ID: {orcamento.id.slice(0, 8)}...</div>
                       </div>
                     </TableCell>
-                    <TableCell className="min-w-[120px]">
-                      <div className="flex items-center gap-1">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          ID: {orcamento.fornecedorId.slice(0, 8)}...
-                        </span>
+                    <TableCell className="min-w-[180px]">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{orcamento.fornecedorNome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            ID: {orcamento.fornecedorId.slice(0, 8)}...
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="min-w-[120px]">
-                      <div className="flex items-center gap-1">
-                        <Package className="h-4 w-4 text-muted-foreground" />
+                    <TableCell className="min-w-[180px]">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{orcamento.obraNome}</div>
+                          <div className="text-xs text-muted-foreground">ID: {orcamento.obraId.slice(0, 8)}...</div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell min-w-[80px]">
-                      <Badge variant="outline">{orcamento.itensCount} itens</Badge>
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Package className="h-3 w-3" />
+                        {orcamento.itensCount}
+                      </Badge>
                     </TableCell>
                     <TableCell className="font-medium min-w-[120px]">{formatarValor(orcamento.valorTotal)}</TableCell>
                     <TableCell className="min-w-[100px]">
@@ -618,6 +755,83 @@ export function OrcamentosPageClient({ initialOrcamentos }: { initialOrcamentos:
           </Table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {data.paginacao.totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              Mostrando {(currentPage - 1) * pageSize + 1} a{" "}
+              {Math.min(currentPage * pageSize, data.paginacao.totalItens)} de {data.paginacao.totalItens} orçamentos
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Itens por página:</Label>
+              <Select value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(Number(value))}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1 || loading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {/* Mostrar páginas próximas */}
+                {Array.from({ length: Math.min(5, data.paginacao.totalPages) }, (_, i) => {
+                  const startPage = Math.max(1, currentPage - 2)
+                  const pageNumber = startPage + i
+                  if (pageNumber > data.paginacao.totalPages) return null
+
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={pageNumber === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      disabled={loading}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNumber}
+                    </Button>
+                  )
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= data.paginacao.totalPages || loading}
+              >
+                Próxima
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

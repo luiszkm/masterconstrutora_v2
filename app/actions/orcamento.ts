@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { API_URL, makeAuthenticatedRequest } from "./common"
-import type { Orcamento, OrcamentosResponse, OrcamentoDetalhado } from "@/types/orcamento"
+import type { OrcamentosResponse, OrcamentoDetalhado } from "@/types/orcamento"
 import type { FornecedorOrcamento } from "@/types/fornecedor"
 
 // Tipo para categoria da API
@@ -70,9 +70,10 @@ type UpdateOrcamentoData = {
   }[]
 }
 
-export async function getOrcamentos(): Promise<Orcamento[] | { error: string }> {
+// Atualizar a função getOrcamentos para trabalhar com paginação
+export async function getOrcamentos(page = 1, pageSize = 20): Promise<OrcamentosResponse | { error: string }> {
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/orcamentos`, {
+    const response = await makeAuthenticatedRequest(`${API_URL}/orcamentos?page=${page}&pageSize=${pageSize}`, {
       method: "GET",
       next: { tags: ["orcamentos"] },
     })
@@ -93,7 +94,7 @@ export async function getOrcamentos(): Promise<Orcamento[] | { error: string }> 
     }
 
     const responseData: OrcamentosResponse = await response.json()
-    return responseData.dados
+    return responseData
   } catch (error) {
     console.error("Erro ao buscar orçamentos:", error)
     return { error: "Erro de conexão com o servidor. Tente novamente." }

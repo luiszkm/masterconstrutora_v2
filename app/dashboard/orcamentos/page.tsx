@@ -25,5 +25,5 @@ export default async function OrcamentosPage() {
     )
   }
 
-  return <OrcamentosPageClient initialOrcamentos={orcamentosResult} />
+  return <OrcamentosPageClient initialData={orcamentosResult} />
 }
