@@ -15,7 +15,10 @@ export const authService = {
     user: User
     token: string
   }> {
-    return apiClient.post<any>("/auth/login", { email, senha })
+    // Para login, não precisamos de autenticação prévia
+    return apiClient.post<any>("/usuarios/login", { email, senha }, {
+      skipAuth: true // Não incluir headers de autenticação no login
+    })
   },
 
   /**

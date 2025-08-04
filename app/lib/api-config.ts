@@ -31,4 +31,5 @@ export type RequestOptions = {
   headers?: Record<string, string>
   cache?: RequestCache
   next?: RevalidateOptions
+  skipAuth?: boolean // Flag para pular autenticação
 }

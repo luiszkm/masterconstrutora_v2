@@ -1,4 +1,5 @@
 import { API_BASE_URL, DEFAULT_HEADERS, REQUEST_TIMEOUT, type RequestOptions } from "./api-config"
+import { getJWTToken } from "./session"
 
 /**
  * Classe de erro personalizada para erros da API
@@ -54,6 +55,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
+ * Função para adicionar headers de autenticação
+ */
+async function getAuthHeaders(skipAuth?: boolean): Promise<Record<string, string>> {
+  if (skipAuth) {
+    return {}
+  }
+  
+  const jwtToken = await getJWTToken()
+  if (jwtToken) {
+    return {
+      Cookie: `jwt-token=${jwtToken}`,
+    }
+  }
+  return {}
+}
+
+/**
  * Cliente HTTP base para fazer requisições à API
  */
 export const apiClient = {
@@ -62,6 +80,7 @@ export const apiClient = {
    */
   async get<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
+    const authHeaders = await getAuthHeaders(options?.skipAuth)
 
     try {
       const response = await withTimeout(
@@ -69,10 +88,12 @@ export const apiClient = {
           method: "GET",
           headers: {
             ...DEFAULT_HEADERS,
+            ...authHeaders,
             ...options?.headers,
           },
           cache: options?.cache,
           next: options?.next,
+          credentials: "include",
         }),
         REQUEST_TIMEOUT,
       )
@@ -91,6 +112,7 @@ export const apiClient = {
    */
   async post<T>(endpoint: string, data: any, options?: RequestOptions): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
+    const authHeaders = await getAuthHeaders(options?.skipAuth)
 
     try {
       const response = await withTimeout(
@@ -98,11 +120,13 @@ export const apiClient = {
           method: "POST",
           headers: {
             ...DEFAULT_HEADERS,
+            ...authHeaders,
             ...options?.headers,
           },
           body: JSON.stringify(data),
           cache: options?.cache,
           next: options?.next,
+          credentials: "include",
         }),
         REQUEST_TIMEOUT,
       )
@@ -121,6 +145,7 @@ export const apiClient = {
    */
   async put<T>(endpoint: string, data: any, options?: RequestOptions): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
+    const authHeaders = await getAuthHeaders(options?.skipAuth)
 
     try {
       const response = await withTimeout(
@@ -128,11 +153,13 @@ export const apiClient = {
           method: "PUT",
           headers: {
             ...DEFAULT_HEADERS,
+            ...authHeaders,
             ...options?.headers,
           },
           body: JSON.stringify(data),
           cache: options?.cache,
           next: options?.next,
+          credentials: "include",
         }),
         REQUEST_TIMEOUT,
       )
@@ -151,6 +178,7 @@ export const apiClient = {
    */
   async patch<T>(endpoint: string, data: any, options?: RequestOptions): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
+    const authHeaders = await getAuthHeaders(options?.skipAuth)
 
     try {
       const response = await withTimeout(
@@ -158,11 +186,13 @@ export const apiClient = {
           method: "PATCH",
           headers: {
             ...DEFAULT_HEADERS,
+            ...authHeaders,
             ...options?.headers,
           },
           body: JSON.stringify(data),
           cache: options?.cache,
           next: options?.next,
+          credentials: "include",
         }),
         REQUEST_TIMEOUT,
       )
@@ -181,6 +211,7 @@ export const apiClient = {
    */
   async delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
+    const authHeaders = await getAuthHeaders(options?.skipAuth)
 
     try {
       const response = await withTimeout(
@@ -188,10 +219,12 @@ export const apiClient = {
           method: "DELETE",
           headers: {
             ...DEFAULT_HEADERS,
+            ...authHeaders,
             ...options?.headers,
           },
           cache: options?.cache,
           next: options?.next,
+          credentials: "include",
         }),
         REQUEST_TIMEOUT,
       )

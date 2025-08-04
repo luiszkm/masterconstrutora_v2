@@ -61,6 +61,16 @@ import { DashboardError } from "./components/dashboard-error"
 // Adicionar import do componente de erro de autenticação
 import { AuthError } from "./components/auth-error"
 
+// Importar componentes de gráficos
+import {
+  RevenueChart,
+  ExpensesChart,
+  ProjectsProgressChart,
+  ProjectsStatusChart,
+  EmployeesProductivityChart,
+  SuppliersDistributionChart,
+} from "@/components/charts"
+
 export default function DashboardPage() {
   // Estados para dados
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
@@ -419,21 +429,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Componente para exibir gráficos (placeholder)
-  const ChartPlaceholder = ({
-    icon,
-    text,
-    height = "300px",
-  }: {
-    icon: React.ReactNode
-    text: string
-    height?: string
-  }) => (
-    <div className="w-full bg-muted/20 dark:bg-muted/10 rounded-md flex items-center justify-center" style={{ height }}>
-      {icon}
-      <span className="ml-2 text-muted-foreground">{text}</span>
-    </div>
-  )
 
   // Mostrar loading
   if (loading) {
@@ -716,25 +711,7 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartPlaceholder
-                    icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Fluxo de Caixa"
-                    height="200px"
-                  />
-                  <div className="mt-4 grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        R$ {financeiroData.fluxoCaixa.totalEntradas.toLocaleString("pt-BR")}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Entradas</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600">
-                        R$ {financeiroData.fluxoCaixa.totalSaidas.toLocaleString("pt-BR")}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Saídas</div>
-                    </div>
-                  </div>
+                  <RevenueChart data={financeiroData} height={200} />
                 </CardContent>
               </Card>
 
@@ -747,24 +724,7 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                    height="200px"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {financeiroData.distribuicaoDespesas?.distribuicao?.map((item) => (
-                      <div key={item.categoria} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{item.categoria}</span>
-                        </div>
-                        <span className="text-sm">
-                          R$ {item.valor.toLocaleString("pt-BR")} ({item.percentual.toFixed(1)}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <ExpensesChart data={financeiroData} height={200} />
                 </CardContent>
               </Card>
             </div>
@@ -810,24 +770,7 @@ export default function DashboardPage() {
                   <CardDescription>Total de {obrasData.distribuicao.totalObras} obras</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                    height="200px"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {obrasData.distribuicao?.distribuicaoPorStatus?.map((status) => (
-                      <div key={status.status} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{status.status}</span>
-                        </div>
-                        <span className="text-sm">
-                          {status.quantidade} ({status.percentual.toFixed(1)}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <ProjectsStatusChart data={obrasData} height={200} />
                 </CardContent>
               </Card>
             </div>
@@ -889,21 +832,7 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartPlaceholder
-                    icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Produtividade"
-                    height="200px"
-                  />
-                  <div className="mt-4 grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold">{funcionariosData.produtividade.totalFuncionarios}</div>
-                      <div className="text-sm text-muted-foreground">Total</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold">{funcionariosData.produtividade.funcionariosAtivos}</div>
-                      <div className="text-sm text-muted-foreground">Ativos</div>
-                    </div>
-                  </div>
+                  <EmployeesProductivityChart data={funcionariosData} height={200} chartType="line" />
                 </CardContent>
               </Card>
             </div>
@@ -958,24 +887,7 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                    height="200px"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {fornecedoresData.fornecedoresPorCategoria?.distribuicaoPorCategoria?.map((categoria) => (
-                      <div key={categoria.categoriaId} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{categoria.categoriaNome}</span>
-                        </div>
-                        <span className="text-sm">
-                          {categoria.quantidadeFornecedores} ({categoria.percentual.toFixed(1)}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <SuppliersDistributionChart data={fornecedoresData} height={200} />
                 </CardContent>
               </Card>
             </div>
@@ -1001,30 +913,7 @@ export default function DashboardPage() {
                       <CardDescription>Tendência: {financeiroData.fluxoCaixa.tendenciaMensal}</CardDescription>
                     </CardHeader>
                     <CardContent className="pl-2">
-                      <ChartPlaceholder
-                        icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                        text="Gráfico de Fluxo de Caixa"
-                      />
-                      <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <div className="text-2xl font-bold text-green-600">
-                            R$ {financeiroData.fluxoCaixa.totalEntradas.toLocaleString("pt-BR")}
-                          </div>
-                          <div className="text-sm text-muted-foreground">Entradas</div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-red-600">
-                            R$ {financeiroData.fluxoCaixa.totalSaidas.toLocaleString("pt-BR")}
-                          </div>
-                          <div className="text-sm text-muted-foreground">Saídas</div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold">
-                            R$ {financeiroData.fluxoCaixa.saldoAtual.toLocaleString("pt-BR")}
-                          </div>
-                          <div className="text-sm text-muted-foreground">Saldo</div>
-                        </div>
-                      </div>
+                      <RevenueChart data={financeiroData} />
                     </CardContent>
                   </Card>
 
@@ -1036,21 +925,7 @@ export default function DashboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <ChartPlaceholder
-                        icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                        text="Gráfico de Distribuição"
-                      />
-                      <div className="mt-4 space-y-2">
-                        {financeiroData.distribuicaoDespesas?.distribuicao?.slice(0, 5)?.map((item) => (
-                          <div key={item.categoria} className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                              <span className="text-sm">{item.categoria}</span>
-                            </div>
-                            <span className="text-sm">{item.percentual.toFixed(1)}%</span>
-                          </div>
-                        ))}
-                      </div>
+                      <ExpensesChart data={financeiroData} />
                     </CardContent>
                   </Card>
                 </div>
@@ -1117,30 +992,7 @@ export default function DashboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-6">
-                        {obrasData.progresso?.progressoPorObra
-                          ?.filter((obra) => obra.status === "Em Andamento")
-                          ?.slice(0, 6)
-                          ?.map((obra) => (
-                            <div key={obra.obraId} className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="font-medium">{obra.nomeObra}</span>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="outline" className="text-xs">
-                                      {obra.etapasConcluidas}/{obra.etapasTotal} etapas
-                                    </Badge>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {obra.status}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <span className="text-sm font-medium">{obra.percentualConcluido}%</span>
-                              </div>
-                              <Progress value={obra.percentualConcluido} className="h-2" />
-                            </div>
-                          ))}
-                      </div>
+                      <ProjectsProgressChart data={obrasData} />
                     </CardContent>
                   </Card>
 
@@ -1150,23 +1002,7 @@ export default function DashboardPage() {
                       <CardDescription>Status mais comum: {obrasData.distribuicao.statusMaisComum}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <ChartPlaceholder
-                        icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                        text="Gráfico de Distribuição"
-                      />
-                      <div className="mt-4 space-y-2">
-                        {obrasData.distribuicao?.distribuicaoPorStatus?.map((status) => (
-                          <div key={status.status} className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                              <span className="text-sm">{status.status}</span>
-                            </div>
-                            <span className="text-sm">
-                              {status.quantidade} ({status.percentual.toFixed(1)}%)
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <ProjectsStatusChart data={obrasData} />
                     </CardContent>
                   </Card>
                 </div>
@@ -1178,11 +1014,7 @@ export default function DashboardPage() {
                       <CardDescription>Tendência geral: {obrasData.tendencias.tendenciaGeral}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <ChartPlaceholder
-                        icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                        text="Gráfico de Tendência"
-                        height="250px"
-                      />
+                   
                       <div className="mt-4 grid grid-cols-2 gap-4">
                         <div className="text-center">
                           <div className="text-2xl font-bold text-green-600">{obrasData.tendencias.obrasNoPrazo}</div>
@@ -1303,20 +1135,7 @@ export default function DashboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <ChartPlaceholder
-                        icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                        text="Gráfico de Produtividade"
-                      />
-                      <div className="mt-4 grid grid-cols-2 gap-4">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold">{funcionariosData.produtividade.totalFuncionarios}</div>
-                          <div className="text-sm text-muted-foreground">Total</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold">{funcionariosData.produtividade.funcionariosAtivos}</div>
-                          <div className="text-sm text-muted-foreground">Ativos</div>
-                        </div>
-                      </div>
+                      <EmployeesProductivityChart data={funcionariosData} />
                     </CardContent>
                   </Card>
                 </div>
@@ -1467,23 +1286,7 @@ export default function DashboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <ChartPlaceholder
-                        icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                        text="Gráfico de Distribuição"
-                      />
-                      <div className="mt-4 space-y-2">
-                        {fornecedoresData.fornecedoresPorCategoria?.distribuicaoPorCategoria?.map((categoria) => (
-                          <div key={categoria.categoriaId} className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                              <span className="text-sm">{categoria.categoriaNome}</span>
-                            </div>
-                            <span className="text-sm">
-                              {categoria.quantidadeFornecedores} ({categoria.percentual.toFixed(1)}%)
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <SuppliersDistributionChart data={fornecedoresData} />
                     </CardContent>
                   </Card>
                 </div>

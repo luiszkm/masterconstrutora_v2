@@ -63,14 +63,15 @@ export async function updateSession() {
 export async function deleteSession() {
   (await cookies()).delete("session")
 }
-// export async function getJWTToken(): Promise<string | null> {
-//   const cookieStore = await cookies()
-//   const sessionCookie = cookieStore.get("session")?.value
-//   const payload = await decrypt(sessionCookie)
 
-//   if (!payload || !payload.jwtToken) {
-//     return null
-//   }
+export async function getJWTToken(): Promise<string | null> {
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get("session")?.value
+  const payload = await decrypt(sessionCookie)
 
-//   return payload.jwtToken
-// }
+  if (!payload || !payload.jwtToken) {
+    return null
+  }
+
+  return payload.jwtToken
+}

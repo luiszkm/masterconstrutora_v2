@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
-import { getFuncionarios, getJWTToken } from "@/app/actions/funcionario"
+import { getFuncionarios } from "@/app/actions/funcionario"
+import { getJWTToken } from "@/app/lib/session"
 import HistoricoFuncionariosClientPage from "./historico-funcionario-page-client"
 
 // Server Component - handles data fetching and authentication
