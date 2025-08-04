@@ -405,3 +405,42 @@ export async function updateOrcamentoStatus(
     }
   }
 }
+
+export async function getOrcamentosByFornecedor(
+  fornecedorId: string,
+  page = 1,
+  pageSize = 20,
+): Promise<OrcamentosResponse | { error: string }> {
+  try {
+    const response = await makeAuthenticatedRequest(
+      `${API_URL}/orcamentos?fornecedorId=${fornecedorId}&page=${page}&pageSize=${pageSize}`,
+      {
+        method: "GET",
+        next: { tags: ["orcamentos", `fornecedor-${fornecedorId}`] },
+      },
+    )
+
+    if (!response.ok) {
+      let errorMessage = "Erro ao buscar orçamentos do fornecedor."
+
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente."
+        } else if (response.status === 404) {
+          errorMessage = "Fornecedor não encontrado."
+        }
+      }
+
+      return { error: errorMessage }
+    }
+
+    const responseData: OrcamentosResponse = await response.json()
+    return responseData
+  } catch (error) {
+    console.error("Erro ao buscar orçamentos do fornecedor:", error)
+    return { error: "Erro de conexão com o servidor. Tente novamente." }
+  }
+}

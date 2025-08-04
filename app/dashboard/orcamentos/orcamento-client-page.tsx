@@ -72,6 +72,7 @@ type Filters = {
   valorMax: string
   dataInicio: string
   dataFim: string
+  categoria: string
 }
 
 interface OrcamentosPageClientProps {
@@ -100,6 +101,7 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
     valorMax: "",
     dataInicio: "",
     dataFim: "",
+    categoria: "",
   })
 
   // Estados para pesquisa
@@ -111,6 +113,8 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [orcamentoToUpdate, setOrcamentoToUpdate] = useState<Orcamento | null>(null)
   const [newStatus, setNewStatus] = useState<"Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado">("Em Aberto")
+  const [categoriasDialogOpen, setCategoriasDialogOpen] = useState(false)
+  const [selectedOrcamentoCategorias, setSelectedOrcamentoCategorias] = useState<string[]>([])
 
   // Estados para popovers
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -196,6 +200,12 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
       result = result.filter((orcamento) => new Date(orcamento.dataEmissao) <= new Date(filters.dataFim))
     }
 
+    if (filters.categoria) {
+      result = result.filter((orcamento) =>
+        orcamento.categorias?.some((cat) => cat.toLowerCase().includes(filters.categoria.toLowerCase())),
+      )
+    }
+
     setFilteredOrcamentos(result)
   }, [orcamentos, searchTerm, filters])
 
@@ -275,6 +285,7 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
       valorMax: "",
       dataInicio: "",
       dataFim: "",
+      categoria: "",
     })
     setSearchTerm("")
     setFiltersOpen(false)
@@ -380,7 +391,10 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
     total: data.paginacao?.totalItens || 0,
     emAberto: Array.isArray(orcamentos) ? orcamentos.filter((o) => o.status === "Em Aberto").length : 0,
     aprovados: Array.isArray(orcamentos) ? orcamentos.filter((o) => o.status === "Aprovado").length : 0,
-    valorTotal: Array.isArray(orcamentos) ? orcamentos.reduce((total, o) => total + o.valorTotal, 0) : 0,
+    // somar apenas os valores dos com status "Aprovado"
+    valorTotal: Array.isArray(orcamentos)
+      ? orcamentos.reduce((total, o) => (o.status === "Aprovado" ? total + o.valorTotal : total), 0)
+      : 0,
   }
 
   // Obter listas únicas para filtros (baseado nos dados atuais)
@@ -556,6 +570,16 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                   </Select>
                 </div>
 
+                {/* Filtro por Categoria */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Categoria</Label>
+                  <Input
+                    placeholder="Buscar por categoria..."
+                    value={filters.categoria}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, categoria: e.target.value }))}
+                  />
+                </div>
+
                 {/* Filtro por Valor */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Faixa de Valor</Label>
@@ -681,10 +705,18 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell min-w-[80px]">
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Package className="h-3 w-3" />
-                        {orcamento.itensCount}
-                      </Badge>
+                      <button
+                        className="w-full"
+                        onClick={() => {
+                          setSelectedOrcamentoCategorias(orcamento.categorias || [])
+                          setCategoriasDialogOpen(true)
+                        }}
+                      >
+                        <Badge variant="outline" className="flex items-center gap-1 cursor-pointer hover:bg-secondary">
+                          <Package className="h-3 w-3" />
+                          {orcamento.itensCount}
+                        </Badge>
+                      </button>
                     </TableCell>
                     <TableCell className="font-medium min-w-[120px]">{formatarValor(orcamento.valorTotal)}</TableCell>
                     <TableCell className="min-w-[100px]">
@@ -911,6 +943,36 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
               ) : (
                 "Atualizar Status"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Categorias Dialog */}
+      <Dialog open={categoriasDialogOpen} onOpenChange={setCategoriasDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Categorias do Orçamento</DialogTitle>
+            <DialogDescription>
+              Lista de categorias de itens presentes neste orçamento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {selectedOrcamentoCategorias.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedOrcamentoCategorias.map((categoria, index) => (
+                  <Badge key={index} variant="secondary">
+                    {categoria}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma categoria informada.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCategoriasDialogOpen(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

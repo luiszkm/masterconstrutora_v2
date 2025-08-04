@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import React, { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,8 @@ import {
   Loader2,
   Power,
   PowerOff,
+  MapPin,
+  User,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -32,8 +34,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -47,45 +47,11 @@ import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { getFornecedores, deleteFornecedor, toggleFornecedorStatus, type Fornecedor } from "@/app/actions/fornecedor"
+import { deleteFornecedor, toggleFornecedorStatus, getCategorias } from "@/app/actions/fornecedor"
+import type { Fornecedor } from "@/types/fornecedor"
 
-// Lista de todos os tipos de materiais disponÃ­veis no sistema
-const tiposMateriais = [
-  "Cimento",
-  "Areia",
-  "Brita",
-  "AÃ§o",
-  "Tintas",
-  "MÃ¡rmores",
-  "Granitos",
-  "Porcelanatos",
-  "Cabos",
-  "Disjuntores",
-  "Quadros ElÃ©tricos",
-  "Tubos PVC",
-  "ConexÃµes",
-  "Registros",
-  "Caixas d'Ã¡gua",
-  "Madeira MaciÃ§a",
-  "Compensados",
-  "MDF",
-  "Portas",
-  "Deck",
-  "Telhas",
-  "Vidros",
-  "Ferragens",
-  "Impermeabilizantes",
-  "Argamassas",
-  "Gesso",
-  "Drywall",
-  "Isolantes",
-  "Pisos Laminados",
-  "Pisos VinÃ­licos",
-]
-
-// Tipo para ordenaÃ§Ã£o
+// Tipo para ordenação
 type SortConfig = {
   key: keyof Fornecedor | ""
   direction: "asc" | "desc"
@@ -95,61 +61,117 @@ type SortConfig = {
 type Filters = {
   categoria: string
   status: string
-  materiais: string[]
   avaliacao: string
 }
 
-export  function FornecedoresPageClient({ initialFornecedores }: { initialFornecedores: Fornecedor[] }) {
-  // Estados principais
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>(initialFornecedores)
-  console.log("Fornecedores:", fornecedores)
-  const [filteredFornecedores, setFilteredFornecedores] = useState<Fornecedor[]>([])
-  const [loading, setLoading] = useState(true)
+// Tipo para categoria da API
+type Categoria = {
+  ID: string
+  Nome: string
+  createdAt: string
+  updatedAt: string
+}
+
+export function FornecedoresPageClient({ initialFornecedores }: { initialFornecedores: Fornecedor[] }) {
+  // Estados para categorias da API
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [loadingCategorias, setLoadingCategorias] = useState(true)
+
+  // Carregar categorias da API
+  useEffect(() => {
+    async function loadCategorias() {
+      try {
+        const categoriasData = await getCategorias()
+        if (!("error" in categoriasData)) {
+          setCategorias(categoriasData)
+          console.log("Categorias carregadas da API:", categoriasData)
+        } else {
+          console.error("Erro ao carregar categorias:", categoriasData.error)
+          toast({
+            title: "Erro ao carregar categorias",
+            description: categoriasData.error,
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Erro ao carregar categorias:", error)
+        toast({
+          title: "Erro ao carregar categorias",
+          description: "Tente novamente em alguns instantes",
+          variant: "destructive",
+        })
+      } finally {
+        setLoadingCategorias(false)
+      }
+    }
+    loadCategorias()
+  }, [])
+
+  // Estados principais - garantir que sempre sejam arrays válidos
+  const safeFornecedores = Array.isArray(initialFornecedores) ? initialFornecedores : []
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>(safeFornecedores)
+  const [filteredFornecedores, setFilteredFornecedores] = useState<Fornecedor[]>(safeFornecedores)
+  const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Estados para ordenaÃ§Ã£o e filtros
+  // Estados para ordenação e filtros
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "", direction: "asc" })
   const [filters, setFilters] = useState<Filters>({
     categoria: "",
     status: "",
-    materiais: [],
     avaliacao: "",
   })
 
   // Estados para pesquisa
-  const [searchMaterial, setSearchMaterial] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
+  const [searchCategoria, setSearchCategoria] = useState("")
 
-  // Estados para diÃ¡logos
+  // Estados para diálogos
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null)
 
   // Estados para popovers
   const [filtersOpen, setFiltersOpen] = useState(false)
 
-  // Carregar fornecedores
-  useEffect(() => {
-    async function loadFornecedores() {
-      try {
-        const data = await getFornecedores()
-        setFornecedores(data)
-        setFilteredFornecedores(data)
-      } catch (error) {
-        toast({
-          title: "Erro ao carregar fornecedores",
-          description: "Tente novamente em alguns instantes.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
+  // Extrair nomes das categorias para os filtros
+  const uniqueCategories = React.useMemo(() => {
+    return categorias.map((cat) => cat.Nome).sort()
+  }, [categorias])
 
-    loadFornecedores()
-  }, [])
+  // Função auxiliar para extrair categorias de forma segura
+  // function extractUniqueCategories(fornecedores: Fornecedor[]): string[] {
+  //   const categoriesSet = new Set<string>()
+
+  //   if (!Array.isArray(fornecedores)) {
+  //     return []
+  //   }
+
+  //   fornecedores.forEach((fornecedor) => {
+  //     if (fornecedor && fornecedor.categorias && Array.isArray(fornecedor.categorias)) {
+  //       fornecedor.categorias.forEach((categoria) => {
+  //         if (categoria && categoria.Nome && typeof categoria.Nome === "string") {
+  //           categoriesSet.add(categoria.Nome)
+  //         }
+  //       })
+  //     }
+  //   })
+
+  //   return Array.from(categoriesSet).sort()
+  // }
+
+  // Debug: log dos dados recebidos
+  console.log("FornecedoresPageClient - dados recebidos:", initialFornecedores)
+
+  // Debug: log das categorias extraídas
+  console.log("Categorias únicas extraídas:", uniqueCategories)
 
   // Aplicar filtros e pesquisa
   useEffect(() => {
+    if (!Array.isArray(fornecedores)) {
+      setFilteredFornecedores([])
+      return
+    }
+
     let result = fornecedores
 
     // Filtro por pesquisa geral
@@ -157,34 +179,53 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
       result = result.filter(
         (fornecedor) =>
           fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          fornecedor.contato.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          fornecedor.email.toLowerCase().includes(searchTerm.toLowerCase()),
+          (fornecedor.contato && fornecedor.contato.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (fornecedor.email && fornecedor.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          fornecedor.cnpj.includes(searchTerm),
       )
     }
 
-  
+    // Filtro por pesquisa de categoria
+    if (searchCategoria) {
+      result = result.filter((fornecedor) =>
+        fornecedor.categorias && Array.isArray(fornecedor.categorias)
+          ? fornecedor.categorias.some(
+              (cat) => cat && cat.Nome && cat.Nome.toLowerCase().includes(searchCategoria.toLowerCase()),
+            )
+          : false,
+      )
+    }
 
-    // Filtros especÃ­ficos
+    // Filtros específicos
     if (filters.categoria) {
-      result = result.filter((fornecedor) => fornecedor.categoria === filters.categoria)
+      result = result.filter((fornecedor) =>
+        fornecedor.categorias && Array.isArray(fornecedor.categorias)
+          ? fornecedor.categorias.some((cat) => cat && cat.Nome === filters.categoria)
+          : false,
+      )
     }
 
     if (filters.status) {
       result = result.filter((fornecedor) => fornecedor.status === filters.status)
     }
 
-
-
     if (filters.avaliacao) {
       const minRating = Number.parseFloat(filters.avaliacao)
-      result = result.filter((fornecedor) => fornecedor.avaliacao >= minRating)
+      result = result.filter(
+        (fornecedor) =>
+          fornecedor.avaliacao !== null && fornecedor.avaliacao !== undefined && fornecedor.avaliacao >= minRating,
+      )
     }
 
     setFilteredFornecedores(result)
-  }, [fornecedores, searchTerm, searchMaterial, filters])
+  }, [fornecedores, searchTerm, searchCategoria, filters])
 
-  // FunÃ§Ã£o para renderizar as estrelas de avaliaÃ§Ã£o
-  const renderStars = (rating: number) => {
+  // Função para renderizar as estrelas de avaliação
+  const renderStars = (rating: number | null | undefined) => {
+    if (rating === null || rating === undefined) {
+      return <span className="text-sm text-muted-foreground">Sem avaliação</span>
+    }
+
     const stars = []
     const fullStars = Math.floor(rating)
     const hasHalfStar = rating % 1 !== 0
@@ -202,10 +243,15 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
       stars.push(<Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />)
     }
 
-    return <div className="flex items-center gap-1">{stars}</div>
+    return (
+      <div className="flex items-center gap-1">
+        {stars}
+        <span className="text-sm text-muted-foreground ml-1">({rating})</span>
+      </div>
+    )
   }
 
-  // FunÃ§Ã£o para ordenar
+  // Função para ordenar
   const requestSort = (key: keyof Fornecedor) => {
     let direction: "asc" | "desc" = "asc"
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -216,6 +262,15 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
     const sortedData = [...filteredFornecedores].sort((a, b) => {
       const aValue = a[key]
       const bValue = b[key]
+
+      if ((aValue === null || aValue === undefined) && (bValue === null || bValue === undefined)) return 0
+      if (aValue === null) return direction === "asc" ? 1 : -1
+      if (bValue === null) return direction === "asc" ? -1 : 1
+
+      // Handle undefined values explicitly
+      if (aValue === undefined && bValue !== undefined) return direction === "asc" ? 1 : -1
+      if (aValue !== undefined && bValue === undefined) return direction === "asc" ? -1 : 1
+      if (aValue === undefined && bValue === undefined) return 0
 
       if (aValue < bValue) {
         return direction === "asc" ? -1 : 1
@@ -229,29 +284,28 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
     setFilteredFornecedores(sortedData)
   }
 
-  // FunÃ§Ã£o para limpar filtros
+  // Função para limpar filtros
   const clearFilters = () => {
     setFilters({
       categoria: "",
       status: "",
-      materiais: [],
       avaliacao: "",
     })
-    setSearchMaterial("")
     setSearchTerm("")
+    setSearchCategoria("")
     setFiltersOpen(false)
   }
 
-  // FunÃ§Ã£o para excluir fornecedor
+  // Função para excluir fornecedor
   const handleDelete = async () => {
     if (!fornecedorToDelete) return
 
     startTransition(async () => {
-      const result = await deleteFornecedor(fornecedorToDelete.id.toString())
+      const result = await deleteFornecedor(fornecedorToDelete.id)
 
       if (result.success) {
         toast({
-          title: "Fornecedor excluÃ­do",
+          title: "Fornecedor excluído",
           description: result.message,
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
@@ -273,10 +327,10 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
     })
   }
 
-  // FunÃ§Ã£o para alternar status
+  // Função para alternar status
   const handleToggleStatus = async (fornecedor: Fornecedor) => {
     startTransition(async () => {
-      const result = await toggleFornecedorStatus(fornecedor.id.toString())
+      const result = await toggleFornecedorStatus(fornecedor.id)
 
       if (result.success) {
         toast({
@@ -300,7 +354,7 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
     })
   }
 
-  // Renderizar cabeÃ§alho da tabela com ordenaÃ§Ã£o
+  // Renderizar cabeçalho da tabela com ordenação
   const renderSortableHeader = (key: keyof Fornecedor, label: string) => (
     <TableHead className="cursor-pointer select-none">
       <button
@@ -321,34 +375,13 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
     </TableHead>
   )
 
-  // Obter sugestÃµes de materiais para a pesquisa
-  const materialSuggestions = tiposMateriais
-    .filter((material) => material.toLowerCase().includes(searchMaterial.toLowerCase()))
-    .slice(0, 8)
-
-  // Obter dados Ãºnicos para filtros
-  const uniqueCategories = Array.from(new Set(fornecedores.map((f) => f.categoria))).sort()
-
-  if (loading) {
-    return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Fornecedores</h2>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Fornecedores</h2>
-          <p className="text-muted-foreground">Gerencie seus fornecedores e materiais</p>
+          <p className="text-muted-foreground">Gerencie seus fornecedores e categorias</p>
         </div>
         <Button asChild className="w-full sm:w-auto">
           <Link href="/dashboard/fornecedores/novo">
@@ -393,190 +426,142 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">OrÃ§amentos</CardTitle>
+            <CardTitle className="text-sm font-medium">Orçamentos</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fornecedores.reduce((total, f) => total + f.orcamentos, 0)}</div>
+            <div className="text-2xl font-bold">
+              {fornecedores.reduce((total, f) => total + (f.orcamentosCount || 0), 0)}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Pesquisa Geral */}
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar por nome, contato ou email..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="flex flex-col gap-4">
+        {/* Primeira linha - Pesquisa Geral e Categoria */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Pesquisa Geral */}
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por nome, contato, email ou CNPJ..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Pesquisa por Categoria */}
+          <div className="relative flex-1">
+            <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por categoria..."
+              className="pl-8"
+              value={searchCategoria}
+              onChange={(e) => setSearchCategoria(e.target.value)}
+            />
+          </div>
         </div>
 
-        {/* Pesquisa por Material */}
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Popover open={searchMaterial.length > 0 && materialSuggestions.length > 0}>
+        {/* Segunda linha - Filtros Avançados */}
+        <div className="flex justify-end">
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
-              <Input
-                type="search"
-                placeholder="Buscar por material..."
-                className="pl-8"
-                value={searchMaterial}
-                onChange={(e) => setSearchMaterial(e.target.value)}
-              />
+              <Button variant="outline" className="w-full sm:w-auto bg-transparent">
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros Avançados
+                {(filters.categoria || filters.status || filters.avaliacao) && (
+                  <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
+                    {[filters.categoria, filters.status, filters.avaliacao].filter(Boolean).length}
+                  </Badge>
+                )}
+              </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-              <Command>
-                <CommandList>
-                  <CommandGroup>
-                    {materialSuggestions.map((material) => (
-                      <CommandItem
-                        key={material}
-                        onSelect={() => setSearchMaterial(material)}
-                        className="cursor-pointer"
-                      >
-                        <Package className="mr-2 h-4 w-4" />
-                        {material}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
+            <PopoverContent className="w-80 p-0" align="end">
+              <div className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Filtros Avançados</h4>
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Limpar
+                  </Button>
+                </div>
+
+                <Separator />
+
+                {/* Filtro por Categoria */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Categoria</Label>
+                  <Select
+                    value={filters.categoria}
+                    onValueChange={(value) =>
+                      setFilters((prev) => ({ ...prev, categoria: value === "all" ? "" : value }))
+                    }
+                    disabled={loadingCategorias}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingCategorias ? "Carregando..." : "Todas as categorias"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as categorias</SelectItem>
+                      {uniqueCategories.map((categoria) => (
+                        <SelectItem key={categoria} value={categoria}>
+                          {categoria}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Status */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Select
+                    value={filters.status}
+                    onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value === "all" ? "" : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os status</SelectItem>
+                      <SelectItem value="Ativo">Ativo</SelectItem>
+                      <SelectItem value="Inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Avaliação */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Avaliação Mínima</Label>
+                  <Select
+                    value={filters.avaliacao}
+                    onValueChange={(value) =>
+                      setFilters((prev) => ({ ...prev, avaliacao: value === "any" ? "" : value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Qualquer avaliação" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Qualquer avaliação</SelectItem>
+                      <SelectItem value="4">4+ estrelas</SelectItem>
+                      <SelectItem value="3">3+ estrelas</SelectItem>
+                      <SelectItem value="2">2+ estrelas</SelectItem>
+                      <SelectItem value="1">1+ estrelas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
-
-        {/* Filtros AvanÃ§ados */}
-        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtros
-              {(filters.categoria || filters.status || filters.materiais.length > 0 || filters.avaliacao) && (
-                <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
-                  {[filters.categoria, filters.status, ...filters.materiais, filters.avaliacao].filter(Boolean).length}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="end">
-            <div className="p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Filtros AvanÃ§ados</h4>
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  Limpar
-                </Button>
-              </div>
-
-              <Separator />
-
-              {/* Filtro por Categoria */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Categoria</Label>
-                <Select
-                  value={filters.categoria}
-                  onValueChange={(value) => setFilters((prev) => ({ ...prev, categoria: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as categorias" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as categorias</SelectItem>
-                    {uniqueCategories.map((categoria) => (
-                      <SelectItem key={categoria} value={categoria}>
-                        {categoria}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Filtro por Status */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Status</Label>
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os status</SelectItem>
-                    <SelectItem value="Ativo">Ativo</SelectItem>
-                    <SelectItem value="Inativo">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Filtro por AvaliaÃ§Ã£o */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">AvaliaÃ§Ã£o MÃ­nima</Label>
-                <Select
-                  value={filters.avaliacao}
-                  onValueChange={(value) => setFilters((prev) => ({ ...prev, avaliacao: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Qualquer avaliaÃ§Ã£o" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">Qualquer avaliaÃ§Ã£o</SelectItem>
-                    <SelectItem value="4">4+ estrelas</SelectItem>
-                    <SelectItem value="3">3+ estrelas</SelectItem>
-                    <SelectItem value="2">2+ estrelas</SelectItem>
-                    <SelectItem value="1">1+ estrelas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Filtro por Materiais */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Materiais</Label>
-                <ScrollArea className="h-32 border rounded-md">
-                  {/* <div className="p-2 space-y-2">
-                    {uniqueMaterials.map((material) => (
-                      <div key={material} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`material-${material}`}
-                          checked={filters.materiais.includes(material)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFilters((prev) => ({
-                                ...prev,
-                                materiais: [...prev.materiais, material],
-                              }))
-                            } else {
-                              setFilters((prev) => ({
-                                ...prev,
-                                materiais: prev.materiais.filter((m) => m !== material),
-                              }))
-                            }
-                          }}
-                        />
-                        <label htmlFor={`material-${material}`} className="text-sm cursor-pointer flex-1">
-                          {material}
-                        </label>
-                      </div>
-                    ))}
-                  </div> */}
-                </ScrollArea>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
       </div>
 
       {/* Results Info */}
-      {(searchTerm ||
-        searchMaterial ||
-        filters.categoria ||
-        filters.status ||
-        filters.materiais.length > 0 ||
-        filters.avaliacao) && (
+      {(searchTerm || searchCategoria || filters.categoria || filters.status || filters.avaliacao) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
             Mostrando {filteredFornecedores.length} de {fornecedores.length} fornecedores
@@ -589,6 +574,12 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
         </div>
       )}
 
+      {/* Debug Info */}
+      <div className="text-xs text-muted-foreground">
+        Debug: {fornecedores.length} fornecedores carregados, {categorias.length} categorias da API,{" "}
+        {uniqueCategories.length} nomes únicos
+      </div>
+
       {/* Table */}
       <div className="rounded-md border">
         <div className="overflow-x-auto">
@@ -596,14 +587,14 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
             <TableHeader>
               <TableRow>
                 {renderSortableHeader("nome", "Nome")}
-                {renderSortableHeader("categoria", "Categoria")}
+                <TableHead>Categorias</TableHead>
                 <TableHead className="hidden md:table-cell">Contato</TableHead>
-                <TableHead className="hidden lg:table-cell">Telefone</TableHead>
-                <TableHead>Materiais</TableHead>
-                <TableHead>AvaliaÃ§Ã£o</TableHead>
-                <TableHead className="hidden sm:table-cell">OrÃ§amentos</TableHead>
+                <TableHead className="hidden lg:table-cell">Email</TableHead>
+                <TableHead className="hidden xl:table-cell">CNPJ</TableHead>
+                <TableHead>Avaliação</TableHead>
+                <TableHead className="hidden sm:table-cell">Orçamentos</TableHead>
                 {renderSortableHeader("status", "Status")}
-                <TableHead className="text-right w-[100px]">AÃ§Ãµes</TableHead>
+                <TableHead className="text-right w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -613,11 +604,7 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="h-8 w-8 text-muted-foreground" />
                       <p>Nenhum fornecedor encontrado</p>
-                      {(searchTerm ||
-                        searchMaterial ||
-                        filters.categoria ||
-                        filters.status ||
-                        filters.materiais.length > 0) && (
+                      {(searchTerm || searchCategoria || filters.categoria || filters.status || filters.avaliacao) && (
                         <Button variant="outline" size="sm" onClick={clearFilters}>
                           Limpar filtros
                         </Button>
@@ -632,48 +619,47 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
                       <div>
                         <div className="font-medium">{fornecedor.nome}</div>
                         <div className="text-sm text-muted-foreground md:hidden">{fornecedor.contato}</div>
+                        {fornecedor.endereco && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="h-3 w-3" />
+                            {fornecedor.endereco}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="min-w-[150px]">
-                      <Badge variant="outline">{fornecedor.categoria}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell min-w-[150px]">{fornecedor.contato}</TableCell>
-                    <TableCell className="hidden lg:table-cell min-w-[130px]">{fornecedor.telefone}</TableCell>
-                    <TableCell className="min-w-[120px]">
-                      {/* <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Package className="mr-2 h-4 w-4" />
-                            {fornecedor.materiais.length}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent class@Name="w-60">
-                          <div className="space-y-3">
-                            <h4 className="font-medium">Materiais Fornecidos</h4>
-                            <ScrollArea className="h-32">
-                              <div className="space-y-1">
-                                {fornecedor.materiais.map((material) => (
-                                  <div key={material.id} className="text-sm py-1 px-2 bg-muted rounded">
-                                    {material.nome}
-                                  </div>
-                                ))}
-                              </div>
-                            </ScrollArea>
-                          </div>
-                        </PopoverContent>
-                      </Popover> */}
-                    </TableCell>
-                    <TableCell className="min-w-[120px]">
-                      <div className="flex items-center gap-2">
-                        {renderStars(fornecedor.avaliacao)}
-                        <span className="text-sm text-muted-foreground">({fornecedor.avaliacao})</span>
+                      <div className="flex flex-wrap gap-1">
+                        {fornecedor.categorias &&
+                        Array.isArray(fornecedor.categorias) &&
+                        fornecedor.categorias.length > 0 ? (
+                          fornecedor.categorias.map((categoria, index) => (
+                            <Badge key={`${categoria.ID}-${index}`} variant="outline" className="text-xs">
+                              {categoria.Nome}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Sem categoria</span>
+                        )}
                       </div>
                     </TableCell>
+                    <TableCell className="hidden md:table-cell min-w-[150px]">
+                      <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        {fornecedor.contato || "Não informado"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell min-w-[200px]">
+                      <div>{fornecedor.email || "Não informado"}</div>
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell min-w-[150px]">
+                      <code className="text-xs bg-muted px-2 py-1 rounded">{fornecedor.cnpj}</code>
+                    </TableCell>
+                    <TableCell className="min-w-[120px]">{renderStars(fornecedor.avaliacao)}</TableCell>
                     <TableCell className="hidden sm:table-cell min-w-[100px]">
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/dashboard/fornecedores/${fornecedor.id}/orcamentos`}>
                           <FileText className="mr-2 h-4 w-4" />
-                          {fornecedor.orcamentos}
+                          {fornecedor.orcamentosCount || 0}
                         </Link>
                       </Button>
                     </TableCell>
@@ -701,19 +687,6 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
                               Editar
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleStatus(fornecedor)}>
-                            {fornecedor.status === "Ativo" ? (
-                              <>
-                                <PowerOff className="mr-2 h-4 w-4" />
-                                Desativar
-                              </>
-                            ) : (
-                              <>
-                                <Power className="mr-2 h-4 w-4" />
-                                Ativar
-                              </>
-                            )}
-                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
@@ -740,9 +713,9 @@ export  function FornecedoresPageClient({ initialFornecedores }: { initialFornec
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar ExclusÃ£o</DialogTitle>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir o fornecedor "{fornecedorToDelete?.nome}"? Esta aÃ§Ã£o nÃ£o pode ser desfeita.
+              Tem certeza que deseja excluir o fornecedor "{fornecedorToDelete?.nome}"? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

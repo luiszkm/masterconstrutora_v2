@@ -114,8 +114,8 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
 
   // Estados para formulário
   const [fornecedorSelecionado, setFornecedorSelecionado] = useState(orcamento.fornecedor.id)
-  const [condicoesPagamentoSelecionada, setCondicoesPagamentoSelecionada] = useState("")
-  const [observacoes, setObservacoes] = useState("")
+  const [condicoesPagamentoSelecionada, setCondicoesPagamentoSelecionada] = useState(orcamento.condicoesPagamento || "")
+  const [observacoes, setObservacoes] = useState(orcamento.observacoes || "")
 
   // Estados para itens - converter da estrutura da API para estrutura local
   const [itens, setItens] = useState<ItemOrcamento[]>(

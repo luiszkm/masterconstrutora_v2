@@ -18,6 +18,7 @@ export type Orcamento = {
   fornecedorId: string
   fornecedorNome: string
   itensCount: number
+  categorias: string[]
 }
 
 // Tipos para resposta da API
@@ -47,6 +48,8 @@ export type OrcamentoDetalhado = {
   valorTotal: number
   status: "Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado"
   dataEmissao: string
+  observacoes?: string
+  condicoesPagamento?: string
   obra: {
     id: string
     nome: string

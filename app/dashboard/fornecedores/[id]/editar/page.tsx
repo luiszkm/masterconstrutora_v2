@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -13,9 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
-import { ArrowLeft, X, Loader2, Globe, MapPin } from "lucide-react"
+import { ArrowLeft, X, Loader2, Globe, MapPin, Copy, ExternalLink, AlertCircle } from "lucide-react"
 import { getFornecedorById, updateFornecedor, getCategorias } from "@/app/actions/fornecedor"
 import type { Fornecedor } from "@/types/fornecedor"
+import { FileText } from "lucide-react"
 
 // Tipo para categoria da API
 type Categoria = {
@@ -25,12 +26,15 @@ type Categoria = {
   updatedAt: string
 }
 
-export default function EditarFornecedorPage({ params }: { params: { id: string } }) {
+export default function EditarFornecedorPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)
   const [fornecedor, setFornecedor] = useState<Fornecedor | null>(null)
   const [categorias, setCategorias] = useState<Categoria[]>([])
+
+  // Unwrap params usando React.use()
+  const { id } = use(params)
 
   // Estados do formulário baseados na estrutura real da API
   const [formData, setFormData] = useState({
@@ -66,21 +70,28 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
   useEffect(() => {
     async function loadFornecedor() {
       try {
-        const data = await getFornecedorById(params.id)
+        const data = await getFornecedorById(id)
         if (data) {
           setFornecedor(data)
+          // Mapear corretamente baseado na estrutura real da API
           setFormData({
-            Nome: data.Nome,
-            Contato: data.Contato,
-            Email: data.Email,
-            CNPJ: data.CNPJ,
-            Website: data.Website || "",
-            Endereco: data.Endereco || "",
-            NomeAtendente: data.NomeAtendente || "",
-            Avaliacao: data.Avaliacao,
-            Observacoes: data.Observacoes || "",
+            Nome: data.nome || data.Nome || "",
+            Contato: data.contato || data.Contato || "",
+            Email: data.email || data.Email || "",
+            CNPJ: data.cnpj || data.CNPJ || "",
+            Website: data.website || data.Website || "",
+            Endereco: data.endereco || data.Endereco || "",
+            NomeAtendente: data.nomeAtendente || data.NomeAtendente || "",
+            Avaliacao: data.avaliacao || data.Avaliacao || null,
+            Observacoes: data.observacoes || data.Observacoes || "",
           })
-          setCategoriasSelecionadas(data.Categorias.map((cat) => cat.ID))
+          // Mapear categorias corretamente
+          const categoriasIds = data.categorias
+            ? data.categorias.map((cat) => cat.ID)
+            : data.Categorias
+              ? data.Categorias.map((cat) => cat.ID)
+              : []
+          setCategoriasSelecionadas(categoriasIds)
         } else {
           toast({
             title: "Fornecedor não encontrado",
@@ -101,7 +112,7 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
     }
 
     loadFornecedor()
-  }, [params.id, router])
+  }, [id, router])
 
   // Função para atualizar dados do formulário
   const updateFormData = (field: string, value: string | number | null) => {
@@ -120,12 +131,49 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
 
   // Função para remover categoria
   const removerCategoria = (categoriaId: string) => {
-    setCategoriasSelecionadas((prev) => prev.filter((id) => id !== categoriaId))
+    setCategoriasSelecionadas((prev) => prev.filter((catId) => catId !== categoriaId))
   }
 
   // Função para submeter o formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validações básicas
+    if (!formData.Nome.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "Nome da empresa é obrigatório",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.Email.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "Email é obrigatório",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.Contato.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "Pessoa de contato é obrigatória",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.CNPJ.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "CNPJ é obrigatório",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (categoriasSelecionadas.length === 0) {
       toast({
@@ -136,18 +184,29 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
       return
     }
 
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.Email)) {
+      toast({
+        title: "Erro de validação",
+        description: "Email deve ter um formato válido",
+        variant: "destructive",
+      })
+      return
+    }
+
     startTransition(async () => {
       const updateData = {
         ...formData,
         categoriaIds: categoriasSelecionadas,
         // Converter campos vazios para null
-        Website: formData.Website || null,
-        Endereco: formData.Endereco || null,
-        NomeAtendente: formData.NomeAtendente || null,
-        Observacoes: formData.Observacoes || null,
+        Website: formData.Website.trim() || null,
+        Endereco: formData.Endereco.trim() || null,
+        NomeAtendente: formData.NomeAtendente.trim() || null,
+        Observacoes: formData.Observacoes.trim() || null,
       }
 
-      const result = await updateFornecedor(params.id, updateData)
+      const result = await updateFornecedor(id, updateData)
 
       if (result.success) {
         toast({
@@ -168,15 +227,48 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
   if (loading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/dashboard/fornecedores">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Carregando Fornecedor</h2>
+            <p className="text-muted-foreground">Aguarde enquanto carregamos os dados...</p>
+          </div>
+        </div>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Carregando dados do fornecedor...</span>
         </div>
       </div>
     )
   }
 
   if (!fornecedor) {
-    return null
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/dashboard/fornecedores">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Fornecedor não encontrado</h2>
+            <p className="text-muted-foreground">O fornecedor solicitado não existe ou foi removido</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <AlertCircle className="h-8 w-8 text-muted-foreground" />
+          <div className="ml-4">
+            <p className="text-lg font-medium">Fornecedor não encontrado</p>
+            <p className="text-muted-foreground">Verifique se o ID está correto ou se o fornecedor ainda existe</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -198,6 +290,61 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Informações Básicas */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Informações Atuais */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Informações Atuais</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">ID do Fornecedor</Label>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                        {fornecedor.id || fornecedor.ID}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(fornecedor.id || fornecedor.ID || "")
+                          toast({
+                            title: "ID copiado",
+                            description: "ID do fornecedor copiado para a área de transferência",
+                          })
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Status Atual</Label>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={(fornecedor.status || fornecedor.Status) === "Ativo" ? "default" : "secondary"}>
+                        {fornecedor.status || fornecedor.Status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">(Use as ações da lista para alterar)</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Orçamentos</Label>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        {fornecedor.orcamentosCount || 0}
+                      </Badge>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/dashboard/fornecedores/${fornecedor.id || fornecedor.ID}/orcamentos`}>
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Informações Básicas</CardTitle>
@@ -205,7 +352,9 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nome">Nome da Empresa *</Label>
+                    <Label htmlFor="nome">
+                      Nome da Empresa <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="nome"
                       value={formData.Nome}
@@ -215,7 +364,9 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cnpj">CNPJ *</Label>
+                    <Label htmlFor="cnpj">
+                      CNPJ <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="cnpj"
                       value={formData.CNPJ}
@@ -228,22 +379,15 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="contato">Pessoa de Contato *</Label>
+                    <Label htmlFor="contato">
+                      Pessoa de Contato <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="contato"
                       value={formData.Contato}
                       onChange={(e) => updateFormData("Contato", e.target.value)}
                       placeholder="Ex: Carlos Andrade"
                       required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nomeAtendente">Nome do Atendente</Label>
-                    <Input
-                      id="nomeAtendente"
-                      value={formData.NomeAtendente}
-                      onChange={(e) => updateFormData("NomeAtendente", e.target.value)}
-                      placeholder="Ex: Maria Silva"
                     />
                   </div>
                 </div>
@@ -269,7 +413,9 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
+                    <Label htmlFor="email">
+                      Email <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="email"
                       type="email"
@@ -279,21 +425,7 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="website"
-                        value={formData.Website}
-                        onChange={(e) => updateFormData("Website", e.target.value)}
-                        placeholder="https://www.empresa.com.br"
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
-                </div>
-
+                 
                 <div className="space-y-2">
                   <Label htmlFor="endereco">Endereço</Label>
                   <div className="relative">
@@ -307,6 +439,8 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                     />
                   </div>
                 </div>
+                </div>
+
               </CardContent>
             </Card>
           </div>
@@ -322,7 +456,9 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <div className="flex items-center gap-2">
-                    <Badge variant={fornecedor.Status === "Ativo" ? "default" : "secondary"}>{fornecedor.Status}</Badge>
+                    <Badge variant={(fornecedor.status || fornecedor.Status) === "Ativo" ? "default" : "secondary"}>
+                      {fornecedor.status || fornecedor.Status}
+                    </Badge>
                     <span className="text-sm text-muted-foreground">(Use as ações da lista para alterar)</span>
                   </div>
                 </div>
@@ -353,7 +489,7 @@ export default function EditarFornecedorPage({ params }: { params: { id: string 
 
                 <div className="text-sm text-muted-foreground space-y-1">
                   <p>Orçamentos: {fornecedor.orcamentosCount}</p>
-                  <p>ID: {fornecedor.ID}</p>
+                  <p>ID: {fornecedor.id || fornecedor.ID}</p>
                 </div>
               </CardContent>
             </Card>

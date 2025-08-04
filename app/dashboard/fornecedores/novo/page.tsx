@@ -197,19 +197,6 @@ export default function NovoFornecedorPage() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nomeAtendente">Nome do Atendente</Label>
-                    <div className="relative">
-                      <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="nomeAtendente"
-                        value={formData.NomeAtendente}
-                        onChange={(e) => updateFormData("NomeAtendente", e.target.value)}
-                        placeholder="Ex: Maria Silva"
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -243,21 +230,7 @@ export default function NovoFornecedorPage() {
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="website"
-                        value={formData.Website}
-                        onChange={(e) => updateFormData("Website", e.target.value)}
-                        placeholder="https://www.empresa.com.br"
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
-                </div>
-
+                  
                 <div className="space-y-2">
                   <Label htmlFor="endereco">Endereço</Label>
                   <div className="relative">
@@ -271,6 +244,8 @@ export default function NovoFornecedorPage() {
                     />
                   </div>
                 </div>
+                </div>
+
               </CardContent>
             </Card>
           </div>

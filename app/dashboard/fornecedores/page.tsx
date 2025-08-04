@@ -1,7 +1,7 @@
 import { getFornecedores } from "@/app/actions/fornecedor"
 import { getJWTToken } from "@/app/actions/common"
 import { redirect } from "next/navigation"
-import { FornecedoresPageClient } from "@/app/dashboard/fornecedores/components/fornecedores-page-client"
+import { FornecedoresPageClient } from "./FornecedoresPageClient"
 
 export default async function FornecedoresPage() {
   // Verificar autenticação no Server Component
@@ -24,6 +24,8 @@ export default async function FornecedoresPage() {
       </div>
     )
   }
+
+  console.log("Fornecedores fetched successfully:", fornecedoresResult)
 
   return <FornecedoresPageClient initialFornecedores={fornecedoresResult} />
 }

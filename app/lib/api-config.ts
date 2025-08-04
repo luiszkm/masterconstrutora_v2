@@ -3,7 +3,7 @@
  */
 
 // URL base da API
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
 // Tempo padrão de cache (em segundos)
 export const DEFAULT_CACHE_TIME = 60 // 1 minuto

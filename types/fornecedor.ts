@@ -1,31 +1,55 @@
-// Tipo baseado no retorno real da API
+// Tipo baseado no retorno real da API atualizada
 export type Fornecedor = {
-  ID: string
-  Nome: string
-  CNPJ: string
-  Categorias: {
+  // Estrutura nova (minúscula)
+  id?: string
+  nome?: string
+  cnpj?: string
+  contato?: string
+  email?: string
+  status?: "Ativo" | "Inativo"
+  endereco?: string | null
+  website?: string | null
+  nomeAtendente?: string | null
+  avaliacao?: number | null
+  observacoes?: string | null
+
+  // Estrutura antiga (maiúscula) - para compatibilidade
+  ID?: string
+  Nome?: string
+  CNPJ?: string
+  Contato?: string
+  Email?: string
+  Status?: "Ativo" | "Inativo"
+  Endereco?: string | null
+  Website?: string | null
+  NomeAtendente?: string | null
+  Avaliacao?: number | null
+  Observacoes?: string | null
+
+  // Categorias (ambas as estruturas)
+  categorias?: {
     ID: string
     Nome: string
     createdAt: string
     updatedAt: string
   }[]
-  Contato: string
-  Email: string
-  Status: "Ativo" | "Inativo"
-  Website: string | null
-  Endereco: string | null
-  NomeAtendente: string | null
-  Avaliacao: number | null
-  Observacoes: string | null
+  Categorias?: {
+    ID: string
+    Nome: string
+    createdAt: string
+    updatedAt: string
+  }[]
+
   orcamentosCount: number
 }
 
+// Tipo para a API de orçamentos (estrutura real da API)
 export type FornecedorOrcamento = {
   id: string
   nome: string
   cnpj: string
-  contato: string
-  email: string
+  contato?: string
+  email?: string
   status: "Ativo" | "Inativo"
   endereco: string | null
   avaliacao: number | null
@@ -38,6 +62,7 @@ export type FornecedorOrcamento = {
   }[]
   orcamentosCount: number
 }
+
 export type CreateFornecedor = {
   Nome: string
   Contato: string

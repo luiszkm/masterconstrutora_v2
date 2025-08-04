@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -15,8 +15,6 @@ import {
   BarChart3,
   PieChart,
   LineChart,
-  ArrowUpRight,
-  ArrowDownRight,
   Filter,
   Download,
   Star,
@@ -27,237 +25,56 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DateRangePicker } from "@/components/date-range-picker"
 import type { DateRange } from "react-day-picker"
 import { ptBR } from "date-fns/locale"
-import { subMonths, startOfMonth, endOfMonth } from "date-fns"
+import { subMonths, startOfMonth, endOfMonth, format } from "date-fns"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useMobile } from "@/hooks/use-mobile"
+import { toast } from "@/hooks/use-toast"
 
-// Dados de exemplo para o dashboard
-const dadosFinanceiros = {
-  receitas: {
-    atual: 1250000,
-    anterior: 980000,
-    variacao: 27.55,
-  },
-  despesas: {
-    atual: 875000,
-    anterior: 720000,
-    variacao: 21.53,
-  },
-  lucro: {
-    atual: 375000,
-    anterior: 260000,
-    variacao: 44.23,
-  },
-  fluxoCaixa: [
-    { mes: "Jan", receitas: 780000, despesas: 650000 },
-    { mes: "Fev", receitas: 820000, despesas: 680000 },
-    { mes: "Mar", receitas: 900000, despesas: 720000 },
-    { mes: "Abr", receitas: 950000, despesas: 750000 },
-    { mes: "Mai", receitas: 980000, despesas: 720000 },
-    { mes: "Jun", receitas: 1050000, despesas: 780000 },
-    { mes: "Jul", receitas: 1100000, despesas: 820000 },
-    { mes: "Ago", receitas: 1150000, despesas: 850000 },
-    { mes: "Set", receitas: 1200000, despesas: 870000 },
-    { mes: "Out", receitas: 1250000, despesas: 875000 },
-    { mes: "Nov", receitas: 0, despesas: 0 },
-    { mes: "Dez", receitas: 0, despesas: 0 },
-  ],
-  distribuicaoDespesas: [
-    { categoria: "Materiais", valor: 420000, porcentagem: 48 },
-    { categoria: "Mão de obra", valor: 280000, porcentagem: 32 },
-    { categoria: "Administrativo", valor: 87500, porcentagem: 10 },
-    { categoria: "Equipamentos", valor: 52500, porcentagem: 6 },
-    { categoria: "Outros", valor: 35000, porcentagem: 4 },
-  ],
-  orcamentos: {
-    total: 18,
-    aprovados: 12,
-    pendentes: 4,
-    rejeitados: 2,
-  },
-  pagamentos: {
-    emDia: 92,
-    atrasados: 8,
-  },
-}
+// Importar as actions e tipos
+import {
+  getDashboardCompletoAction,
+  getDashboardFinanceiroAction,
+  getDashboardObrasAction,
+  getDashboardFuncionariosAction,
+  getDashboardFornecedoresAction,
+} from "@/app/actions/dashboard"
+import type {
+  DashboardData,
+  FinanceiroData,
+  ObrasData,
+  FuncionariosData,
+  FornecedoresData,
+  DashboardFilters,
+} from "@/services/dashboard-service"
 
-const dadosObras = {
-  total: 8,
-  concluidas: 3,
-  emAndamento: 5,
-  atrasadas: 2,
-  obras: [
-    {
-      nome: "Mansão Alphaville",
-      progresso: 75,
-      status: "Em andamento",
-      prazo: "No prazo",
-      orcamento: "Dentro do orçamento",
-    },
-    {
-      nome: "Residência Beira-Mar",
-      progresso: 45,
-      status: "Em andamento",
-      prazo: "Atrasada",
-      orcamento: "Acima do orçamento",
-    },
-    {
-      nome: "Cobertura Duplex",
-      progresso: 90,
-      status: "Em andamento",
-      prazo: "No prazo",
-      orcamento: "Dentro do orçamento",
-    },
-    {
-      nome: "Refúgio na Serra",
-      progresso: 20,
-      status: "Em andamento",
-      prazo: "Atrasada",
-      orcamento: "Dentro do orçamento",
-    },
-    {
-      nome: "Mansão Neoclássica",
-      progresso: 60,
-      status: "Em andamento",
-      prazo: "No prazo",
-      orcamento: "Dentro do orçamento",
-    },
-    {
-      nome: "Edifício Residencial Aurora",
-      progresso: 100,
-      status: "Concluída",
-      prazo: "No prazo",
-      orcamento: "Dentro do orçamento",
-    },
-    {
-      nome: "Condomínio Jardim das Flores",
-      progresso: 100,
-      status: "Concluída",
-      prazo: "Atrasada",
-      orcamento: "Dentro do orçamento",
-    },
-    {
-      nome: "Reforma Comercial Centro",
-      progresso: 100,
-      status: "Concluída",
-      prazo: "No prazo",
-      orcamento: "Abaixo do orçamento",
-    },
-  ],
-  distribuicaoPorTipo: [
-    { tipo: "Residencial", quantidade: 5, porcentagem: 62.5 },
-    { tipo: "Comercial", quantidade: 2, porcentagem: 25 },
-    { tipo: "Reforma", quantidade: 1, porcentagem: 12.5 },
-  ],
-  tendenciaPrazos: [
-    { mes: "Mai", noPrazo: 5, atrasadas: 1 },
-    { mes: "Jun", noPrazo: 4, atrasadas: 2 },
-    { mes: "Jul", noPrazo: 5, atrasadas: 1 },
-    { mes: "Ago", noPrazo: 4, atrasadas: 2 },
-    { mes: "Set", noPrazo: 5, atrasadas: 2 },
-    { mes: "Out", noPrazo: 6, atrasadas: 2 },
-  ],
-}
-
-const dadosFuncionarios = {
-  total: 24,
-  ativos: 22,
-  afastados: 2,
-  distribuicaoPorDepartamento: [
-    { departamento: "Construção", quantidade: 14, porcentagem: 58.3 },
-    { departamento: "Projetos", quantidade: 4, porcentagem: 16.7 },
-    { departamento: "Administração", quantidade: 3, porcentagem: 12.5 },
-    { departamento: "Design", quantidade: 2, porcentagem: 8.3 },
-    { departamento: "Segurança", quantidade: 1, porcentagem: 4.2 },
-  ],
-  custoMensal: 125000,
-  produtividade: [
-    { mes: "Mai", indice: 85 },
-    { mes: "Jun", indice: 82 },
-    { mes: "Jul", indice: 88 },
-    { mes: "Ago", indice: 90 },
-    { mes: "Set", indice: 87 },
-    { mes: "Out", indice: 92 },
-  ],
-  topFuncionarios: [
-    { nome: "Maria Oliveira", cargo: "Engenheira Civil", avaliacao: 4.9, avatar: "/confident-executive.png" },
-    { nome: "João Silva", cargo: "Pedreiro", avaliacao: 4.8, avatar: "/confident-leader.png" },
-    { nome: "Ana Pereira", cargo: "Arquiteta", avaliacao: 4.7, avatar: null },
-    { nome: "Carlos Santos", cargo: "Eletricista", avaliacao: 4.5, avatar: null },
-    { nome: "Pedro Souza", cargo: "Mestre de Obras", avaliacao: 4.4, avatar: null },
-  ],
-}
-
-const dadosMateriais = {
-  total: 120,
-  emEstoque: 98,
-  baixoEstoque: 15,
-  semEstoque: 7,
-  valorTotal: 350000,
-  consumoMensal: [
-    { mes: "Mai", valor: 85000 },
-    { mes: "Jun", valor: 92000 },
-    { mes: "Jul", valor: 78000 },
-    { mes: "Ago", valor: 88000 },
-    { mes: "Set", valor: 95000 },
-    { mes: "Out", valor: 105000 },
-  ],
-  distribuicaoPorCategoria: [
-    { categoria: "Cimento e Concreto", valor: 105000, porcentagem: 30 },
-    { categoria: "Aço e Metais", valor: 87500, porcentagem: 25 },
-    { categoria: "Acabamentos", valor: 70000, porcentagem: 20 },
-    { categoria: "Elétrica", valor: 35000, porcentagem: 10 },
-    { categoria: "Hidráulica", valor: 35000, porcentagem: 10 },
-    { categoria: "Outros", valor: 17500, porcentagem: 5 },
-  ],
-  materiaisCriticos: [
-    { nome: "Cimento Portland CP II", estoque: 5, unidade: "Saco 50kg", status: "Crítico" },
-    { nome: "Vergalhão CA-50 10mm", estoque: 8, unidade: "Barra 12m", status: "Baixo" },
-    { nome: "Tijolo Cerâmico 9x19x19", estoque: 3, unidade: "Milheiro", status: "Crítico" },
-    { nome: "Mármore Carrara", estoque: 4, unidade: "m²", status: "Baixo" },
-    { nome: "Cabo Flexível 2,5mm²", estoque: 7, unidade: "Rolo 100m", status: "Baixo" },
-  ],
-}
-
-const dadosFornecedores = {
-  total: 36,
-  ativos: 28,
-  inativos: 8,
-  avaliacaoMedia: 4.2,
-  distribuicaoPorTipo: [
-    { tipo: "Materiais de Construção", quantidade: 12, porcentagem: 33.3 },
-    { tipo: "Acabamentos", quantidade: 8, porcentagem: 22.2 },
-    { tipo: "Elétrica", quantidade: 5, porcentagem: 13.9 },
-    { tipo: "Hidráulica", quantidade: 5, porcentagem: 13.9 },
-    { tipo: "Ferramentas", quantidade: 4, porcentagem: 11.1 },
-    { tipo: "Outros", quantidade: 2, porcentagem: 5.6 },
-  ],
-  topFornecedores: [
-    { nome: "Materiais Premium Ltda", tipo: "Materiais de Construção", avaliacao: 4.8, pontualidade: 95 },
-    { nome: "Mármores & Granitos SA", tipo: "Acabamentos", avaliacao: 4.7, pontualidade: 92 },
-    { nome: "Elétrica Total", tipo: "Elétrica", avaliacao: 4.6, pontualidade: 90 },
-    { nome: "Hidráulica Express", tipo: "Hidráulica", avaliacao: 4.5, pontualidade: 88 },
-    { nome: "Madeiras Nobres", tipo: "Materiais de Construção", avaliacao: 4.4, pontualidade: 85 },
-  ],
-  comparativoPrecos: [
-    { material: "Cimento Portland CP II", melhorPreco: "Materiais Premium Ltda", economiaPercentual: 12 },
-    { material: "Tijolo Cerâmico 9x19x19", melhorPreco: "Constrular Materiais", economiaPercentual: 8 },
-    { material: "Vergalhão CA-50 10mm", melhorPreco: "Aço & Ferro Distribuidor", economiaPercentual: 15 },
-    { material: "Piso Porcelanato 60x60", melhorPreco: "Mármores & Granitos SA", economiaPercentual: 10 },
-    { material: "Cabo Flexível 2,5mm²", melhorPreco: "Elétrica Total", economiaPercentual: 7 },
-  ],
-}
+// Importar componentes de loading e erro
+import { DashboardLoading } from "./components/dashboard-loading"
+import { DashboardError } from "./components/dashboard-error"
+// Adicionar import do componente de erro de autenticação
+import { AuthError } from "./components/auth-error"
 
 export default function DashboardPage() {
-  // Estado para filtros
+  // Estados para dados
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [financeiroData, setFinanceiroData] = useState<FinanceiroData | null>(null)
+  const [obrasData, setObrasData] = useState<ObrasData | null>(null)
+  const [funcionariosData, setFuncionariosData] = useState<FuncionariosData | null>(null)
+  const [fornecedoresData, setFornecedoresData] = useState<FornecedoresData | null>(null)
+
+  // Estados para controle
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("financeiro")
+
+  // Estados para filtros
   const [periodoSelecionado, setPeriodoSelecionado] = useState("mes-atual")
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -267,10 +84,155 @@ export default function DashboardPage() {
   const [filtroDepartamentos, setFiltroDepartamentos] = useState<string[]>([])
   const [filtroCategorias, setFiltroCategorias] = useState<string[]>([])
   const [filtroFornecedores, setFiltroFornecedores] = useState<string[]>([])
-  const [activeTab, setActiveTab] = useState("financeiro")
 
   // Verificar se é dispositivo móvel
   const isMobile = useMobile()
+
+  // Função para construir filtros
+  const buildFilters = useCallback((): DashboardFilters => {
+    const filters: DashboardFilters = {}
+
+    if (dateRange?.from) {
+      filters.dataInicio = format(dateRange.from, "yyyy-MM-dd")
+    }
+    if (dateRange?.to) {
+      filters.dataFim = format(dateRange.to, "yyyy-MM-dd")
+    }
+    if (filtroObras.length > 0) {
+      filters.obraIds = filtroObras
+    }
+    if (filtroFornecedores.length > 0) {
+      filters.fornecedorIds = filtroFornecedores
+    }
+
+    return filters
+  }, [dateRange, filtroObras, filtroFornecedores])
+
+  // Função para carregar dados do dashboard completo
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const filters = buildFilters()
+      const result = await getDashboardCompletoAction(filters)
+
+      if (result.error) {
+        // Verificar se é erro de autenticação
+        if (result.error.includes("Token de autenticação") || result.error.includes("não encontrado")) {
+          setError("AUTH_ERROR")
+        } else {
+          setError(result.error)
+        }
+        toast({
+          title: "Erro ao carregar dashboard",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else if (result.data) {
+        console.log("Dashboard data received:", result.data) // Debug log
+        setDashboardData(result.data)
+        // Extrair dados específicos para cada seção com verificação de null safety
+        setFinanceiroData(result.data.financeiro || null)
+        setObrasData(result.data.obras || null)
+        setFuncionariosData(result.data.funcionarios || null)
+        setFornecedoresData(result.data.fornecedores || null)
+      } else {
+        setError("Nenhum dado foi retornado do servidor")
+      }
+    } catch (err) {
+      console.error("Dashboard error:", err) // Debug log
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido"
+      if (errorMessage.includes("Token de autenticação")) {
+        setError("AUTH_ERROR")
+      } else {
+        setError(errorMessage)
+      }
+      toast({
+        title: "Erro inesperado",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [buildFilters])
+
+  // Função para carregar dados específicos de uma seção
+  const loadSectionData = useCallback(
+    async (section: string) => {
+      try {
+        const filters = buildFilters()
+
+        switch (section) {
+          case "financeiro":
+            const financeiroResult = await getDashboardFinanceiroAction(filters)
+            if (financeiroResult.error) {
+              toast({
+                title: "Erro ao carregar dados financeiros",
+                description: financeiroResult.error,
+                variant: "destructive",
+              })
+            } else if (financeiroResult.data) {
+              setFinanceiroData(financeiroResult.data)
+            }
+            break
+
+          case "obras":
+            const obrasResult = await getDashboardObrasAction(filters)
+            if (obrasResult.error) {
+              toast({
+                title: "Erro ao carregar dados de obras",
+                description: obrasResult.error,
+                variant: "destructive",
+              })
+            } else if (obrasResult.data) {
+              setObrasData(obrasResult.data)
+            }
+            break
+
+          case "funcionarios":
+            const funcionariosResult = await getDashboardFuncionariosAction(filters)
+            if (funcionariosResult.error) {
+              toast({
+                title: "Erro ao carregar dados de funcionários",
+                description: funcionariosResult.error,
+                variant: "destructive",
+              })
+            } else if (funcionariosResult.data) {
+              setFuncionariosData(funcionariosResult.data)
+            }
+            break
+
+          case "fornecedores":
+            const fornecedoresResult = await getDashboardFornecedoresAction(filters)
+            if (fornecedoresResult.error) {
+              toast({
+                title: "Erro ao carregar dados de fornecedores",
+                description: fornecedoresResult.error,
+                variant: "destructive",
+              })
+            } else if (fornecedoresResult.data) {
+              setFornecedoresData(fornecedoresResult.data)
+            }
+            break
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Erro desconhecido"
+        toast({
+          title: "Erro inesperado",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    },
+    [buildFilters],
+  )
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
 
   // Função para alternar filtro de obras
   const toggleFiltroObra = (obra: string) => {
@@ -355,6 +317,30 @@ export default function DashboardPage() {
     }
   }
 
+  // Função para aplicar filtros
+  const aplicarFiltros = () => {
+    loadDashboardData()
+  }
+
+  // Função para exportar dados
+  const exportarDados = () => {
+    if (!dashboardData) return
+
+    const dataStr = JSON.stringify(dashboardData, null, 2)
+    const dataBlob = new Blob([dataStr], { type: "application/json" })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `dashboard-${format(new Date(), "yyyy-MM-dd")}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+
+    toast({
+      title: "Dados exportados",
+      description: "Os dados do dashboard foram exportados com sucesso.",
+    })
+  }
+
   // Componente de filtros para desktop e mobile
   const FiltrosComponent = () => (
     <div className="space-y-4">
@@ -390,31 +376,36 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="space-y-2">
-        <h5 className="text-sm font-medium">Obras</h5>
-        <div className="max-h-32 overflow-y-auto space-y-2">
-          {dadosObras.obras.map((obra) => (
-            <div key={obra.nome} className="flex items-center space-x-2">
-              <Checkbox
-                id={`obra-${obra.nome}`}
-                checked={filtroObras.includes(obra.nome)}
-                onCheckedChange={() => toggleFiltroObra(obra.nome)}
-              />
-              <Label
-                htmlFor={`obra-${obra.nome}`}
-                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {obra.nome}
-              </Label>
-            </div>
-          ))}
+      {obrasData && obrasData.progresso?.progressoPorObra && (
+        <div className="space-y-2">
+          <h5 className="text-sm font-medium">Obras</h5>
+          <div className="max-h-32 overflow-y-auto space-y-2">
+            {obrasData.progresso.progressoPorObra.map((obra) => (
+              <div key={obra.obraId} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`obra-${obra.obraId}`}
+                  checked={filtroObras.includes(obra.obraId)}
+                  onCheckedChange={() => toggleFiltroObra(obra.obraId)}
+                />
+                <Label
+                  htmlFor={`obra-${obra.obraId}`}
+                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {obra.nomeObra}
+                </Label>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
       <div className="flex justify-between">
         <Button variant="outline" size="sm" onClick={limparFiltros}>
           Limpar Filtros
         </Button>
-        <Button size="sm">Aplicar Filtros</Button>
+        <Button size="sm" onClick={aplicarFiltros}>
+          Aplicar Filtros
+        </Button>
       </div>
     </div>
   )
@@ -444,6 +435,26 @@ export default function DashboardPage() {
     </div>
   )
 
+  // Mostrar loading
+  if (loading) {
+    return <DashboardLoading />
+  }
+
+  // Mostrar erro de autenticação
+  if (error === "AUTH_ERROR") {
+    return <AuthError error="Token de autenticação não encontrado ou expirado" onRetry={loadDashboardData} />
+  }
+
+  // Mostrar outros erros
+  if (error) {
+    return <DashboardError error={error} onRetry={loadDashboardData} />
+  }
+
+  // Verificar se temos dados
+  if (!dashboardData) {
+    return <DashboardError error="Nenhum dado encontrado" onRetry={loadDashboardData} />
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -453,7 +464,7 @@ export default function DashboardPage() {
           {!isMobile && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="flex items-center gap-2">
+                <Button variant="outline" className="flex items-center gap-2 bg-transparent">
                   <Filter className="h-4 w-4" />
                   Filtros
                 </Button>
@@ -483,14 +494,11 @@ export default function DashboardPage() {
 
           {/* Botão de exportar */}
           {!isMobile && (
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" className="flex items-center gap-2 bg-transparent" onClick={exportarDados}>
               <Download className="h-4 w-4" />
               Exportar
             </Button>
           )}
-
-          {/* Botão de tema para desktop */}
-          {/* {!isMobile && <ThemeToggle />} */}
 
           {/* Menu para mobile */}
           {isMobile && (
@@ -505,15 +513,25 @@ export default function DashboardPage() {
                 <div className="py-4">
                   <h3 className="text-lg font-medium mb-4">Menu</h3>
                   <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start" size="sm">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-transparent"
+                      size="sm"
+                      onClick={exportarDados}
+                    >
                       <Download className="h-4 w-4 mr-2" />
                       Exportar Dados
                     </Button>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-transparent"
+                      size="sm"
+                      onClick={loadDashboardData}
+                    >
                       <BarChart3 className="h-4 w-4 mr-2" />
-                      Relatórios
+                      Atualizar
                     </Button>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
+                    <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
                       <Clock className="h-4 w-4 mr-2" />
                       Histórico
                     </Button>
@@ -529,26 +547,20 @@ export default function DashboardPage() {
       <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faturamento</CardTitle>
+            <CardTitle className="text-sm font-medium">Saldo Financeiro</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold">
               R${" "}
               {isMobile
-                ? (dadosFinanceiros.receitas.atual / 1000).toFixed(0) + "K"
-                : dadosFinanceiros.receitas.atual.toLocaleString("pt-BR")}
+                ? ((dashboardData.resumoGeral?.saldoFinanceiroAtual || 0) / 1000).toFixed(0) + "K"
+                : (dashboardData.resumoGeral?.saldoFinanceiroAtual || 0).toLocaleString("pt-BR")}
             </div>
             <div className="flex items-center pt-1">
-              {dadosFinanceiros.receitas.variacao > 0 ? (
-                <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
-              ) : (
-                <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
-              )}
-              <span className={dadosFinanceiros.receitas.variacao > 0 ? "text-green-500" : "text-red-500"}>
-                {dadosFinanceiros.receitas.variacao.toFixed(1)}%
+              <span className="text-xs text-muted-foreground">
+                Total investido: R$ {(dashboardData.resumoGeral?.totalInvestido || 0).toLocaleString("pt-BR")}
               </span>
-              <span className="text-xs text-muted-foreground ml-1">vs. mês anterior</span>
             </div>
           </CardContent>
         </Card>
@@ -559,10 +571,11 @@ export default function DashboardPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold">{dadosObras.emAndamento}</div>
+            <div className="text-xl md:text-2xl font-bold">{dashboardData.resumoGeral?.obrasEmAndamento || 0}</div>
             <div className="flex items-center pt-1">
               <span className="text-xs text-muted-foreground">
-                {dadosObras.atrasadas} com atraso ({Math.round((dadosObras.atrasadas / dadosObras.emAndamento) * 100)}%)
+                {dashboardData.resumoGeral?.obrasEmAtraso || 0} com atraso (
+                {(dashboardData.resumoGeral?.percentualAtraso || 0).toFixed(1)}%)
               </span>
             </div>
           </CardContent>
@@ -574,10 +587,10 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold">{dadosFuncionarios.total}</div>
+            <div className="text-xl md:text-2xl font-bold">{dashboardData.resumoGeral?.totalFuncionarios || 0}</div>
             <div className="flex items-center pt-1">
               <span className="text-xs text-muted-foreground">
-                Produtividade: {dadosFuncionarios.produtividade[dadosFuncionarios.produtividade.length - 1].indice}%
+                {dashboardData.resumoGeral?.funcionariosAtivos || 0} ativos
               </span>
             </div>
           </CardContent>
@@ -585,21 +598,96 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Materiais Críticos</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Progresso Médio</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold">
-              {dadosMateriais.baixoEstoque + dadosMateriais.semEstoque}
+              {(dashboardData.resumoGeral?.progressoMedioObras || 0).toFixed(1)}%
             </div>
             <div className="flex items-center pt-1">
-              <span className="text-xs text-muted-foreground">
-                {dadosMateriais.semEstoque} sem estoque, {dadosMateriais.baixoEstoque} baixo estoque
-              </span>
+              <Progress value={dashboardData.resumoGeral?.progressoMedioObras || 0} className="h-2 w-16 mr-2" />
+              <span className="text-xs text-muted-foreground">das obras</span>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Alertas */}
+      {(dashboardData.alertas?.obrasComAtraso?.length > 0 ||
+        dashboardData.alertas?.fornecedoresInativos?.length > 0 ||
+        dashboardData.alertas?.funcionariosSemApontamento?.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Alertas
+            </CardTitle>
+            <CardDescription>Itens que requerem atenção</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              {dashboardData.alertas?.obrasComAtraso?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Obras com Atraso</h4>
+                  <div className="space-y-1">
+                    {dashboardData.alertas.obrasComAtraso.map((obra) => (
+                      <Badge key={obra} variant="destructive" className="text-xs">
+                        {obra}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {dashboardData.alertas?.fornecedoresInativos?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Fornecedores Inativos</h4>
+                  <div className="space-y-1">
+                    {dashboardData.alertas.fornecedoresInativos.map((fornecedor) => (
+                      <Badge key={fornecedor} variant="secondary" className="text-xs">
+                        {fornecedor}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {dashboardData.alertas?.funcionariosSemApontamento?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Funcionários sem Apontamento</h4>
+                  <div className="space-y-1">
+                    {dashboardData.alertas.funcionariosSemApontamento.map((funcionario) => (
+                      <Badge key={funcionario} variant="outline" className="text-xs">
+                        {funcionario}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {((dashboardData.alertas?.orcamentosPendentes || 0) > 0 || (dashboardData.alertas?.pagamentosPendentes || 0) > 0) && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center gap-4">
+                  {(dashboardData.alertas?.orcamentosPendentes || 0) > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">{dashboardData.alertas.orcamentosPendentes} orçamentos pendentes</span>
+                    </div>
+                  )}
+                  {(dashboardData.alertas?.pagamentosPendentes || 0) > 0 && (
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <span className="text-sm">{dashboardData.alertas.pagamentosPendentes} pagamentos pendentes</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs para categorias de análise */}
       {isMobile ? (
@@ -612,19 +700,20 @@ export default function DashboardPage() {
               <SelectItem value="financeiro">Financeiro</SelectItem>
               <SelectItem value="obras">Obras</SelectItem>
               <SelectItem value="funcionarios">Funcionários</SelectItem>
-              <SelectItem value="materiais">Materiais</SelectItem>
               <SelectItem value="fornecedores">Fornecedores</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Conteúdo das tabs para mobile */}
-          {activeTab === "financeiro" && (
+          {activeTab === "financeiro" && financeiroData && (
             <div className="space-y-4">
               {/* Fluxo de Caixa */}
               <Card>
                 <CardHeader>
                   <CardTitle>Fluxo de Caixa</CardTitle>
-                  <CardDescription>Receitas vs. Despesas</CardDescription>
+                  <CardDescription>
+                    Saldo atual: R$ {financeiroData.fluxoCaixa.saldoAtual.toLocaleString("pt-BR")}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartPlaceholder
@@ -632,6 +721,20 @@ export default function DashboardPage() {
                     text="Gráfico de Fluxo de Caixa"
                     height="200px"
                   />
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        R$ {financeiroData.fluxoCaixa.totalEntradas.toLocaleString("pt-BR")}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Entradas</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">
+                        R$ {financeiroData.fluxoCaixa.totalSaidas.toLocaleString("pt-BR")}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Saídas</div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -639,7 +742,9 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Distribuição de Despesas</CardTitle>
-                  <CardDescription>Categorias principais</CardDescription>
+                  <CardDescription>
+                    Total: R$ {financeiroData.distribuicaoDespesas.totalGasto.toLocaleString("pt-BR")}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartPlaceholder
@@ -647,216 +752,62 @@ export default function DashboardPage() {
                     text="Gráfico de Distribuição"
                     height="200px"
                   />
-                </CardContent>
-              </Card>
-
-              {/* Resumo Financeiro */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resumo Financeiro</CardTitle>
-                  <CardDescription>Comparativo com período anterior</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Receitas</span>
-                        <span className="text-sm font-medium">
-                          R$ {dadosFinanceiros.receitas.atual.toLocaleString("pt-BR")}
+                  <div className="mt-4 space-y-2">
+                    {financeiroData.distribuicaoDespesas?.distribuicao?.map((item) => (
+                      <div key={item.categoria} className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
+                          <span className="text-sm">{item.categoria}</span>
+                        </div>
+                        <span className="text-sm">
+                          R$ {item.valor.toLocaleString("pt-BR")} ({item.percentual.toFixed(1)}%)
                         </span>
                       </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span>vs. R$ {dadosFinanceiros.receitas.anterior.toLocaleString("pt-BR")}</span>
-                        <span className="ml-auto flex items-center">
-                          {dadosFinanceiros.receitas.variacao > 0 ? (
-                            <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-                          ) : (
-                            <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-                          )}
-                          <span className={dadosFinanceiros.receitas.variacao > 0 ? "text-green-500" : "text-red-500"}>
-                            {dadosFinanceiros.receitas.variacao.toFixed(1)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Despesas</span>
-                        <span className="text-sm font-medium">
-                          R$ {dadosFinanceiros.despesas.atual.toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span>vs. R$ {dadosFinanceiros.despesas.anterior.toLocaleString("pt-BR")}</span>
-                        <span className="ml-auto flex items-center">
-                          {dadosFinanceiros.despesas.variacao > 0 ? (
-                            <ArrowUpRight className="mr-1 h-3 w-3 text-red-500" />
-                          ) : (
-                            <ArrowDownRight className="mr-1 h-3 w-3 text-green-500" />
-                          )}
-                          <span className={dadosFinanceiros.despesas.variacao > 0 ? "text-red-500" : "text-green-500"}>
-                            {dadosFinanceiros.despesas.variacao.toFixed(1)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Lucro</span>
-                        <span className="text-sm font-medium">
-                          R$ {dadosFinanceiros.lucro.atual.toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span>vs. R$ {dadosFinanceiros.lucro.anterior.toLocaleString("pt-BR")}</span>
-                        <span className="ml-auto flex items-center">
-                          {dadosFinanceiros.lucro.variacao > 0 ? (
-                            <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-                          ) : (
-                            <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-                          )}
-                          <span className={dadosFinanceiros.lucro.variacao > 0 ? "text-green-500" : "text-red-500"}>
-                            {dadosFinanceiros.lucro.variacao.toFixed(1)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Status de Orçamentos */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Status de Orçamentos</CardTitle>
-                  <CardDescription>Visão geral dos orçamentos</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Total</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.total}</span>
-                      </div>
-                      <Progress value={100} className="h-2" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Aprovados</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.aprovados}</span>
-                      </div>
-                      <Progress
-                        value={(dadosFinanceiros.orcamentos.aprovados / dadosFinanceiros.orcamentos.total) * 100}
-                        className="h-2 bg-muted"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Pendentes</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.pendentes}</span>
-                      </div>
-                      <Progress
-                        value={(dadosFinanceiros.orcamentos.pendentes / dadosFinanceiros.orcamentos.total) * 100}
-                        className="h-2 bg-muted"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Rejeitados</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.rejeitados}</span>
-                      </div>
-                      <Progress
-                        value={(dadosFinanceiros.orcamentos.rejeitados / dadosFinanceiros.orcamentos.total) * 100}
-                        className="h-2 bg-muted"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Detalhamento de Despesas */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Detalhamento de Despesas</CardTitle>
-                  <CardDescription>Principais categorias de despesas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Categoria</TableHead>
-                          <TableHead>Valor (R$)</TableHead>
-                          <TableHead>%</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosFinanceiros.distribuicaoDespesas.map((item) => (
-                          <TableRow key={item.categoria}>
-                            <TableCell className="font-medium">{item.categoria}</TableCell>
-                            <TableCell>{item.valor.toLocaleString("pt-BR")}</TableCell>
-                            <TableCell>{item.porcentagem}%</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          {activeTab === "obras" && (
+          {activeTab === "obras" && obrasData && (
             <div className="space-y-4">
               {/* Progresso das Obras */}
               <Card>
                 <CardHeader>
                   <CardTitle>Progresso das Obras</CardTitle>
-                  <CardDescription>Status atual das obras em andamento</CardDescription>
+                  <CardDescription>{obrasData.progresso.obrasEmAndamento} obras em andamento</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {dadosObras.obras
-                      .filter((obra) => obra.status === "Em andamento")
-                      .map((obra) => (
-                        <div key={obra.nome} className="space-y-2">
+                    {obrasData.progresso?.progressoPorObra
+                      ?.filter((obra) => obra.status === "Em Andamento")
+                      ?.slice(0, 5)
+                      ?.map((obra) => (
+                        <div key={obra.obraId} className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="font-medium">{obra.nome}</span>
+                              <span className="font-medium">{obra.nomeObra}</span>
                               <div className="flex flex-wrap items-center gap-2 mt-1">
-                                <Badge
-                                  variant={obra.prazo === "No prazo" ? "default" : "destructive"}
-                                  className="text-xs"
-                                >
-                                  {obra.prazo}
-                                </Badge>
-                                <Badge
-                                  variant={obra.orcamento === "Dentro do orçamento" ? "outline" : "secondary"}
-                                  className="text-xs"
-                                >
-                                  {obra.orcamento}
+                                <Badge variant="outline" className="text-xs">
+                                  {obra.etapasConcluidas}/{obra.etapasTotal} etapas
                                 </Badge>
                               </div>
                             </div>
-                            <span className="text-sm font-medium">{obra.progresso}%</span>
+                            <span className="text-sm font-medium">{obra.percentualConcluido}%</span>
                           </div>
-                          <Progress value={obra.progresso} className="h-2" />
+                          <Progress value={obra.percentualConcluido} className="h-2" />
                         </div>
                       ))}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Distribuição por Tipo */}
+              {/* Distribuição por Status */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Distribuição por Tipo</CardTitle>
-                  <CardDescription>Obras por categoria</CardDescription>
+                  <CardTitle>Distribuição por Status</CardTitle>
+                  <CardDescription>Total de {obrasData.distribuicao.totalObras} obras</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartPlaceholder
@@ -865,120 +816,25 @@ export default function DashboardPage() {
                     height="200px"
                   />
                   <div className="mt-4 space-y-2">
-                    {dadosObras.distribuicaoPorTipo.map((tipo) => (
-                      <div key={tipo.tipo} className="flex items-center justify-between">
+                    {obrasData.distribuicao?.distribuicaoPorStatus?.map((status) => (
+                      <div key={status.status} className="flex items-center justify-between">
                         <div className="flex items-center">
                           <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{tipo.tipo}</span>
+                          <span className="text-sm">{status.status}</span>
                         </div>
                         <span className="text-sm">
-                          {tipo.quantidade} ({tipo.porcentagem}%)
+                          {status.quantidade} ({status.percentual.toFixed(1)}%)
                         </span>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Obras Concluídas */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Obras Concluídas</CardTitle>
-                  <CardDescription>Histórico de obras finalizadas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Obra</TableHead>
-                          <TableHead>Prazo</TableHead>
-                          <TableHead>Orçamento</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosObras.obras
-                          .filter((obra) => obra.status === "Concluída")
-                          .map((obra) => (
-                            <TableRow key={obra.nome}>
-                              <TableCell className="font-medium">{obra.nome}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={obra.prazo === "No prazo" ? "default" : "destructive"}
-                                  className="text-xs"
-                                >
-                                  {obra.prazo}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={
-                                    obra.orcamento === "Dentro do orçamento"
-                                      ? "outline"
-                                      : obra.orcamento === "Abaixo do orçamento"
-                                        ? "default"
-                                        : "secondary"
-                                  }
-                                  className="text-xs"
-                                >
-                                  {obra.orcamento}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          {activeTab === "funcionarios" && (
+          {activeTab === "funcionarios" && funcionariosData && (
             <div className="space-y-4">
-              {/* Produtividade */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Produtividade</CardTitle>
-                  <CardDescription>Índice de produtividade mensal</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Produtividade"
-                    height="200px"
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Distribuição por Departamento */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Distribuição por Departamento</CardTitle>
-                  <CardDescription>Funcionários por área</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                    height="200px"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {dadosFuncionarios.distribuicaoPorDepartamento.map((dept) => (
-                      <div key={dept.departamento} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{dept.departamento}</span>
-                        </div>
-                        <span className="text-sm">
-                          {dept.quantidade} ({dept.porcentagem}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Top Funcionários */}
               <Card>
                 <CardHeader>
@@ -987,37 +843,33 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {dadosFuncionarios.topFuncionarios.map((funcionario, index) => (
-                      <div key={funcionario.nome} className="flex items-center justify-between">
+                    {funcionariosData.topFuncionarios?.top5Funcionarios?.map((funcionario, index) => (
+                      <div key={funcionario.funcionarioId} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
                             {index + 1}
                           </div>
                           <Avatar className="h-10 w-10">
-                            {funcionario.avatar ? (
-                              <AvatarImage src={funcionario.avatar || "/placeholder.svg"} alt={funcionario.nome} />
-                            ) : (
-                              <AvatarFallback>
-                                {funcionario.nome
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .substring(0, 2)}
-                              </AvatarFallback>
-                            )}
+                            <AvatarFallback>
+                              {funcionario.nomeFuncionario
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .substring(0, 2)}
+                            </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-medium">{funcionario.nome}</p>
+                            <p className="text-sm font-medium">{funcionario.nomeFuncionario}</p>
                             <p className="text-xs text-muted-foreground">{funcionario.cargo}</p>
                           </div>
                         </div>
                         <div className="flex items-center">
-                          <span className="text-sm font-medium mr-2">{funcionario.avaliacao}</span>
+                          <span className="text-sm font-medium mr-2">{funcionario.notaAvaliacao}</span>
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
-                                className={`h-4 w-4 ${i < Math.floor(funcionario.avaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
+                                className={`h-4 w-4 ${i < Math.floor(funcionario.notaAvaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
                               />
                             ))}
                           </div>
@@ -1027,23 +879,73 @@ export default function DashboardPage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          )}
 
-          {activeTab === "materiais" && (
-            <div className="space-y-4">
-              {/* Consumo Mensal */}
+              {/* Produtividade */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Consumo Mensal</CardTitle>
-                  <CardDescription>Valor de materiais consumidos por mês</CardDescription>
+                  <CardTitle>Produtividade</CardTitle>
+                  <CardDescription>
+                    Média geral: {funcionariosData.produtividade.mediaGeralProdutividade.toFixed(1)}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartPlaceholder
-                    icon={<BarChart3 className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Consumo"
+                    icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
+                    text="Gráfico de Produtividade"
                     height="200px"
                   />
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{funcionariosData.produtividade.totalFuncionarios}</div>
+                      <div className="text-sm text-muted-foreground">Total</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{funcionariosData.produtividade.funcionariosAtivos}</div>
+                      <div className="text-sm text-muted-foreground">Ativos</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === "fornecedores" && fornecedoresData && (
+            <div className="space-y-4">
+              {/* Top Fornecedores */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Fornecedores</CardTitle>
+                  <CardDescription>
+                    Avaliação média: {fornecedoresData.topFornecedores.avaliacaoMedia.toFixed(1)}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {fornecedoresData.topFornecedores?.top5Fornecedores?.map((fornecedor, index) => (
+                      <div key={fornecedor.fornecedorId} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{fornecedor.nomeFornecedor}</p>
+                            <p className="text-xs text-muted-foreground">{fornecedor.cnpj}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium mr-2">{fornecedor.avaliacao}</span>
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${i < Math.floor(fornecedor.avaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1051,7 +953,9 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Distribuição por Categoria</CardTitle>
-                  <CardDescription>Valor em estoque por categoria</CardDescription>
+                  <CardDescription>
+                    {fornecedoresData.fornecedoresPorCategoria.totalFornecedores} fornecedores
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartPlaceholder
@@ -1060,1185 +964,647 @@ export default function DashboardPage() {
                     height="200px"
                   />
                   <div className="mt-4 space-y-2">
-                    {dadosMateriais.distribuicaoPorCategoria.map((cat) => (
-                      <div key={cat.categoria} className="flex items-center justify-between">
+                    {fornecedoresData.fornecedoresPorCategoria?.distribuicaoPorCategoria?.map((categoria) => (
+                      <div key={categoria.categoriaId} className="flex items-center justify-between">
                         <div className="flex items-center">
                           <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{cat.categoria}</span>
+                          <span className="text-sm">{categoria.categoriaNome}</span>
                         </div>
                         <span className="text-sm">
-                          R$ {cat.valor.toLocaleString("pt-BR")} ({cat.porcentagem}%)
+                          {categoria.quantidadeFornecedores} ({categoria.percentual.toFixed(1)}%)
                         </span>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Materiais Críticos */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Materiais Críticos</CardTitle>
-                  <CardDescription>Itens com estoque baixo ou crítico</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Material</TableHead>
-                          <TableHead>Estoque</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosMateriais.materiaisCriticos.map((material) => (
-                          <TableRow key={material.nome}>
-                            <TableCell className="font-medium">{material.nome}</TableCell>
-                            <TableCell>
-                              {material.estoque} {material.unidade}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={material.status === "Crítico" ? "destructive" : "secondary"}>
-                                {material.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {activeTab === "fornecedores" && (
-            <div className="space-y-4">
-              {/* Avaliação de Fornecedores */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Avaliação de Fornecedores</CardTitle>
-                  <CardDescription>Pontuação média por fornecedor</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<BarChart3 className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Avaliação"
-                    height="200px"
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Distribuição por Tipo */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Distribuição por Tipo</CardTitle>
-                  <CardDescription>Fornecedores por categoria</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                    height="200px"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {dadosFornecedores.distribuicaoPorTipo.map((tipo) => (
-                      <div key={tipo.tipo} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{tipo.tipo}</span>
-                        </div>
-                        <span className="text-sm">
-                          {tipo.quantidade} ({tipo.porcentagem}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Top Fornecedores */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top Fornecedores</CardTitle>
-                  <CardDescription>Melhores avaliações e pontualidade</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fornecedor</TableHead>
-                          <TableHead>Avaliação</TableHead>
-                          <TableHead>Pontualidade</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosFornecedores.topFornecedores.map((fornecedor) => (
-                          <TableRow key={fornecedor.nome}>
-                            <TableCell className="font-medium">{fornecedor.nome}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <span className="text-sm font-medium mr-2">{fornecedor.avaliacao}</span>
-                                <div className="flex">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className={`h-4 w-4 ${i < Math.floor(fornecedor.avaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Progress value={fornecedor.pontualidade} className="h-2 w-16" />
-                                <span className="text-sm">{fornecedor.pontualidade}%</span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
                 </CardContent>
               </Card>
             </div>
           )}
         </div>
       ) : (
-        <Tabs defaultValue="financeiro" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
             <TabsTrigger value="obras">Obras</TabsTrigger>
             <TabsTrigger value="funcionarios">Funcionários</TabsTrigger>
-            <TabsTrigger value="materiais">Materiais</TabsTrigger>
             <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
           </TabsList>
 
           {/* Análise Financeira */}
           <TabsContent value="financeiro" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Fluxo de Caixa</CardTitle>
-                  <CardDescription>Receitas vs. Despesas (últimos 12 meses)</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <ChartPlaceholder
-                    icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Fluxo de Caixa"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Distribuição de Despesas</CardTitle>
-                  <CardDescription>Categorias principais</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resumo Financeiro</CardTitle>
-                  <CardDescription>Comparativo com período anterior</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Receitas</span>
-                        <span className="text-sm font-medium">
-                          R$ {dadosFinanceiros.receitas.atual.toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span>vs. R$ {dadosFinanceiros.receitas.anterior.toLocaleString("pt-BR")}</span>
-                        <span className="ml-auto flex items-center">
-                          {dadosFinanceiros.receitas.variacao > 0 ? (
-                            <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-                          ) : (
-                            <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-                          )}
-                          <span className={dadosFinanceiros.receitas.variacao > 0 ? "text-green-500" : "text-red-500"}>
-                            {dadosFinanceiros.receitas.variacao.toFixed(1)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Despesas</span>
-                        <span className="text-sm font-medium">
-                          R$ {dadosFinanceiros.despesas.atual.toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span>vs. R$ {dadosFinanceiros.despesas.anterior.toLocaleString("pt-BR")}</span>
-                        <span className="ml-auto flex items-center">
-                          {dadosFinanceiros.despesas.variacao > 0 ? (
-                            <ArrowUpRight className="mr-1 h-3 w-3 text-red-500" />
-                          ) : (
-                            <ArrowDownRight className="mr-1 h-3 w-3 text-green-500" />
-                          )}
-                          <span className={dadosFinanceiros.despesas.variacao > 0 ? "text-red-500" : "text-green-500"}>
-                            {dadosFinanceiros.despesas.variacao.toFixed(1)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Lucro</span>
-                        <span className="text-sm font-medium">
-                          R$ {dadosFinanceiros.lucro.atual.toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span>vs. R$ {dadosFinanceiros.lucro.anterior.toLocaleString("pt-BR")}</span>
-                        <span className="ml-auto flex items-center">
-                          {dadosFinanceiros.lucro.variacao > 0 ? (
-                            <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-                          ) : (
-                            <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-                          )}
-                          <span className={dadosFinanceiros.lucro.variacao > 0 ? "text-green-500" : "text-red-500"}>
-                            {dadosFinanceiros.lucro.variacao.toFixed(1)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Status de Orçamentos</CardTitle>
-                  <CardDescription>Visão geral dos orçamentos</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Total</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.total}</span>
-                      </div>
-                      <Progress value={100} className="h-2" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Aprovados</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.aprovados}</span>
-                      </div>
-                      <Progress
-                        value={(dadosFinanceiros.orcamentos.aprovados / dadosFinanceiros.orcamentos.total) * 100}
-                        className="h-2 bg-muted"
+            {financeiroData ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                  <Card className="col-span-4">
+                    <CardHeader>
+                      <CardTitle>Fluxo de Caixa</CardTitle>
+                      <CardDescription>Tendência: {financeiroData.fluxoCaixa.tendenciaMensal}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pl-2">
+                      <ChartPlaceholder
+                        icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
+                        text="Gráfico de Fluxo de Caixa"
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Pendentes</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.pendentes}</span>
+                      <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-green-600">
+                            R$ {financeiroData.fluxoCaixa.totalEntradas.toLocaleString("pt-BR")}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Entradas</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-red-600">
+                            R$ {financeiroData.fluxoCaixa.totalSaidas.toLocaleString("pt-BR")}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Saídas</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold">
+                            R$ {financeiroData.fluxoCaixa.saldoAtual.toLocaleString("pt-BR")}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Saldo</div>
+                        </div>
                       </div>
-                      <Progress
-                        value={(dadosFinanceiros.orcamentos.pendentes / dadosFinanceiros.orcamentos.total) * 100}
-                        className="h-2 bg-muted"
+                    </CardContent>
+                  </Card>
+
+                  <Card className="col-span-3">
+                    <CardHeader>
+                      <CardTitle>Distribuição de Despesas</CardTitle>
+                      <CardDescription>
+                        Maior categoria: {financeiroData.distribuicaoDespesas.maiorCategoria}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartPlaceholder
+                        icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
+                        text="Gráfico de Distribuição"
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Rejeitados</span>
-                        <span className="text-sm font-medium">{dadosFinanceiros.orcamentos.rejeitados}</span>
-                      </div>
-                      <Progress
-                        value={(dadosFinanceiros.orcamentos.rejeitados / dadosFinanceiros.orcamentos.total) * 100}
-                        className="h-2 bg-muted"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Status de Pagamentos</CardTitle>
-                  <CardDescription>Situação atual dos pagamentos</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center h-[200px]">
-                    <div className="relative w-40 h-40">
-                      <div className="h-40 w-40 bg-muted/20 dark:bg-muted/10 rounded-full flex items-center justify-center">
-                        <PieChart className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center flex-col">
-                        <span className="text-3xl font-bold">{dadosFinanceiros.pagamentos.emDia}%</span>
-                        <span className="text-sm text-muted-foreground">Em dia</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center gap-4">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                        <span className="text-sm">Em dia</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-destructive mr-2"></div>
-                        <span className="text-sm">Atrasados</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Detalhamento de Despesas</CardTitle>
-                <CardDescription>Principais categorias de despesas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveTable>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Categoria</TableHead>
-                        <TableHead>Valor (R$)</TableHead>
-                        <TableHead>Porcentagem</TableHead>
-                        <TableHead>Distribuição</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dadosFinanceiros.distribuicaoDespesas.map((item) => (
-                        <TableRow key={item.categoria}>
-                          <TableCell className="font-medium">{item.categoria}</TableCell>
-                          <TableCell>{item.valor.toLocaleString("pt-BR")}</TableCell>
-                          <TableCell>{item.porcentagem}%</TableCell>
-                          <TableCell>
-                            <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
-                              <div
-                                className="bg-primary h-full rounded-full"
-                                style={{ width: `${item.porcentagem}%` }}
-                              ></div>
+                      <div className="mt-4 space-y-2">
+                        {financeiroData.distribuicaoDespesas?.distribuicao?.slice(0, 5)?.map((item) => (
+                          <div key={item.categoria} className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
+                              <span className="text-sm">{item.categoria}</span>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ResponsiveTable>
-              </CardContent>
-            </Card>
+                            <span className="text-sm">{item.percentual.toFixed(1)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detalhamento de Despesas</CardTitle>
+                    <CardDescription>
+                      Total gasto: R$ {financeiroData.distribuicaoDespesas.totalGasto.toLocaleString("pt-BR")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveTable>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Categoria</TableHead>
+                            <TableHead>Valor (R$)</TableHead>
+                            <TableHead>Porcentagem</TableHead>
+                            <TableHead>Itens</TableHead>
+                            <TableHead>Distribuição</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {financeiroData.distribuicaoDespesas?.distribuicao?.map((item) => (
+                            <TableRow key={item.categoria}>
+                              <TableCell className="font-medium">{item.categoria}</TableCell>
+                              <TableCell>{item.valor.toLocaleString("pt-BR")}</TableCell>
+                              <TableCell>{item.percentual.toFixed(1)}%</TableCell>
+                              <TableCell>{item.quantidadeItens}</TableCell>
+                              <TableCell>
+                                <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                                  <div
+                                    className="bg-primary h-full rounded-full"
+                                    style={{ width: `${item.percentual}%` }}
+                                  ></div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ResponsiveTable>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Carregando dados financeiros...</p>
+              </div>
+            )}
           </TabsContent>
 
           {/* Análise de Obras */}
           <TabsContent value="obras" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Progresso das Obras</CardTitle>
-                  <CardDescription>Status atual das obras em andamento</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {dadosObras.obras
-                      .filter((obra) => obra.status === "Em andamento")
-                      .map((obra) => (
-                        <div key={obra.nome} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="font-medium">{obra.nome}</span>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge
-                                  variant={obra.prazo === "No prazo" ? "default" : "destructive"}
-                                  className="text-xs"
-                                >
-                                  {obra.prazo}
-                                </Badge>
-                                <Badge
-                                  variant={obra.orcamento === "Dentro do orçamento" ? "outline" : "secondary"}
-                                  className="text-xs"
-                                >
-                                  {obra.orcamento}
-                                </Badge>
+            {obrasData ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                  <Card className="col-span-4">
+                    <CardHeader>
+                      <CardTitle>Progresso das Obras</CardTitle>
+                      <CardDescription>
+                        Progresso médio: {obrasData.progresso.progressoMedio.toFixed(1)}%
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {obrasData.progresso?.progressoPorObra
+                          ?.filter((obra) => obra.status === "Em Andamento")
+                          ?.slice(0, 6)
+                          ?.map((obra) => (
+                            <div key={obra.obraId} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="font-medium">{obra.nomeObra}</span>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-xs">
+                                      {obra.etapasConcluidas}/{obra.etapasTotal} etapas
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {obra.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <span className="text-sm font-medium">{obra.percentualConcluido}%</span>
                               </div>
+                              <Progress value={obra.percentualConcluido} className="h-2" />
                             </div>
-                            <span className="text-sm font-medium">{obra.progresso}%</span>
-                          </div>
-                          <Progress value={obra.progresso} className="h-2" />
-                        </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Distribuição por Tipo</CardTitle>
-                  <CardDescription>Obras por categoria</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {dadosObras.distribuicaoPorTipo.map((tipo) => (
-                      <div key={tipo.tipo} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{tipo.tipo}</span>
-                        </div>
-                        <span className="text-sm">
-                          {tipo.quantidade} ({tipo.porcentagem}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tendência de Prazos</CardTitle>
-                  <CardDescription>Evolução do cumprimento de prazos</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Tendência"
-                    height="250px"
-                  />
-                  <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                      <span>No prazo</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                      <span>Atrasadas</span>
-                    </div>
-                    <div>
-                      <span>Média de atraso: 15 dias</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Obras Concluídas</CardTitle>
-                  <CardDescription>Histórico de obras finalizadas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Obra</TableHead>
-                          <TableHead>Prazo</TableHead>
-                          <TableHead>Orçamento</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosObras.obras
-                          .filter((obra) => obra.status === "Concluída")
-                          .map((obra) => (
-                            <TableRow key={obra.nome}>
-                              <TableCell className="font-medium">{obra.nome}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={obra.prazo === "No prazo" ? "default" : "destructive"}
-                                  className="text-xs"
-                                >
-                                  {obra.prazo}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={
-                                    obra.orcamento === "Dentro do orçamento"
-                                      ? "outline"
-                                      : obra.orcamento === "Abaixo do orçamento"
-                                        ? "default"
-                                        : "secondary"
-                                  }
-                                  className="text-xs"
-                                >
-                                  {obra.orcamento}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
                           ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
-                </CardContent>
-              </Card>
-            </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Análise de Desempenho</CardTitle>
-                <CardDescription>Métricas detalhadas por obra</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveTable>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Obra</TableHead>
-                        <TableHead>Progresso</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Prazo</TableHead>
-                        <TableHead>Orçamento</TableHead>
-                        <TableHead>Eficiência</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dadosObras.obras.map((obra) => (
-                        <TableRow key={obra.nome}>
-                          <TableCell className="font-medium">{obra.nome}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Progress value={obra.progresso} className="h-2 w-16" />
-                              <span className="text-sm">{obra.progresso}%</span>
+                  <Card className="col-span-3">
+                    <CardHeader>
+                      <CardTitle>Distribuição por Status</CardTitle>
+                      <CardDescription>Status mais comum: {obrasData.distribuicao.statusMaisComum}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartPlaceholder
+                        icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
+                        text="Gráfico de Distribuição"
+                      />
+                      <div className="mt-4 space-y-2">
+                        {obrasData.distribuicao?.distribuicaoPorStatus?.map((status) => (
+                          <div key={status.status} className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
+                              <span className="text-sm">{status.status}</span>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={obra.status === "Concluída" ? "default" : "secondary"}>{obra.status}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={obra.prazo === "No prazo" ? "outline" : "destructive"} className="text-xs">
-                              {obra.prazo}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                obra.orcamento === "Dentro do orçamento"
-                                  ? "outline"
-                                  : obra.orcamento === "Abaixo do orçamento"
-                                    ? "default"
-                                    : "secondary"
-                              }
-                              className="text-xs"
-                            >
-                              {obra.orcamento}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {obra.status === "Concluída" ? (
-                              <div className="flex items-center">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                                <span className="text-sm">Alta</span>
-                              </div>
-                            ) : obra.prazo === "No prazo" && obra.orcamento === "Dentro do orçamento" ? (
-                              <div className="flex items-center">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                                <span className="text-sm">Alta</span>
-                              </div>
-                            ) : obra.prazo === "Atrasada" && obra.orcamento === "Acima do orçamento" ? (
-                              <div className="flex items-center">
-                                <AlertTriangle className="h-4 w-4 text-red-500 mr-1" />
-                                <span className="text-sm">Baixa</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center">
-                                <Clock className="h-4 w-4 text-yellow-500 mr-1" />
-                                <span className="text-sm">Média</span>
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ResponsiveTable>
-              </CardContent>
-            </Card>
+                            <span className="text-sm">
+                              {status.quantidade} ({status.percentual.toFixed(1)}%)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Tendências</CardTitle>
+                      <CardDescription>Tendência geral: {obrasData.tendencias.tendenciaGeral}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartPlaceholder
+                        icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
+                        text="Gráfico de Tendência"
+                        height="250px"
+                      />
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-600">{obrasData.tendencias.obrasNoPrazo}</div>
+                          <div className="text-sm text-muted-foreground">No prazo</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-red-600">{obrasData.tendencias.obrasEmAtraso}</div>
+                          <div className="text-sm text-muted-foreground">Em atraso</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Resumo Geral</CardTitle>
+                      <CardDescription>Estatísticas das obras</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold">{obrasData.progresso.totalObras}</div>
+                            <div className="text-sm text-muted-foreground">Total</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold">{obrasData.progresso.obrasConcluidas}</div>
+                            <div className="text-sm text-muted-foreground">Concluídas</div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Percentual de atraso</span>
+                            <span className="text-sm font-medium">
+                              {obrasData.tendencias.percentualAtraso.toFixed(1)}%
+                            </span>
+                          </div>
+                          <Progress value={obrasData.tendencias.percentualAtraso} className="h-2" />
+                        </div>
+                        <div className="text-center pt-2">
+                          <div className="text-lg font-medium">{obrasData.tendencias.previsaoConclusaoMes}</div>
+                          <div className="text-sm text-muted-foreground">Previsão de conclusão este mês</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Carregando dados de obras...</p>
+              </div>
+            )}
           </TabsContent>
 
           {/* Análise de Funcionários */}
           <TabsContent value="funcionarios" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Produtividade</CardTitle>
-                  <CardDescription>Índice de produtividade mensal</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <ChartPlaceholder
-                    icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Produtividade"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Distribuição por Departamento</CardTitle>
-                  <CardDescription>Funcionários por área</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {dadosFuncionarios.distribuicaoPorDepartamento.map((dept) => (
-                      <div key={dept.departamento} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{dept.departamento}</span>
-                        </div>
-                        <span className="text-sm">
-                          {dept.quantidade} ({dept.porcentagem}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top Funcionários</CardTitle>
-                  <CardDescription>Melhores avaliações</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {dadosFuncionarios.topFuncionarios.map((funcionario, index) => (
-                      <div key={funcionario.nome} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
-                            {index + 1}
-                          </div>
-                          <Avatar className="h-10 w-10">
-                            {funcionario.avatar ? (
-                              <AvatarImage src={funcionario.avatar || "/placeholder.svg"} alt={funcionario.nome} />
-                            ) : (
-                              <AvatarFallback>
-                                {funcionario.nome
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .substring(0, 2)}
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{funcionario.nome}</p>
-                            <p className="text-xs text-muted-foreground">{funcionario.cargo}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium mr-2">{funcionario.avaliacao}</span>
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${i < Math.floor(funcionario.avaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Custo de Mão de Obra</CardTitle>
-                  <CardDescription>Análise de custos com funcionários</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="flex flex-col items-center justify-center">
-                      <span className="text-3xl font-bold">
-                        R$ {dadosFuncionarios.custoMensal.toLocaleString("pt-BR")}
-                      </span>
-                      <span className="text-sm text-muted-foreground">Custo mensal total</span>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Custo médio por funcionário</span>
-                          <span className="text-sm font-medium">
-                            R${" "}
-                            {Math.round(dadosFuncionarios.custoMensal / dadosFuncionarios.total).toLocaleString(
-                              "pt-BR",
-                            )}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Custo por departamento</span>
-                        </div>
-                        <div className="space-y-2">
-                          {dadosFuncionarios.distribuicaoPorDepartamento.map((dept) => (
-                            <div key={dept.departamento} className="flex items-center justify-between text-sm">
-                              <span>{dept.departamento}</span>
-                              <span>
-                                R${" "}
-                                {Math.round(dadosFuncionarios.custoMensal * (dept.porcentagem / 100)).toLocaleString(
-                                  "pt-BR",
-                                )}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Análise de Produtividade</CardTitle>
-                <CardDescription>Métricas detalhadas por departamento</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveTable>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Departamento</TableHead>
-                        <TableHead>Funcionários</TableHead>
-                        <TableHead>Custo Mensal (R$)</TableHead>
-                        <TableHead>Produtividade</TableHead>
-                        <TableHead>Custo/Produtividade</TableHead>
-                        <TableHead>Eficiência</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dadosFuncionarios.distribuicaoPorDepartamento.map((dept) => {
-                        const custoDepto = Math.round(dadosFuncionarios.custoMensal * (dept.porcentagem / 100))
-                        const produtividadeDepto = 75 + Math.floor(Math.random() * 20) // Simulação
-                        const custoProdutividade = Math.round(custoDepto / produtividadeDepto)
-
-                        return (
-                          <TableRow key={dept.departamento}>
-                            <TableCell className="font-medium">{dept.departamento}</TableCell>
-                            <TableCell>{dept.quantidade}</TableCell>
-                            <TableCell>{custoDepto.toLocaleString("pt-BR")}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Progress value={produtividadeDepto} className="h-2 w-16" />
-                                <span className="text-sm">{produtividadeDepto}%</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{custoProdutividade.toLocaleString("pt-BR")}</TableCell>
-                            <TableCell>
-                              {produtividadeDepto >= 90 ? (
-                                <div className="flex items-center">
-                                  <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                                  <span className="text-sm">Alta</span>
-                                </div>
-                              ) : produtividadeDepto >= 80 ? (
-                                <div className="flex items-center">
-                                  <Clock className="h-4 w-4 text-yellow-500 mr-1" />
-                                  <span className="text-sm">Média</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center">
-                                  <AlertTriangle className="h-4 w-4 text-red-500 mr-1" />
-                                  <span className="text-sm">Baixa</span>
-                                </div>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </ResponsiveTable>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Análise de Materiais */}
-          <TabsContent value="materiais" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Consumo Mensal</CardTitle>
-                  <CardDescription>Valor de materiais consumidos por mês</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <ChartPlaceholder
-                    icon={<BarChart3 className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Consumo"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Distribuição por Categoria</CardTitle>
-                  <CardDescription>Valor em estoque por categoria</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {dadosMateriais.distribuicaoPorCategoria.map((cat) => (
-                      <div key={cat.categoria} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{cat.categoria}</span>
-                        </div>
-                        <span className="text-sm">
-                          R$ {cat.valor.toLocaleString("pt-BR")} ({cat.porcentagem}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Status do Estoque</CardTitle>
-                  <CardDescription>Visão geral do estoque</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="relative w-40 h-40">
-                      <div className="h-40 w-40 bg-muted/20 dark:bg-muted/10 rounded-full flex items-center justify-center">
-                        <PieChart className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center flex-col">
-                        <span className="text-3xl font-bold">
-                          {Math.round((dadosMateriais.emEstoque / dadosMateriais.total) * 100)}%
-                        </span>
-                        <span className="text-sm text-muted-foreground">Em estoque</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center gap-4">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                        <span className="text-sm">Em estoque</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
-                        <span className="text-sm">Baixo estoque</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-destructive mr-2"></div>
-                        <span className="text-sm">Sem estoque</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Valor total em estoque</span>
-                        <span className="text-sm font-medium">
-                          R$ {dadosMateriais.valorTotal.toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Consumo médio mensal</span>
-                        <span className="text-sm font-medium">
-                          R${" "}
-                          {Math.round(
-                            dadosMateriais.consumoMensal.reduce((acc, item) => acc + item.valor, 0) /
-                              dadosMateriais.consumoMensal.length,
-                          ).toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Materiais Críticos</CardTitle>
-                  <CardDescription>Itens com estoque baixo ou crítico</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Material</TableHead>
-                          <TableHead>Estoque</TableHead>
-                          <TableHead>Unidade</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosMateriais.materiaisCriticos.map((material) => (
-                          <TableRow key={material.nome}>
-                            <TableCell className="font-medium">{material.nome}</TableCell>
-                            <TableCell>{material.estoque}</TableCell>
-                            <TableCell>{material.unidade}</TableCell>
-                            <TableCell>
-                              <Badge variant={material.status === "Crítico" ? "destructive" : "secondary"}>
-                                {material.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Análise de Consumo</CardTitle>
-                <CardDescription>Consumo por categoria e obra</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartPlaceholder
-                  icon={<BarChart3 className="h-8 w-8 text-muted-foreground" />}
-                  text="Gráfico de Consumo por Obra e Categoria"
-                  height="350px"
-                />
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Top 5 Categorias (Consumo)</h4>
-                    <div className="space-y-2">
-                      {dadosMateriais.distribuicaoPorCategoria
-                        .sort((a, b) => b.valor - a.valor)
-                        .slice(0, 5)
-                        .map((cat, index) => (
-                          <div key={cat.categoria} className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold mr-2">
+            {funcionariosData ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                  <Card className="col-span-4">
+                    <CardHeader>
+                      <CardTitle>Top Funcionários</CardTitle>
+                      <CardDescription>Critério: {funcionariosData.topFuncionarios.criterioAvaliacao}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {funcionariosData.topFuncionarios?.top5Funcionarios?.map((funcionario, index) => (
+                          <div key={funcionario.funcionarioId} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
                                 {index + 1}
                               </div>
-                              <span className="text-sm">{cat.categoria}</span>
-                            </div>
-                            <span className="text-sm">R$ {cat.valor.toLocaleString("pt-BR")}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Top 5 Obras (Consumo)</h4>
-                    <div className="space-y-2">
-                      {dadosObras.obras
-                        .filter((obra) => obra.status === "Em andamento")
-                        .slice(0, 5)
-                        .map((obra, index) => (
-                          <div key={obra.nome} className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold mr-2">
-                                {index + 1}
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback>
+                                  {funcionario.nomeFuncionario
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .substring(0, 2)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-medium">{funcionario.nomeFuncionario}</p>
+                                <p className="text-xs text-muted-foreground">{funcionario.cargo}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {funcionario.obrasParticipadas} obras participadas
+                                </p>
                               </div>
-                              <span className="text-sm">{obra.nome}</span>
                             </div>
-                            <span className="text-sm">
-                              R$ {(Math.random() * 50000 + 20000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Análise de Fornecedores */}
-          <TabsContent value="fornecedores" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Avaliação de Fornecedores</CardTitle>
-                  <CardDescription>Pontuação média por fornecedor</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <ChartPlaceholder
-                    icon={<BarChart3 className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Avaliação"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Distribuição por Tipo</CardTitle>
-                  <CardDescription>Fornecedores por categoria</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartPlaceholder
-                    icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-                    text="Gráfico de Distribuição"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {dadosFornecedores.distribuicaoPorTipo.map((tipo) => (
-                      <div key={tipo.tipo} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                          <span className="text-sm">{tipo.tipo}</span>
-                        </div>
-                        <span className="text-sm">
-                          {tipo.quantidade} ({tipo.porcentagem}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top Fornecedores</CardTitle>
-                  <CardDescription>Melhores avaliações e pontualidade</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fornecedor</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Avaliação</TableHead>
-                          <TableHead>Pontualidade</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosFornecedores.topFornecedores.map((fornecedor) => (
-                          <TableRow key={fornecedor.nome}>
-                            <TableCell className="font-medium">{fornecedor.nome}</TableCell>
-                            <TableCell>{fornecedor.tipo}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <span className="text-sm font-medium mr-2">{fornecedor.avaliacao}</span>
+                            <div className="text-right">
+                              <div className="flex items-center mb-1">
+                                <span className="text-sm font-medium mr-2">{funcionario.notaAvaliacao}</span>
                                 <div className="flex">
                                   {[...Array(5)].map((_, i) => (
                                     <Star
                                       key={i}
-                                      className={`h-4 w-4 ${i < Math.floor(fornecedor.avaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
+                                      className={`h-4 w-4 ${i < Math.floor(funcionario.notaAvaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
                                     />
                                   ))}
                                 </div>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Progress value={fornecedor.pontualidade} className="h-2 w-16" />
-                                <span className="text-sm">{fornecedor.pontualidade}%</span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                              <Badge variant="outline" className="text-xs">
+                                {funcionario.avaliacaoDesempenho}
+                              </Badge>
+                            </div>
+                          </div>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
-                </CardContent>
-              </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Comparativo de Preços</CardTitle>
-                  <CardDescription>Economia por material</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveTable>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Material</TableHead>
-                          <TableHead>Melhor Preço</TableHead>
-                          <TableHead>Economia</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dadosFornecedores.comparativoPrecos.map((item) => (
-                          <TableRow key={item.material}>
-                            <TableCell className="font-medium">{item.material}</TableCell>
-                            <TableCell>{item.melhorPreco}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
-                                <span className="text-green-500">{item.economiaPercentual}%</span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ResponsiveTable>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Análise de Desempenho</CardTitle>
-                <CardDescription>Métricas detalhadas por fornecedor</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartPlaceholder
-                  icon={<BarChart3 className="h-8 w-8 text-muted-foreground" />}
-                  text="Gráfico de Desempenho Comparativo"
-                  height="350px"
-                />
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Economia Total</h4>
-                    <div className="flex flex-col items-center justify-center p-4 bg-muted/20 dark:bg-muted/10 rounded-md">
-                      <span className="text-3xl font-bold">R$ 125.000</span>
-                      <span className="text-sm text-muted-foreground">Economia nos últimos 6 meses</span>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Oportunidades de Economia</h4>
-                    <div className="flex flex-col items-center justify-center p-4 bg-muted/20 dark:bg-muted/10 rounded-md">
-                      <span className="text-3xl font-bold">R$ 85.000</span>
-                      <span className="text-sm text-muted-foreground">Potencial de economia identificado</span>
-                    </div>
-                  </div>
+                  <Card className="col-span-3">
+                    <CardHeader>
+                      <CardTitle>Produtividade</CardTitle>
+                      <CardDescription>
+                        Média geral: {funcionariosData.produtividade.mediaGeralProdutividade.toFixed(1)}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartPlaceholder
+                        icon={<LineChart className="h-8 w-8 text-muted-foreground" />}
+                        text="Gráfico de Produtividade"
+                      />
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{funcionariosData.produtividade.totalFuncionarios}</div>
+                          <div className="text-sm text-muted-foreground">Total</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{funcionariosData.produtividade.funcionariosAtivos}</div>
+                          <div className="text-sm text-muted-foreground">Ativos</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Custos de Mão de Obra</CardTitle>
+                      <CardDescription>
+                        Custo total: R$ {funcionariosData.custosMaoObra.custoTotalMaoObra.toLocaleString("pt-BR")}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center">
+                            <div className="text-xl font-bold">
+                              R$ {funcionariosData.custosMaoObra.custoMedioFuncionario.toLocaleString("pt-BR")}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Custo médio/funcionário</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xl font-bold">
+                              R$ {funcionariosData.custosMaoObra.custoMedioObra.toLocaleString("pt-BR")}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Custo médio/obra</div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">Top 5 Custos por Funcionário</h4>
+                          {funcionariosData.custosMaoObra?.custosPorFuncionario?.slice(0, 5)?.map((funcionario) => (
+                            <div key={funcionario.funcionarioId} className="flex items-center justify-between">
+                              <div>
+                                <span className="text-sm font-medium">{funcionario.nomeFuncionario}</span>
+                                <span className="text-xs text-muted-foreground ml-2">({funcionario.cargo})</span>
+                              </div>
+                              <span className="text-sm">R$ {funcionario.custoTotal.toLocaleString("pt-BR")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Produtividade por Funcionário</CardTitle>
+                      <CardDescription>Top 5 mais produtivos</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {funcionariosData.produtividade?.top5Produtivos?.map((funcionario, index) => (
+                          <div key={funcionario.funcionarioId} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium">{funcionario.nomeFuncionario}</span>
+                                  <div className="text-xs text-muted-foreground">
+                                    {funcionario.cargo} • {funcionario.obrasAlocadas} obras
+                                  </div>
+                                </div>
+                              </div>
+                              <span className="text-sm font-medium">{funcionario.indiceProdutividade.toFixed(1)}%</span>
+                            </div>
+                            <Progress value={funcionario.indiceProdutividade} className="h-2" />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Carregando dados de funcionários...</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Análise de Fornecedores */}
+          <TabsContent value="fornecedores" className="space-y-4">
+            {fornecedoresData ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                  <Card className="col-span-4">
+                    <CardHeader>
+                      <CardTitle>Top Fornecedores</CardTitle>
+                      <CardDescription>Critério: {fornecedoresData.topFornecedores.criterioAvaliacao}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveTable>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Fornecedor</TableHead>
+                              <TableHead>Avaliação</TableHead>
+                              <TableHead>Orçamentos</TableHead>
+                              <TableHead>Valor Total</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {fornecedoresData.topFornecedores?.top5Fornecedores?.map((fornecedor) => (
+                              <TableRow key={fornecedor.fornecedorId}>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">{fornecedor.nomeFornecedor}</div>
+                                    <div className="text-xs text-muted-foreground">{fornecedor.cnpj}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center">
+                                    <span className="text-sm font-medium mr-2">{fornecedor.avaliacao}</span>
+                                    <div className="flex">
+                                      {[...Array(5)].map((_, i) => (
+                                        <Star
+                                          key={i}
+                                          className={`h-3 w-3 ${i < Math.floor(fornecedor.avaliacao) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{fornecedor.totalOrcamentos}</TableCell>
+                                <TableCell>R$ {fornecedor.valorTotalGasto.toLocaleString("pt-BR")}</TableCell>
+                                <TableCell>
+                                  <Badge variant={fornecedor.status === "Ativo" ? "default" : "secondary"}>
+                                    {fornecedor.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ResponsiveTable>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="col-span-3">
+                    <CardHeader>
+                      <CardTitle>Distribuição por Categoria</CardTitle>
+                      <CardDescription>
+                        Mais popular: {fornecedoresData.fornecedoresPorCategoria.categoriaMaisPopular}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartPlaceholder
+                        icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
+                        text="Gráfico de Distribuição"
+                      />
+                      <div className="mt-4 space-y-2">
+                        {fornecedoresData.fornecedoresPorCategoria?.distribuicaoPorCategoria?.map((categoria) => (
+                          <div key={categoria.categoriaId} className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-primary mr-2"></div>
+                              <span className="text-sm">{categoria.categoriaNome}</span>
+                            </div>
+                            <span className="text-sm">
+                              {categoria.quantidadeFornecedores} ({categoria.percentual.toFixed(1)}%)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Gastos por Fornecedor</CardTitle>
+                      <CardDescription>
+                        Total gasto: R${" "}
+                        {fornecedoresData.gastosFornecedores.totalGastoFornecedores.toLocaleString("pt-BR")}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <div className="text-xl font-bold">
+                            R$ {fornecedoresData.gastosFornecedores.gastoMedioFornecedor.toLocaleString("pt-BR")}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Gasto médio por fornecedor</div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">Top 5 Gastos</h4>
+                          {fornecedoresData.gastosFornecedores?.top10Gastos?.slice(0, 5)?.map((fornecedor) => (
+                            <div key={fornecedor.fornecedorId} className="flex items-center justify-between">
+                              <div>
+                                <span className="text-sm font-medium">{fornecedor.nomeFornecedor}</span>
+                                <div className="text-xs text-muted-foreground">
+                                  {fornecedor.quantidadeOrcamentos} orçamentos • Ticket médio: R${" "}
+                                  {fornecedor.ticketMedio.toLocaleString("pt-BR")}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-medium">
+                                  R$ {fornecedor.valorTotalGasto.toLocaleString("pt-BR")}
+                                </div>
+                                <div className="text-xs text-muted-foreground">{fornecedor.percentual.toFixed(1)}%</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Estatísticas Gerais</CardTitle>
+                      <CardDescription>Resumo dos fornecedores</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold">
+                              {fornecedoresData.estatisticasGerais.totalFornecedores}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Total</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold">
+                              {fornecedoresData.estatisticasGerais.fornecedoresAtivos}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Ativos</div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Avaliação média geral</span>
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium mr-2">
+                                {fornecedoresData.estatisticasGerais.avaliacaoMediaGeral.toFixed(1)}
+                              </span>
+                              <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${i < Math.floor(fornecedoresData.estatisticasGerais.avaliacaoMediaGeral) ? "text-yellow-400 fill-yellow-400" : "text-muted"}`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <Progress
+                            value={fornecedoresData.estatisticasGerais.avaliacaoMediaGeral * 20}
+                            className="h-2"
+                          />
+                        </div>
+
+                        <div className="text-center pt-2">
+                          <div className="text-lg font-medium">
+                            {fornecedoresData.estatisticasGerais.tempoMedioContrato}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Tempo médio de contrato (dias)</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Carregando dados de fornecedores...</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
+      )}
+
+      {/* Informações de atualização */}
+      {dashboardData && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Última atualização: {new Date(dashboardData.ultimaAtualizacao).toLocaleString("pt-BR")}</span>
+              <span>Versão do cache: {dashboardData.versaoCache}</span>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
