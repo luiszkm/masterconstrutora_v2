@@ -274,7 +274,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     if (dialogApontamentoAberto) {
       const fetchObras = async () => {
         const result = await getObrasList()
-        if ("error" in result) {
+        if (!result.success) {
           toast({
             title: "Erro ao carregar obras",
             description: result.error,
@@ -282,7 +282,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
           })
           setObrasDisponiveis([])
         } else {
-          setObrasDisponiveis(result)
+          setObrasDisponiveis(result.data.dados)
         }
       }
       fetchObras()
@@ -646,7 +646,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
               Novo Funcionário
             </Link>
           </Button>
-          <LogoutButton />
+    
         </div>
       </div>
 
@@ -1234,7 +1234,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                     id="periodoInicio"
                     name="periodoInicio"
                     type="date"
-                    value={apontamentoFormData.periodoInicio}
+                    value={apontamentoFormData.periodoInicio || ""}
                     onChange={handleApontamentoChange}
                   />
                 </div>
@@ -1244,7 +1244,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                     id="periodoFim"
                     name="periodoFim"
                     type="date"
-                    value={apontamentoFormData.periodoFim}
+                    value={apontamentoFormData.periodoFim || ""}
                     onChange={handleApontamentoChange}
                   />
                 </div>
@@ -1273,7 +1273,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                     id="diasTrabalhados"
                     name="diasTrabalhados"
                     type="number"
-                    value={apontamentoFormData.diasTrabalhados}
+                    value={apontamentoFormData.diasTrabalhados || 0}
                     onChange={handleApontamentoChange}
                   />
                 </div>
@@ -1343,7 +1343,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Nenhuma Obra">Nenhuma Obra</SelectItem>
-                      {obrasDisponiveis.map((obra) => (
+                      {Array.isArray(obrasDisponiveis) && obrasDisponiveis.map((obra) => (
                         <SelectItem key={obra.id} value={obra.id.toString()}>
                           {obra.nome} ({obra.cliente})
                         </SelectItem>
