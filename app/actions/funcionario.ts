@@ -69,8 +69,7 @@ export type FuncionarioApontamento = {
   avaliacaoDesempenho: string | null;
   observacoes: string;
   statusApontamento: string;
-  apontamentoId: string | null; // ID do apontamento de pagamento, se existir
-  // Adicionados para edição de apontamento
+  apontamentoId: string | null;
   periodoInicio?: string | null; // Data de início do período do apontamento
   periodoFim?: string | null; // Data de fim do período do apontamento
   obraId?: string | null; // ID da obra vinculada ao apontamento
@@ -226,9 +225,8 @@ export async function createFuncionarioPayment(
     });
 
     if (!response.ok) {
-      let errorMessage = `Erro ao ${
-        apontamentoId ? "atualizar" : "salvar"
-      } informações de pagamento.`;
+      let errorMessage = `Erro ao ${apontamentoId ? "atualizar" : "salvar"
+        } informações de pagamento.`;
 
       try {
         const errorData = await response.json();
@@ -239,7 +237,7 @@ export async function createFuncionarioPayment(
         }
       }
 
-      return { success: false, message: errorMessage };      
+      return { success: false, message: errorMessage };
     }
 
     revalidateTag(`funcionario-${funcionarioId}`);
@@ -250,14 +248,12 @@ export async function createFuncionarioPayment(
       success: true,
       message:
         result.message ||
-        `Informações de pagamento ${
-          apontamentoId ? "atualizadas" : "salvas"
+        `Informações de pagamento ${apontamentoId ? "atualizadas" : "salvas"
         } com sucesso!`,
     };
   } catch (error) {
     console.error(
-      `Erro ao ${
-        apontamentoId ? "atualizar" : "salvar"
+      `Erro ao ${apontamentoId ? "atualizar" : "salvar"
       } informações de pagamento:`,
       error
     );
@@ -774,7 +770,7 @@ export async function getApontamentos(): Promise<
 
 
 export async function HandleReplicarApontamentoPAraPRoximaQuinzena(
-  ids: string []
+  ids: string[]
 ): Promise<Apontamento[] | { error: string }> {
   try {
     const response = await makeAuthenticatedRequest(

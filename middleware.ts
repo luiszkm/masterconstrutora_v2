@@ -44,13 +44,14 @@ export async function middleware(request: NextRequest) {
 // embora a lógica acima já trate o /auth/login.
 export const config = {
   matcher: [
-    // Inclui todas as rotas, exceto:
-    // - _next/static (arquivos estáticos do Next.js)
-    // - _next/image (otimização de imagem do Next.js)
-    // - favicon.ico
-    // - /api (se você tiver API Routes que não precisam de autenticação no middleware)
-    // - A rota de login em si, para evitar loops de redirecionamento se o decrypt falhar por algum motivo
-    //   e o usuário já estiver na página de login.
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    /*
+     * Corresponde a todos os caminhos de solicitação, exceto aqueles que começam com:
+     * - api (rotas de API)
+     * - _next/static (arquivos estáticos)
+     * - _next/image (otimização de imagem)
+     * - favicon.ico (arquivo de favicon)
+     * - Qualquer caminho que contenha um ponto (.), indicando um arquivo estático (e.g., .png, .jpg, .svg)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)',
   ],
 }

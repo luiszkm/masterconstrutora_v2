@@ -363,7 +363,6 @@ export default function NovoFornecedorPage() {
 
         <Separator />
 
-        {/* Botões de Ação */}
         <div className="flex flex-col sm:flex-row gap-4 justify-end">
           <Button type="button" variant="outline" asChild>
             <Link href="/dashboard/fornecedores">Cancelar</Link>
