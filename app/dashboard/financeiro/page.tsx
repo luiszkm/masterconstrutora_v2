@@ -31,16 +31,20 @@ export default async function FinanceiroPage() {
     getContasPagarVencidas(),
   ])
 
+
+
   // Valores default em caso de erro
-  const contasReceber: ContaReceber[] = Array.isArray(receberRes) ? receberRes : []
-  const contasPagar: ContaPagar[] = Array.isArray(pagarRes) ? pagarRes : []
+  const contasReceber: ContaReceber[] = Array.isArray(receberRes.dados) ? receberRes.dados : []
+  const contasPagar: ContaPagar[] = Array.isArray(pagarRes.dados) ? pagarRes.dados : []
   const vencidasReceber: ContaReceber[] = Array.isArray(vencRecRes) ? vencRecRes : []
   const vencidasPagar: ContaPagar[] = Array.isArray(vencPagRes) ? vencPagRes : []
+
+
 
   // Fluxo de caixa padrão 3 meses
   const fim = new Date()
   const ini = new Date()
-  ini.setMonth(ini.getMonth() - 3)
+  ini.setMonth(ini.getMonth() - 6)
   const dataInicio = ini.toISOString().slice(0, 10)
   const dataFim = fim.toISOString().slice(0, 10)
 

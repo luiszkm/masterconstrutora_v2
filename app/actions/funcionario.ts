@@ -6,7 +6,6 @@ import { removerMascaraMonetaria } from "@/app/lib/masks"; // Importar a funçã
 import { makeAuthenticatedRequest, API_URL } from "./common";
 
 
-// Tipo para os dados básicos do funcionário
 export type FuncionarioBase = {
   id?: string;
   nome: string;
@@ -24,7 +23,6 @@ export type FuncionarioBase = {
   status?: string; // Status do funcionário (ativo, desligado, etc.)
 };
 
-// Tipo para os dados de pagamento do funcionário (para criação/atualização)
 export type FuncionarioPaymentPayload = {
   funcionarioId: string; // ID do funcionário ao qual o pagamento se refere
   diaria?: number;
@@ -74,10 +72,6 @@ export type FuncionarioApontamento = {
   periodoFim?: string | null; // Data de fim do período do apontamento
   obraId?: string | null; // ID da obra vinculada ao apontamento
 };
-
-
-
-
 
 /**
  * Cria um novo funcionário no backend (apenas dados básicos).
@@ -633,14 +627,7 @@ export async function AtivarFuncionario(id: string) {
     };
   }
 }
-/**
- * Busca a lista de obras do backend.
- */
 
-
-/**
- * Busca a lista de apontamentos de funcionários do backend.
- */
 export async function getFuncionariosApontamentos(): Promise<
   FuncionarioApontamento[] | { error: string }
 > {
@@ -767,7 +754,6 @@ export async function getApontamentos(): Promise<
     };
   }
 }
-
 
 export async function HandleReplicarApontamentoPAraPRoximaQuinzena(
   ids: string[]

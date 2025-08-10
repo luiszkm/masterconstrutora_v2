@@ -1,6 +1,6 @@
 "use client"
 
-import { useTransition } from "react"
+import { useTransition, useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,11 +10,16 @@ import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   ArrowLeft,
   Building,
   Calendar,
   MapPin,
-  User,
   Users,
   FileText,
   Package,
@@ -26,104 +31,17 @@ import {
   ExternalLink,
   Phone,
   Mail,
+  DollarSign,
+  MoreHorizontal,
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { concluirEtapa } from "@/app/actions/obra"
 import { calcularEvolucao, obterEtapaAtual, obterProximaEtapa } from "@/app/lib/obra-utils"
+import { CronogramaTable } from "@/components/cronograma-table"
+import { CriarCronogramaIndividual, CriarCronogramaLote } from "@/components/cronograma-forms"
+import { listarCronogramasAction } from "@/app/actions/cronograma"
+import { CronogramaRecebimento } from "@/types/api-types"
 import type { Obra } from "@/app/actions/obra"
-
-const orcamentosMock = [
-  {
-    id: 1,
-    numero: "ORC-2024-001",
-    descricao: "Material para fundação",
-    valor: 125000.0,
-    dataEmissao: "2024-03-01",
-    status: "Aprovado",
-  },
-  {
-    id: 2,
-    numero: "ORC-2024-002",
-    descricao: "Material para estrutura",
-    valor: 85000.0,
-    dataEmissao: "2024-04-15",
-    status: "Pago",
-  },
-  {
-    id: 3,
-    numero: "ORC-2024-003",
-    descricao: "Material para acabamento",
-    valor: 65000.0,
-    dataEmissao: "2024-06-01",
-    status: "Pendente",
-  },
-]
-
-const fornecedoresMock = [
-  {
-    id: 1,
-    nome: "Materiais Premium Ltda",
-    tipo: "Materiais de Construção",
-    telefone: "(11) 98765-4321",
-    email: "contato@materiaisPremium.com",
-    endereco: "Rua das Construções, 123",
-  },
-  {
-    id: 2,
-    nome: "Mármores & Granitos SA",
-    tipo: "Acabamentos",
-    telefone: "(11) 91234-5678",
-    email: "vendas@marmoresgranitos.com",
-    endereco: "Av. dos Mármores, 456",
-  },
-  {
-    id: 3,
-    nome: "Elétrica Total",
-    tipo: "Instalações Elétricas",
-    telefone: "(13) 98888-7777",
-    email: "eletrica@total.com",
-    endereco: "Rua da Energia, 789",
-  },
-]
-
-const materiaisMock = [
-  {
-    id: 1,
-    nome: "Cimento CP-II 50kg",
-    categoria: "Básicos",
-    quantidade: 200,
-    unidade: "sacos",
-    valorUnitario: 32.5,
-    fornecedor: "Materiais Premium Ltda",
-  },
-  {
-    id: 2,
-    nome: "Tijolo Cerâmico 6 furos",
-    categoria: "Alvenaria",
-    quantidade: 15000,
-    unidade: "unidades",
-    valorUnitario: 0.85,
-    fornecedor: "Materiais Premium Ltda",
-  },
-  {
-    id: 3,
-    nome: "Mármore Carrara",
-    categoria: "Acabamento",
-    quantidade: 45,
-    unidade: "m²",
-    valorUnitario: 180.0,
-    fornecedor: "Mármores & Granitos SA",
-  },
-  {
-    id: 4,
-    nome: "Fio Elétrico 2,5mm",
-    categoria: "Elétrica",
-    quantidade: 500,
-    unidade: "metros",
-    valorUnitario: 4.2,
-    fornecedor: "Elétrica Total",
-  },
-]
 
 interface ObraDetalhesProps {
   obra: Obra
@@ -131,6 +49,11 @@ interface ObraDetalhesProps {
 
 export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const [isPending, startTransition] = useTransition()
+  const [cronogramas, setCronogramas] = useState<CronogramaRecebimento[]>([])
+  const [cronogramaLoading, setCronogramaLoading] = useState(true)
+  const [cronogramaIndividualOpen, setCronogramaIndividualOpen] = useState(false)
+  const [cronogramaLoteOpen, setCronogramaLoteOpen] = useState(false)
+  
   const evolucao = calcularEvolucao(obra.etapas)
   const etapaAtual = obterEtapaAtual(obra.etapas)
   const proximaEtapa = obterProximaEtapa(obra.etapas)
@@ -138,9 +61,37 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   // Obter dados relacionados
   const funcionariosObra = obra.funcionarios
 
-  const orcamentosObra = obra.orcamentos
-  const fornecedoresObra = fornecedoresMock.slice(0, 3) // Mock: primeiros 3 fornecedores
-  const materiaisObra = materiaisMock // Mock: todos os materiais
+  
+  // Carregar cronogramas
+  const carregarCronogramas = async () => {
+    console.log('🔍 Iniciando carregamento de cronogramas para obra:', obra.id)
+    setCronogramaLoading(true)
+    try {
+      // Primeiro tentar a API
+      const result = await listarCronogramasAction(obra.id)
+      console.log('📋 Resultado da API:', result)
+      
+      if (result.success) {
+        if (Array.isArray(result.data)) {
+          setCronogramas(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('💥 Erro ao carregar cronogramas:', error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os cronogramas",
+        variant: "destructive",
+      })
+    } finally {
+      setCronogramaLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    console.log('🔄 useEffect executado para obra.id:', obra.id)
+    carregarCronogramas()
+  }, [obra.id])
 
   const handleConcluirEtapa = (etapaId: string) => {
     startTransition(async () => {
@@ -308,8 +259,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
 
       {/* Tabs com Detalhes */}
       <Tabs defaultValue="etapas" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
           <TabsTrigger value="etapas">Etapas</TabsTrigger>
+          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
           <TabsTrigger value="funcionarios">Funcionários</TabsTrigger>
           <TabsTrigger value="orcamentos">Orçamentos</TabsTrigger>
           <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
@@ -366,6 +318,54 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab Cronograma de Recebimento */}
+        <TabsContent value="cronograma">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Cronograma de Recebimento</CardTitle>
+                <CardDescription>Controle dos recebimentos por etapa da obra</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Novo Cronograma
+                      <MoreHorizontal className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setCronogramaIndividualOpen(true)}>
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Etapa Individual
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setCronogramaLoteOpen(true)}>
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Cronograma Completo
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {cronogramaLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-muted-foreground">Carregando cronograma...</p>
+                  </div>
+                </div>
+              ) : (
+                <CronogramaTable 
+                  cronogramas={cronogramas} 
+                  onUpdate={carregarCronogramas}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -451,29 +451,25 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Número</TableHead>
-                      <TableHead>Descrição</TableHead>
                       <TableHead>Valor</TableHead>
-                      <TableHead>Data</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orcamentosObra.length === 0 ? (
+                    {obra.orcamentos.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
                           Nenhum orçamento encontrado.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      orcamentosObra.map((orcamento) => (
+                      obra.orcamentos.map((orcamento) => (
                         <TableRow key={orcamento.id}>
                           <TableCell className="font-medium">{orcamento.numero}</TableCell>
-                          <TableCell>{orcamento.descricao}</TableCell>
                           <TableCell className="font-medium">
-                            R$ {orcamento.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            R$ {orcamento.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                           </TableCell>
-                          <TableCell>{new Date(orcamento.dataEmissao).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <Badge className={getOrcamentoStatusColor(orcamento.status)}>{orcamento.status}</Badge>
                           </TableCell>
@@ -512,7 +508,7 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {fornecedoresObra.map((fornecedor) => (
+                {obra.fornecedores.map((fornecedor) => (
                   <div key={fornecedor.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
@@ -560,15 +556,10 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Material</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Valor Unit.</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Fornecedor</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {materiaisObra.map((material) => (
+                    {obra.produtos.map((material) => (
                       <TableRow key={material.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -576,22 +567,6 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                             <span className="font-medium">{material.nome}</span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{material.categoria}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {material.quantidade} {material.unidade}
-                        </TableCell>
-                        <TableCell>
-                          R$ {material.valorUnitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          R${" "}
-                          {(material.quantidade * material.valorUnitario).toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{material.fornecedor}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -601,6 +576,21 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs para cronograma */}
+      <CriarCronogramaIndividual
+        open={cronogramaIndividualOpen}
+        onOpenChange={setCronogramaIndividualOpen}
+        obraId={obra.id}
+        onSuccess={carregarCronogramas}
+      />
+
+      <CriarCronogramaLote
+        open={cronogramaLoteOpen}
+        onOpenChange={setCronogramaLoteOpen}
+        obraId={obra.id}
+        onSuccess={carregarCronogramas}
+      />
     </div>
   )
 }

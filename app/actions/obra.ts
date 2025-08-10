@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { API_URL, makeAuthenticatedRequest } from "./common";
+import { Fornecedor } from "@/types/api-types";
 const url = new URL(`${API_URL}/obras`);
 
 // Tipos
@@ -26,6 +27,8 @@ export interface Obra extends ObraDetails {
   etapas: EtapaObra[];
   orcamentos: orcamentoObra[];
   funcionarios: Funcionario[];
+  fornecedores: Fornecedor[];
+  produtos: ItemProduto[];
 }
 export type EtapaObra = {
   id: string;
@@ -35,6 +38,11 @@ export type EtapaObra = {
   dataFimPrevista?: string;
   dataInicioReal?: string;
   dataFimReal?: string;
+};
+
+type ItemProduto = {
+  id: number;
+  nome: string;
 };
 
 type orcamentoObra={
@@ -125,8 +133,6 @@ export async function getObrasList(
     };
   }
 }
-
-// Criar nova obra
 export async function criarObra(formData: FormData) {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   const novaObra: ObraData = {
@@ -249,8 +255,6 @@ export async function criarObra(formData: FormData) {
     };
   }
 }
-
-// Atualizar obra
 export async function atualizarObra(id: string, formData: FormData) {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -336,8 +340,6 @@ export async function atualizarObra(id: string, formData: FormData) {
   revalidatePath("/dashboard/obras");
   
 }
-
-// Obter obra por ID
 export async function getObraById(
   id: string
 ): Promise<{ success: true; data: Obra } | { success: false; error: string }> {
@@ -376,7 +378,6 @@ export async function getObraById(
     return { success: false, error: "Erro de conexão com o servidor ao buscar obra. Tente novamente." };
   }
 }
-// alocar funcionário à obra
 export async function alocarFuncionario(obraId: string, funcionarioIds: string[]) {
     const funcionariosSelecionados = {
     funcionarioIds: funcionarioIds,
@@ -406,5 +407,7 @@ export async function alocarFuncionario(obraId: string, funcionarioIds: string[]
       revalidateTag(`obra-${obraId}`);
       revalidatePath("/dashboard/obras");
     }
+
+
   
 

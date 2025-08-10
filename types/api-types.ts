@@ -171,6 +171,52 @@ export interface PaginatedResponse<T> {
   totalPages: number
 }
 
+// Cronograma de Recebimento
+export interface CronogramaRecebimento {
+  id: string
+  obraId: string
+  numeroEtapa: number
+  descricaoEtapa: string
+  valorPrevisto: number
+  valorRecebido: number
+  valorSaldo: number
+  dataVencimento: string
+  dataRecebimento?: string
+  status: "PENDENTE" | "RECEBIDO" | "VENCIDO"
+  percentualRecebido: number
+  estaVencido: boolean
+}
+
+export interface CriarCronogramaRequest {
+  obraId: string
+  numeroEtapa: number
+  descricaoEtapa: string
+  valorPrevisto: number
+  dataVencimento: string
+}
+
+export interface CriarCronogramaLoteRequest {
+  obraId: string
+  substituirExistente: boolean
+  cronogramas: Omit<CriarCronogramaRequest, "obraId">[]
+}
+
+// Comparação de Orçamentos
+export interface OrcamentoComparacao {
+  id: string
+  numero: string
+  fornecedorNome: string
+  valorTotal: number
+  status: string
+  dataEmissao: string
+  itensCategoria: number
+}
+
+export interface ComparacaoOrcamentosResponse {
+  categoria: string
+  orcamentos: OrcamentoComparacao[]
+}
+
 // Filtros
 export interface FilterOptions {
   page?: number

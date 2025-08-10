@@ -93,7 +93,14 @@ export function FinanceiroClient({
   const [contaBancPag, setContaBancPag] = useState("")
 
   const totalAReceber = contasReceber.reduce((acc, c) => acc + (c.valorOriginal - c.valorRecebido), 0)
-  const totalAPagar = contasPagar.reduce((acc, c) => acc + (c.valorOriginal - c.valorPago), 0)
+
+  // total a pagar nao deve considerar o status cancelado
+  const totalAPagar = contasPagar.reduce((acc, c) => {
+    if (c.status !== "CANCELADO") {
+      return acc + (c.valorOriginal - c.valorPago)
+    }
+    return acc
+  }, 0)
 
   const contasReceberFiltradas = useMemo(() => {
     return contasReceber.filter((c) => {

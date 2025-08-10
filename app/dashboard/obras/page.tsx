@@ -14,7 +14,6 @@ export default async function ObrasPage() {
   // Fetch data on the server side
   const obrasListResult = await getObrasList()
 
-  console.log("Obras:", obrasListResult)
 
   // Handle error if fetching fails
   if ("error" in obrasListResult) {
@@ -29,5 +28,5 @@ export default async function ObrasPage() {
   }
 
 
-  return <ObrasPageClient initialObras={obrasListResult} />
+  return <ObrasPageClient initialData={obrasListResult.data} />
 }

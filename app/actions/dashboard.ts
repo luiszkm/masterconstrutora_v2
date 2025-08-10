@@ -10,6 +10,7 @@ import type {
 } from "@/services/dashboard-service"
 import { cookies } from "next/headers"
 import { decrypt } from "../lib/session"
+import { API_BASE_URL } from "../lib/api-config"
 
 // Função para obter o token JWT do servidor (usando o mesmo padrão das outras rotas)
 async function getJWTToken(): Promise<string | null> {
@@ -24,7 +25,6 @@ async function getJWTToken(): Promise<string | null> {
   return payload.jwtToken
 }
 
-// Função auxiliar para fazer requisições autenticadas no servidor
 async function makeAuthenticatedDashboardRequest<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -36,7 +36,6 @@ async function makeAuthenticatedDashboardRequest<T>(
       return { error: "Token de autenticação não encontrado" }
     }
 
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
     const DASHBOARD_BASE_URL = `${API_BASE_URL}/dashboard`
 
     const config: RequestInit = {

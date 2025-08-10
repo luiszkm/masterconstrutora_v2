@@ -18,7 +18,7 @@ export async function getJWTToken(): Promise<string | null> {
 export async function makeAuthenticatedRequest(
   url: string,
   options: RequestInit = {}
-) {
+): Promise<Response> {
   const jwtToken = await getJWTToken();
 
   if (!jwtToken) {

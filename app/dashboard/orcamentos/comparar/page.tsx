@@ -4,261 +4,170 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Download, Package } from "lucide-react"
+import { ArrowLeft, Download, Package, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "@/hooks/use-toast"
+import { compararOrcamentosPorCategoria, obterCategoriasDisponiveis } from "@/app/actions/orcamentos-comparacao"
+import { ComparacaoOrcamentosResponse, OrcamentoComparacao } from "@/types/api-types"
 
-// Tipo para material em orçamento
-type MaterialOrcamento = {
-  id: number
-  nome: string
-  quantidade: number
-  unidade: string
-  valorUnitario: number
-  valorTotal: number
-  fornecedor: string
-}
-
-// Tipo para orçamento
-type Orcamento = {
-  id: number
-  numero: string
-  cliente: string
-  projeto: string
-  valor: string
-  data: string
-  status: string
-  materiais: MaterialOrcamento[]
-}
-
-// Tipo para comparação de material
-type ComparacaoMaterial = {
-  material: string
-  orcamentos: {
-    id: number
-    numero: string
-    fornecedor: string
-    quantidade: number
-    unidade: string
-    valorUnitario: number
-    valorTotal: number
-  }[]
-}
-
-// Dados de exemplo
-const orcamentosIniciais: Orcamento[] = [
-  {
-    id: 1,
-    numero: "ORC-2023-101",
-    cliente: "Roberto Mendes",
-    projeto: "Mansão Alphaville",
-    valor: "R$ 2.500.000,00",
-    data: "10/01/2023",
-    status: "Aprovado",
-    materiais: [
-      {
-        id: 1,
-        nome: "Cimento",
-        quantidade: 500,
-        unidade: "Saco 50kg",
-        valorUnitario: 32.5,
-        valorTotal: 16250,
-        fornecedor: "Materiais Premium Ltda",
-      },
-      {
-        id: 2,
-        nome: "Areia",
-        quantidade: 120,
-        unidade: "m³",
-        valorUnitario: 120,
-        valorTotal: 14400,
-        fornecedor: "Materiais Premium Ltda",
-      },
-      {
-        id: 3,
-        nome: "Aço",
-        quantidade: 2000,
-        unidade: "kg",
-        valorUnitario: 8.5,
-        valorTotal: 17000,
-        fornecedor: "Materiais Premium Ltda",
-      },
-    ],
-  },
-  {
-    id: 2,
-    numero: "ORC-2023-102",
-    cliente: "Carla Oliveira",
-    projeto: "Residência Beira-Mar",
-    valor: "R$ 1.800.000,00",
-    data: "22/02/2023",
-    status: "Pendente",
-    materiais: [
-      {
-        id: 4,
-        nome: "Mármores",
-        quantidade: 80,
-        unidade: "m²",
-        valorUnitario: 950,
-        valorTotal: 76000,
-        fornecedor: "Mármores & Granitos SA",
-      },
-      {
-        id: 5,
-        nome: "Porcelanatos",
-        quantidade: 200,
-        unidade: "m²",
-        valorUnitario: 89.9,
-        valorTotal: 17980,
-        fornecedor: "Mármores & Granitos SA",
-      },
-    ],
-  },
-  {
-    id: 3,
-    numero: "ORC-2023-103",
-    cliente: "Fernando Almeida",
-    projeto: "Cobertura Duplex",
-    valor: "R$ 950.000,00",
-    data: "15/03/2023",
-    status: "Aprovado",
-    materiais: [
-      {
-        id: 6,
-        nome: "Cabos",
-        quantidade: 1000,
-        unidade: "m",
-        valorUnitario: 5.8,
-        valorTotal: 5800,
-        fornecedor: "Elétrica Total",
-      },
-      {
-        id: 7,
-        nome: "Disjuntores",
-        quantidade: 30,
-        unidade: "un",
-        valorUnitario: 45.9,
-        valorTotal: 1377,
-        fornecedor: "Elétrica Total",
-      },
-    ],
-  },
-  {
-    id: 4,
-    numero: "ORC-2023-104",
-    cliente: "Juliana Martins",
-    projeto: "Refúgio na Serra",
-    valor: "R$ 1.200.000,00",
-    data: "05/04/2023",
-    status: "Em análise",
-    materiais: [
-      {
-        id: 8,
-        nome: "Madeira Maciça",
-        quantidade: 50,
-        unidade: "m³",
-        valorUnitario: 2800,
-        valorTotal: 140000,
-        fornecedor: "Madeiras Nobres",
-      },
-      {
-        id: 9,
-        nome: "Deck",
-        quantidade: 120,
-        unidade: "m²",
-        valorUnitario: 350,
-        valorTotal: 42000,
-        fornecedor: "Madeiras Nobres",
-      },
-    ],
-  },
-  {
-    id: 5,
-    numero: "ORC-2023-105",
-    cliente: "Ricardo Souza",
-    projeto: "Mansão Neoclássica",
-    valor: "R$ 3.100.000,00",
-    data: "18/05/2023",
-    status: "Recusado",
-    materiais: [
-      {
-        id: 10,
-        nome: "Cimento",
-        quantidade: 800,
-        unidade: "Saco 50kg",
-        valorUnitario: 31.8,
-        valorTotal: 25440,
-        fornecedor: "Materiais Premium Ltda",
-      },
-      {
-        id: 11,
-        nome: "Granitos",
-        quantidade: 150,
-        unidade: "m²",
-        valorUnitario: 850,
-        valorTotal: 127500,
-        fornecedor: "Mármores & Granitos SA",
-      },
-    ],
-  },
+// Dados mockados para fallback (caso a API não esteja disponível)
+const categoriasMock = [
+  "Cimento",
+  "Areia", 
+  "Aço",
+  "Mármores",
+  "Porcelanatos",
+  "Cabos",
+  "Disjuntores",
+  "Madeira Maciça",
+  "Deck",
+  "Granitos"
 ]
 
-export default function CompararOrcamentosPage() {
-  // Estado para orçamentos
-  const [orcamentos] = useState<Orcamento[]>(orcamentosIniciais)
-
-  // Estado para material selecionado
-  const [materialSelecionado, setMaterialSelecionado] = useState<string>("")
-
-  // Estado para comparação
-  const [comparacao, setComparacao] = useState<ComparacaoMaterial | null>(null)
-
-  // Obter todos os materiais únicos
-  const materiais = Array.from(new Set(orcamentos.flatMap((o) => o.materiais.map((m) => m.nome)))).sort()
-
-  // Função para gerar comparação
-  const gerarComparacao = () => {
-    if (!materialSelecionado) return
-
-    const orcamentosComMaterial = orcamentos.filter((o) => o.materiais.some((m) => m.nome === materialSelecionado))
-
-    const comparacaoData: ComparacaoMaterial = {
-      material: materialSelecionado,
-      orcamentos: orcamentosComMaterial.map((o) => {
-        const material = o.materiais.find((m) => m.nome === materialSelecionado)!
-        return {
-          id: o.id,
-          numero: o.numero,
-          fornecedor: material.fornecedor,
-          quantidade: material.quantidade,
-          unidade: material.unidade,
-          valorUnitario: material.valorUnitario,
-          valorTotal: material.valorTotal,
-        }
-      }),
+// Dados mockados para fallback da comparação
+const comparacaoMock: ComparacaoOrcamentosResponse = {
+  categoria: "Cimento",
+  orcamentos: [
+    {
+      id: "uuid-1",
+      numero: "ORC-2025-AUG-001",
+      fornecedorNome: "Materiais Premium Ltda",
+      valorTotal: 1250.00,
+      status: "Aprovado",
+      dataEmissao: "2025-08-01T00:00:00Z",
+      itensCategoria: 3
+    },
+    {
+      id: "uuid-2", 
+      numero: "ORC-2025-AUG-002",
+      fornecedorNome: "Construção & Cia",
+      valorTotal: 1350.00,
+      status: "Pendente",
+      dataEmissao: "2025-08-02T00:00:00Z",
+      itensCategoria: 2
+    },
+    {
+      id: "uuid-3",
+      numero: "ORC-2025-AUG-003", 
+      fornecedorNome: "Materiais Baratos SA",
+      valorTotal: 980.00,
+      status: "Aprovado",
+      dataEmissao: "2025-08-03T00:00:00Z",
+      itensCategoria: 4
     }
+  ]
+}
 
-    // Ordenar por valor unitário (do menor para o maior)
-    comparacaoData.orcamentos.sort((a, b) => a.valorUnitario - b.valorUnitario)
+export default function CompararOrcamentosPage() {
+  // Estados
+  const [categorias, setCategorias] = useState<string[]>([])
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>("")
+  const [comparacao, setComparacao] = useState<ComparacaoOrcamentosResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [loadingCategorias, setLoadingCategorias] = useState(true)
 
-    setComparacao(comparacaoData)
+  // Carregar categorias disponíveis
+  const carregarCategorias = async () => {
+    setLoadingCategorias(true)
+    try {
+      console.log('🔍 Carregando categorias disponíveis...')
+      const result = await obterCategoriasDisponiveis()
+      
+      if (result.success && result.data) {
+        console.log('✅ Categorias carregadas da API:', result.data)
+        setCategorias(result.data)
+      } else {
+        console.log('❌ Erro ao carregar categorias, usando mock:', result.error)
+        setCategorias(categoriasMock)
+        toast({
+          title: "Aviso",
+          description: "Usando categorias de demonstração. API não disponível.",
+          variant: "default",
+        })
+      }
+    } catch (error) {
+      console.error('💥 Erro ao carregar categorias:', error)
+      setCategorias(categoriasMock)
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar categorias, usando dados de demonstração",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingCategorias(false)
+    }
   }
 
-  // Gerar comparação quando o material selecionado muda
-  useEffect(() => {
-    if (materialSelecionado) {
-      gerarComparacao()
-    } else {
-      setComparacao(null)
+  // Função para gerar comparação
+  const gerarComparacao = async () => {
+    if (!categoriaSelecionada) return
+
+    setLoading(true)
+    try {
+      console.log('🔍 Comparando orçamentos para categoria:', categoriaSelecionada)
+      const result = await compararOrcamentosPorCategoria(categoriaSelecionada)
+      
+      if (result.success && result.data) {
+        console.log('✅ Comparação carregada da API:', result.data)
+        // Ordenar por valor total (do menor para o maior)
+        const comparacaoOrdenada = {
+          ...result.data,
+          orcamentos: result.data.orcamentos.sort((a, b) => a.valorTotal - b.valorTotal)
+        }
+        setComparacao(comparacaoOrdenada)
+      } else {
+        console.log('❌ Erro ao comparar orçamentos, usando mock:', result.error)
+        // Usar dados mockados se a API falhar
+        const mockComCategoria = {
+          ...comparacaoMock,
+          categoria: categoriaSelecionada
+        }
+        setComparacao(mockComCategoria)
+        toast({
+          title: "Aviso",
+          description: "Usando dados de demonstração. API não disponível: " + (result.error || "Erro desconhecido"),
+          variant: "default",
+        })
+      }
+    } catch (error) {
+      console.error('💥 Erro ao comparar orçamentos:', error)
+      toast({
+        title: "Erro",
+        description: "Erro ao comparar orçamentos",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
-  }, [materialSelecionado])
+  }
+
+  // Carregar categorias na inicialização
+  useEffect(() => {
+    carregarCategorias()
+  }, [])
 
   // Calcular a diferença percentual em relação ao menor valor
   const calcularDiferencaPercentual = (valor: number, menorValor: number) => {
     if (menorValor === 0) return 0
     return ((valor - menorValor) / menorValor) * 100
+  }
+
+  // Formatar status do orçamento
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "aprovado":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      case "pendente":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+      case "recusado":
+      case "cancelado":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+    }
   }
 
   return (
@@ -274,29 +183,37 @@ export default function CompararOrcamentosPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Selecione um Material para Comparar</CardTitle>
-          <CardDescription>Compare os preços e condições do mesmo material em diferentes orçamentos</CardDescription>
+          <CardTitle>Selecione uma Categoria para Comparar</CardTitle>
+          <CardDescription>Compare os orçamentos por categoria de material</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="material">Material</Label>
-              <Select value={materialSelecionado} onValueChange={setMaterialSelecionado}>
+              <Label htmlFor="categoria">Categoria</Label>
+              <Select 
+                value={categoriaSelecionada} 
+                onValueChange={setCategoriaSelecionada}
+                disabled={loadingCategorias}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um material" />
+                  <SelectValue placeholder={loadingCategorias ? "Carregando..." : "Selecione uma categoria"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {materiais.map((material) => (
-                    <SelectItem key={material} value={material}>
-                      {material}
+                  {categorias.map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>
+                      {categoria}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={gerarComparacao} disabled={!materialSelecionado}>
-                Comparar
+              <Button 
+                onClick={gerarComparacao} 
+                disabled={!categoriaSelecionada || loading || loadingCategorias}
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loading ? "Comparando..." : "Comparar"}
               </Button>
             </div>
           </div>
@@ -308,9 +225,9 @@ export default function CompararOrcamentosPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Comparação de {comparacao.material}
+              Comparação de {comparacao.categoria}
             </CardTitle>
-            <CardDescription>{comparacao.orcamentos.length} orçamentos encontrados com este material</CardDescription>
+            <CardDescription>{comparacao.orcamentos.length} orçamentos encontrados com esta categoria</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
@@ -319,16 +236,17 @@ export default function CompararOrcamentosPage() {
                   <TableRow>
                     <TableHead>Orçamento</TableHead>
                     <TableHead>Fornecedor</TableHead>
-                    <TableHead>Quantidade</TableHead>
-                    <TableHead>Valor Unitário</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data Emissão</TableHead>
+                    <TableHead>Itens</TableHead>
                     <TableHead>Valor Total</TableHead>
                     <TableHead>Diferença</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {comparacao.orcamentos.map((item, index) => {
-                    const menorValor = comparacao.orcamentos[0].valorUnitario
-                    const diferencaPercentual = calcularDiferencaPercentual(item.valorUnitario, menorValor)
+                    const menorValor = comparacao.orcamentos[0].valorTotal
+                    const diferencaPercentual = calcularDiferencaPercentual(item.valorTotal, menorValor)
 
                     return (
                       <TableRow key={item.id} className={index === 0 ? "bg-green-50 dark:bg-green-950/20" : ""}>
@@ -337,14 +255,19 @@ export default function CompararOrcamentosPage() {
                             {item.numero}
                           </Link>
                         </TableCell>
-                        <TableCell>{item.fornecedor}</TableCell>
+                        <TableCell>{item.fornecedorNome}</TableCell>
                         <TableCell>
-                          {item.quantidade} {item.unidade}
+                          <Badge className={getStatusColor(item.status)}>
+                            {item.status}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          R$ {item.valorUnitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          {new Date(item.dataEmissao).toLocaleDateString('pt-BR')}
                         </TableCell>
                         <TableCell>
+                          {item.itensCategoria} {item.itensCategoria === 1 ? 'item' : 'itens'}
+                        </TableCell>
+                        <TableCell className="font-medium">
                           R$ {item.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
