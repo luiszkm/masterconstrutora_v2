@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getJWTToken } from "@/app/actions/common"
 import { ObrasPageClient } from "./obra-page-client"
 import { getObrasList } from "@/app/actions/obra"
+import { getFuncionarios } from "@/app/actions/funcionario"
 
 // Server Component - handles data fetching and authentication
 export default async function ObrasPage() {
@@ -14,6 +15,7 @@ export default async function ObrasPage() {
   // Fetch data on the server side
   const obrasListResult = await getObrasList()
 
+  const funcionariosListResult = await getFuncionarios()
 
   // Handle error if fetching fails
   if ("error" in obrasListResult) {
@@ -28,5 +30,7 @@ export default async function ObrasPage() {
   }
 
 
-  return <ObrasPageClient initialData={obrasListResult.data} />
+  return <ObrasPageClient 
+  funcionariosDisponiveis={funcionariosListResult.data}
+  initialData={obrasListResult.data} />
 }

@@ -50,14 +50,15 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   getObrasList,
   excluirObra,
-  alocarFuncionario,
   concluirProximaEtapa,
   type ObraListItem,
   type ObraListResponse,
 } from "@/app/actions/obra"
+import { FuncionarioBase } from "@/app/actions/funcionario"
 
 
-export function ObrasPageClient({ initialData }: { initialData?: ObraListResponse }) {
+export function ObrasPageClient({ initialData, funcionariosDisponiveis }: 
+  { initialData?: ObraListResponse, funcionariosDisponiveis: FuncionarioBase[] }) {
   // Estados
   const [obras, setObras] = useState<ObraListItem[]>(initialData?.dados || [])
   const [paginacao, setPaginacao] = useState(
@@ -73,11 +74,6 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
   const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState<string[]>([])
   const [filtroEtapa, setFiltroEtapa] = useState<string[]>([])
-
-  // Estados para diálogos de ações rápidas
-  const [alocarDialogAberto, setAlocarDialogAberto] = useState(false)
-  const [obraSelecionada, setObraSelecionada] = useState<ObraListItem | null>(null)
-  const [funcionariosSelecionados, setFuncionariosSelecionados] = useState<string[]>([])
 
   const carregarObras = async (page = 1) => {
     setLoading(true)
@@ -202,47 +198,6 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
     }
   }
 
-  // Ação: Alocar funcionário
-  const handleAlocarFuncionario = async () => {
-    if (!obraSelecionada || funcionariosSelecionados.length === 0) return
-
-    try {
-      // Alocar cada funcionário selecionado
-      const result = await alocarFuncionario(obraSelecionada.id, funcionariosSelecionados)
-
-      if (result?.success) {
-        const funcionariosNomes = funcionariosSelecionados
-          .map((id) => mockData.funcionarios.find((f) => f.id === Number.parseInt(id))?.nome)
-          .filter(Boolean)
-          .join(", ")
-
-        toast({
-          title: "Funcionários Alocados",
-          description: `${funcionariosNomes} foram alocados à obra ${obraSelecionada.nome}`,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
-        })
-      }
-
-      if (result?.success === false && result?.message) {
-        toast({
-          title: "Alguns erros ocorreram",
-          description: `funcionário(s) não puderam ser alocados`,
-          variant: "destructive",
-        })
-      }
-
-      carregarObras(paginacao.currentPage)
-      setAlocarDialogAberto(false)
-      setFuncionariosSelecionados([])
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao alocar funcionários",
-        variant: "destructive",
-      })
-    }
-  }
-
 
   // Ação: Excluir obra
   const handleExcluirObra = async (obra: ObraListItem) => {
@@ -314,11 +269,7 @@ export function ObrasPageClient({ initialData }: { initialData?: ObraListRespons
     }
   }
 
-  const toggleFuncionario = (funcionarioId: string) => {
-    setFuncionariosSelecionados((current) =>
-      current.includes(funcionarioId) ? current.filter((id) => id !== funcionarioId) : [...current, funcionarioId],
-    )
-  }
+
 
   if (loading) {
     return (

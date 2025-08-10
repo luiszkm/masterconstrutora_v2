@@ -41,7 +41,13 @@ import { CronogramaTable } from "@/components/cronograma-table"
 import { CriarCronogramaIndividual, CriarCronogramaLote } from "@/components/cronograma-forms"
 import { listarCronogramasAction } from "@/app/actions/cronograma"
 import { CronogramaRecebimento } from "@/types/api-types"
+import { getFuncionarios, type FuncionarioBase } from "@/app/actions/funcionario"
+import { alocarFuncionario } from "@/app/actions/obra"
 import type { Obra } from "@/app/actions/obra"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface ObraDetalhesProps {
   obra: Obra
@@ -53,6 +59,13 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const [cronogramaLoading, setCronogramaLoading] = useState(true)
   const [cronogramaIndividualOpen, setCronogramaIndividualOpen] = useState(false)
   const [cronogramaLoteOpen, setCronogramaLoteOpen] = useState(false)
+  
+  // Estados para modal de adicionar funcionário
+  const [adicionarFuncionarioOpen, setAdicionarFuncionarioOpen] = useState(false)
+  const [funcionariosDisponiveis, setFuncionariosDisponiveis] = useState<FuncionarioBase[]>([])
+  const [funcionariosSelecionados, setFuncionariosSelecionados] = useState<string[]>([])
+  const [loadingFuncionarios, setLoadingFuncionarios] = useState(false)
+  const [salvandoAlocacao, setSalvandoAlocacao] = useState(false)
   
   const evolucao = calcularEvolucao(obra.etapas)
   const etapaAtual = obterEtapaAtual(obra.etapas)
@@ -86,6 +99,96 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
     } finally {
       setCronogramaLoading(false)
     }
+  }
+
+  // Carregar funcionários disponíveis
+  const carregarFuncionarios = async () => {
+    setLoadingFuncionarios(true)
+    try {
+      console.log('🔍 Carregando funcionários disponíveis...')
+      const result = await getFuncionarios()
+      
+      if (Array.isArray(result)) {
+        console.log('✅ Funcionários carregados:', result.length)
+        // Filtrar funcionários que não estão alocados nesta obra
+        const funcionariosAlocados = obra.funcionarios.map(f => f.funcionarioId.toString())
+        const funcionariosNaoAlocados = result.filter(f => 
+          f.id && !funcionariosAlocados.includes(f.id.toString())
+        )
+        setFuncionariosDisponiveis(funcionariosNaoAlocados)
+      } else {
+        console.log('❌ Erro ao carregar funcionários:', result.error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os funcionários",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('💥 Erro ao carregar funcionários:', error)
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar funcionários",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingFuncionarios(false)
+    }
+  }
+
+  // Alocar funcionários à obra
+  const handleAlocarFuncionarios = async () => {
+    if (funcionariosSelecionados.length === 0) return
+
+    setSalvandoAlocacao(true)
+    try {
+      console.log('🔄 Alocando funcionários:', funcionariosSelecionados)
+      const result = await alocarFuncionario(obra.id, funcionariosSelecionados)
+      
+      if (result?.success) {
+        toast({
+          title: "Sucesso",
+          description: `${funcionariosSelecionados.length} funcionário(s) alocado(s) com sucesso!`,
+        })
+        
+        // Resetar estados do modal
+        setAdicionarFuncionarioOpen(false)
+        setFuncionariosSelecionados([])
+        
+        // Recarregar a página para mostrar os novos funcionários
+        window.location.reload()
+      } else {
+        toast({
+          title: "Erro",
+          description: result?.message || "Erro ao alocar funcionários",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('💥 Erro ao alocar funcionários:', error)
+      toast({
+        title: "Erro",
+        description: "Erro ao alocar funcionários",
+        variant: "destructive",
+      })
+    } finally {
+      setSalvandoAlocacao(false)
+    }
+  }
+
+  // Abrir modal e carregar funcionários
+  const abrirModalAdicionarFuncionario = () => {
+    setAdicionarFuncionarioOpen(true)
+    carregarFuncionarios()
+  }
+
+  // Toggle seleção de funcionário
+  const toggleFuncionarioSelecionado = (funcionarioId: string) => {
+    setFuncionariosSelecionados(prev => 
+      prev.includes(funcionarioId) 
+        ? prev.filter(id => id !== funcionarioId)
+        : [...prev, funcionarioId]
+    )
   }
 
   useEffect(() => {
@@ -378,11 +481,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                 <CardTitle>Funcionários Alocados</CardTitle>
                 <CardDescription>Equipe trabalhando nesta obra</CardDescription>
               </div>
-              <Button size="sm" asChild>
-                <Link href="/dashboard/funcionarios/novo">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Adicionar
-                </Link>
+              <Button size="sm" onClick={abrirModalAdicionarFuncionario}>
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar
               </Button>
             </CardHeader>
             <CardContent>
@@ -576,6 +677,101 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog para adicionar funcionários */}
+      <Dialog open={adicionarFuncionarioOpen} onOpenChange={setAdicionarFuncionarioOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Adicionar Funcionários</DialogTitle>
+            <DialogDescription>
+              Selecione os funcionários que deseja alocar na obra "{obra.nome}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {loadingFuncionarios ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-muted-foreground">Carregando funcionários...</p>
+                </div>
+              </div>
+            ) : funcionariosDisponiveis.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                <h3 className="mt-4 text-lg font-medium">Nenhum funcionário disponível</h3>
+                <p className="mt-2 text-muted-foreground">
+                  Todos os funcionários já estão alocados nesta obra ou não há funcionários cadastrados.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Funcionários Disponíveis</Label>
+                <ScrollArea className="h-64 border rounded-md p-4">
+                  <div className="space-y-3">
+                    {funcionariosDisponiveis.map((funcionario) => (
+                      <div
+                        key={funcionario.id}
+                        className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted cursor-pointer border"
+                        onClick={() => funcionario.id && toggleFuncionarioSelecionado(funcionario.id)}
+                      >
+                        <Checkbox
+                          checked={funcionario.id ? funcionariosSelecionados.includes(funcionario.id) : false}
+                          onCheckedChange={() => funcionario.id && toggleFuncionarioSelecionado(funcionario.id)}
+                        />
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>
+                            {funcionario.nome.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="font-medium">{funcionario.nome}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {funcionario.cargo || 'Cargo não informado'}
+                          </div>
+                          {funcionario.telefone && (
+                            <div className="text-xs text-muted-foreground">
+                              📞 {funcionario.telefone}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                {funcionariosSelecionados.length > 0 && (
+                  <div className="text-sm text-muted-foreground mt-2">
+                    {funcionariosSelecionados.length} funcionário(s) selecionado(s)
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setAdicionarFuncionarioOpen(false)
+                setFuncionariosSelecionados([])
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAlocarFuncionarios} 
+              disabled={funcionariosSelecionados.length === 0 || salvandoAlocacao}
+            >
+              {salvandoAlocacao ? (
+                <>
+                  <div className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Alocando...
+                </>
+              ) : (
+                `Alocar ${funcionariosSelecionados.length > 0 ? `(${funcionariosSelecionados.length})` : ""}`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialogs para cronograma */}
       <CriarCronogramaIndividual
