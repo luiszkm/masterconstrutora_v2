@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { decrypt } from "../lib/session";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export async function getJWTToken(): Promise<string | null> {
   const cookieStore = await cookies();

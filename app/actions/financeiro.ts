@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache"
 import { API_URL, makeAuthenticatedRequest } from "./common"
 import type { ContaReceber, ContaPagar, FluxoCaixaResponse } from "@/types/financeiro"
+import { validateFormData } from "@/lib/validations/common"
+import { contaPagarSchema, contaReceberSchema, registrarPagamentoSchema, registrarRecebimentoSchema } from "@/lib/validations/financeiro"
+import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses"
 
 // GETs — seguem o padrão: retornam lista ou { error }
 export async function getContasReceber(): Promise<ContaReceber[] | { error: string }> {
@@ -129,10 +132,10 @@ export async function registrarRecebimento(input: {
   formaPagamento?: string
   observacoes?: string
   contaBancariaId?: string
-}): Promise<{ success: boolean; message: string }> {
+}): Promise<ActionResponse> {
   try {
     if (!input.contaId || !input.valor || input.valor <= 0) {
-      return { success: false, message: "Informe contaId e valor válido." }
+      return createErrorResponse("Informe contaId e valor válido.")
     }
     const res = await makeAuthenticatedRequest(
       `${API_URL}/contas-receber/${input.contaId}/recebimentos`,
@@ -141,16 +144,16 @@ export async function registrarRecebimento(input: {
     if (!res.ok) {
       try {
         const err = await res.json()
-        return { success: false, message: err.message || "Erro ao registrar recebimento." }
+        return createErrorResponse(err.message || "Erro ao registrar recebimento.")
       } catch {
-        return { success: false, message: res.status === 401 ? "Não autorizado. Faça login novamente." : "Erro ao registrar recebimento." }
+        return createErrorResponse(res.status === 401 ? "Não autorizado. Faça login novamente." : "Erro ao registrar recebimento.")
       }
     }
     revalidatePath("/financeiro")
-    return { success: true, message: "Recebimento registrado com sucesso." }
+    return createSuccessResponse("Recebimento registrado com sucesso.")
   } catch (e) {
     console.error("registrarRecebimento error:", e)
-    return { success: false, message: "Erro interno do servidor" }
+    return createErrorResponse("Erro interno do servidor")
   }
 }
 
@@ -160,10 +163,10 @@ export async function registrarPagamento(input: {
   formaPagamento?: string
   observacoes?: string
   contaBancariaId?: string
-}): Promise<{ success: boolean; message: string }> {
+}): Promise<ActionResponse> {
   try {
     if (!input.contaId || !input.valor || input.valor <= 0) {
-      return { success: false, message: "Informe contaId e valor válido." }
+      return createErrorResponse("Informe contaId e valor válido.")
     }
     const res = await makeAuthenticatedRequest(
       `${API_URL}/contas-pagar/${input.contaId}/pagamentos`,
@@ -172,15 +175,15 @@ export async function registrarPagamento(input: {
     if (!res.ok) {
       try {
         const err = await res.json()
-        return { success: false, message: err.message || "Erro ao registrar pagamento." }
+        return createErrorResponse(err.message || "Erro ao registrar pagamento.")
       } catch {
-        return { success: false, message: res.status === 401 ? "Não autorizado. Faça login novamente." : "Erro ao registrar pagamento." }
+        return createErrorResponse(res.status === 401 ? "Não autorizado. Faça login novamente." : "Erro ao registrar pagamento.")
       }
     }
     revalidatePath("/financeiro")
-    return { success: true, message: "Pagamento registrado com sucesso." }
+    return createSuccessResponse("Pagamento registrado com sucesso.")
   } catch (e) {
     console.error("registrarPagamento error:", e)
-    return { success: false, message: "Erro interno do servidor" }
+    return createErrorResponse("Erro interno do servidor")
   }
 }

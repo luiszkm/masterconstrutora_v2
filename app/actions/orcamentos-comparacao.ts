@@ -2,17 +2,12 @@
 
 import { ComparacaoOrcamentosResponse } from "@/types/api-types"
 import { API_URL, makeAuthenticatedRequest } from "./common"
-
-export interface ComparacaoActionResult {
-  success: boolean
-  error?: string
-  data?: ComparacaoOrcamentosResponse
-}
+import { createSuccessResponse, createErrorResponse, type ActionResponse } from "@/types/action-responses"
 
 /**
  * Compara orçamentos por categoria/material
  */
-export async function compararOrcamentosPorCategoria(categoria: string): Promise<ComparacaoActionResult> {
+export async function compararOrcamentosPorCategoria(categoria: string): Promise<ActionResponse<ComparacaoOrcamentosResponse>> {
   try {
     console.log('🔍 Comparando orçamentos para categoria:', categoria)
     
@@ -31,24 +26,19 @@ export async function compararOrcamentosPorCategoria(categoria: string): Promise
     const data = await response.json()
     console.log('📦 Dados recebidos da API:', data)
     
-    return { success: true, data }
+    return createSuccessResponse("Orçamentos comparados com sucesso", data)
   } catch (error) {
     console.error("💥 Erro ao comparar orçamentos:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao comparar orçamentos"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao comparar orçamentos"
+    )
   }
 }
 
 /**
  * Obter categorias disponíveis para comparação
  */
-export async function obterCategoriasDisponiveis(): Promise<{
-  success: boolean
-  error?: string
-  data?: string[]
-}> {
+export async function obterCategoriasDisponiveis(): Promise<ActionResponse<string[]>> {
   try {
     console.log('🔍 Obtendo categorias disponíveis...')
     
@@ -67,12 +57,11 @@ export async function obterCategoriasDisponiveis(): Promise<{
     const data = await response.json()
     console.log('📦 Categorias recebidas da API:', data)
     
-    return { success: true, data }
+    return createSuccessResponse("Categorias obtidas com sucesso", data)
   } catch (error) {
     console.error("💥 Erro ao obter categorias:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao obter categorias"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao obter categorias"
+    )
   }
 }

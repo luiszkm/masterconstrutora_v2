@@ -3,6 +3,7 @@
 import { revalidateTag } from "next/cache";
 import { removerMascaraMonetaria } from "@/app/lib/masks"; // Importar a função de máscara
 import { API_URL, makeAuthenticatedRequest } from "./common";
+import { createSuccessResponse, createErrorResponse, type ActionResponse } from "@/types/action-responses";
 
 
 // Tipo para os dados de pagamento do funcionário (para criação/atualização)
@@ -43,7 +44,7 @@ export type Apontamento = {
 export async function createFuncionarioPayment(
   prevState: any,
   formData: FormData
-) {
+): Promise<ActionResponse> {
   const funcionarioId = formData.get("funcionarioId") as string;
   const apontamentoId = formData.get("apontamentoId") as string | null; // Pode ser nulo para criação
 
@@ -71,10 +72,7 @@ export async function createFuncionarioPayment(
   };
 
   if (!funcionarioId || !paymentData.periodoInicio || !paymentData.periodoFim) {
-    return {
-      success: false,
-      message: "ID do funcionário e período de pagamento são obrigatórios.",
-    };
+    return createErrorResponse("ID do funcionário e período de pagamento são obrigatórios.");
   }
 
   try {
@@ -102,21 +100,17 @@ export async function createFuncionarioPayment(
         }
       }
 
-      return { success: false, message: errorMessage };
+      return createErrorResponse(errorMessage);
     }
 
     revalidateTag(`funcionario-${funcionarioId}`);
     revalidateTag("funcionarios-apontamentos"); // Revalida a lista principal
 
     const result = await response.json();
-    return {
-      success: true,
-      message:
-        result.message ||
-        `Informações de pagamento ${
-          apontamentoId ? "atualizadas" : "salvas"
-        } com sucesso!`,
-    };
+    return createSuccessResponse(
+      result.message ||
+      `Informações de pagamento ${apontamentoId ? "atualizadas" : "salvas"} com sucesso!`
+    );
   } catch (error) {
     console.error(
       `Erro ao ${
@@ -129,16 +123,10 @@ export async function createFuncionarioPayment(
       error instanceof Error &&
       error.message === "Token de autenticação não encontrado"
     ) {
-      return {
-        success: false,
-        message: "Não autorizado. Faça login novamente.",
-      };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
 
-    return {
-      success: false,
-      message: "Erro de conexão com o servidor. Tente novamente.",
-    };
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
   }
 }
 
@@ -190,7 +178,7 @@ export async function handleFuncionarioApontamentoSubmit(
         }
       }
 
-      return { success: false, message: errorMessage };
+      return createErrorResponse(errorMessage);
     }
 
     const result = await response.json();
@@ -209,16 +197,10 @@ export async function handleFuncionarioApontamentoSubmit(
       error instanceof Error &&
       error.message === "Token de autenticação não encontrado"
     ) {
-      return {
-        success: false,
-        message: "Não autorizado. Faça login novamente.",
-      };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
 
-    return {
-      success: false,
-      message: "Erro de conexão com o servidor. Tente novamente.",
-    };
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
   }
 }
 
@@ -379,7 +361,7 @@ export async function pagarApontamentosQuinzena(apontamentosIds: string[], conta
           method: "PATCH",
           body: JSON.stringify({
             contaBancariaId: contaBancariaId,
-            apontamentoId: [apontamentoId],
+            apontamentoId: apontamentoId,
           }),
         })
 

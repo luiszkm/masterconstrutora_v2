@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-
 import { removerMascaraMonetaria } from "@/app/lib/masks"; // Importar a função de máscara
 import { makeAuthenticatedRequest, API_URL } from "./common";
+import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses";
+import { validateFormData } from "@/lib/validations/common";
+import { createFuncionarioSchema, updateFuncionarioSchema, funcionarioPaymentSchema } from "@/lib/validations/funcionario";
 
 
 export type FuncionarioBase = {
@@ -77,26 +79,16 @@ export type FuncionarioApontamento = {
  * Cria um novo funcionário no backend (apenas dados básicos).
  * Retorna o ID do funcionário criado.
  */
-export async function createFuncionario(prevState: any, formData: FormData) {
-  const funcionarioData: FuncionarioBase = {
-    nome: formData.get("nome") as string,
-    cpf: formData.get("cpf") as string,
-    email: formData.get("email") as string,
-    telefone: formData.get("telefone") as string,
-    cargo: formData.get("cargo") as string,
-    departamento: formData.get("departamento") as string,
-    dataContratacao: formData.get("dataContratacao") as string,
-    chavePix: formData.get("chavePix") as string,
-    observacoes: formData.get("observacoes") as string,
-  };
-
-  if (!funcionarioData.nome) {
-    return {
-      success: false,
-      message: "Nome é obrigatório.",
-      funcionarioId: null,
-    };
+export async function createFuncionario(prevState: any, formData: FormData): Promise<CreateActionResponse> {
+  // Validar dados do formulário
+  const validation = validateFormData(formData, createFuncionarioSchema)
+  
+  if (!validation.success) {
+    const firstError = Object.values(validation.errors)[0]?.[0]
+    return createErrorResponse(firstError || "Dados inválidos")
   }
+  
+  const funcionarioData = validation.data
 
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios`, {
@@ -116,7 +108,7 @@ export async function createFuncionario(prevState: any, formData: FormData) {
         }
       }
 
-      return { success: false, message: errorMessage, funcionarioId: null };
+      return createErrorResponse(errorMessage);
     }
 
     revalidateTag("funcionarios");
@@ -131,18 +123,13 @@ export async function createFuncionario(prevState: any, formData: FormData) {
         "ID do funcionário não encontrado na resposta do backend:",
         result
       );
-      return {
-        success: false,
-        message: "ID do funcionário não recebido do servidor.",
-        funcionarioId: null,
-      };
+      return createErrorResponse("ID do funcionário não recebido do servidor.");
     }
 
-    return {
-      success: true,
-      message: result.message || "Funcionário criado com sucesso!",
-      funcionarioId: funcionarioId,
-    };
+    return createSuccessResponse(
+      result.message || "Funcionário criado com sucesso!",
+      { id: funcionarioId }
+    );
   } catch (error) {
     console.error("Erro ao criar funcionário:", error);
 
@@ -150,19 +137,10 @@ export async function createFuncionario(prevState: any, formData: FormData) {
       error instanceof Error &&
       error.message === "Token de autenticação não encontrado"
     ) {
-      // Não redirecionamos aqui, o Server Component pai fará isso.
-      return {
-        success: false,
-        message: "Não autorizado. Faça login novamente.",
-        funcionarioId: null,
-      };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
 
-    return {
-      success: false,
-      message: "Erro de conexão com o servidor. Tente novamente.",
-      funcionarioId: null,
-    };
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
   }
 }
 
@@ -173,39 +151,18 @@ export async function createFuncionario(prevState: any, formData: FormData) {
 export async function createFuncionarioPayment(
   prevState: any,
   formData: FormData
-) {
-  const funcionarioId = formData.get("funcionarioId") as string;
-  const apontamentoId = formData.get("apontamentoId") as string | null; // Pode ser nulo para criação
-
-  const paymentData: FuncionarioPaymentPayload = {
-    funcionarioId: funcionarioId,
-    diaria: removerMascaraMonetaria((formData.get("diaria") as string) || "0"),
-    diasTrabalhados: Number.parseInt(
-      (formData.get("diasTrabalhados") as string) || "0"
-    ), // Corrigido aqui
-    valorAdicional: removerMascaraMonetaria(
-      (formData.get("valorAdicional") as string) || "0"
-    ),
-    descontos: removerMascaraMonetaria(
-      (formData.get("descontos") as string) || "0"
-    ),
-    adiantamento: removerMascaraMonetaria(
-      (formData.get("adiantamento") as string) || "0"
-    ),
-    valorTotal: removerMascaraMonetaria(
-      (formData.get("valorTotal") as string) || "0"
-    ),
-    periodoInicio: formData.get("periodoInicio") as string,
-    periodoFim: formData.get("periodoFim") as string,
-    obraId: formData.get("obraId") as string,
-  };
-
-  if (!funcionarioId || !paymentData.periodoInicio || !paymentData.periodoFim) {
-    return {
-      success: false,
-      message: "ID do funcionário e período de pagamento são obrigatórios.",
-    };
+): Promise<ActionResponse> {
+  // Validar dados do formulário
+  const validation = validateFormData(formData, funcionarioPaymentSchema)
+  
+  if (!validation.success) {
+    const firstError = Object.values(validation.errors)[0]?.[0]
+    return createErrorResponse(firstError || "Dados inválidos")
   }
+  
+  const paymentData = validation.data
+  const funcionarioId = paymentData.funcionarioId
+  const apontamentoId = formData.get("apontamentoId") as string | null
 
   try {
     const method = apontamentoId ? "PUT" : "POST";
@@ -231,20 +188,17 @@ export async function createFuncionarioPayment(
         }
       }
 
-      return { success: false, message: errorMessage };
+      return createErrorResponse(errorMessage);
     }
 
     revalidateTag(`funcionario-${funcionarioId}`);
     revalidateTag("funcionarios-apontamentos"); // Revalida a lista principal
 
     const result = await response.json();
-    return {
-      success: true,
-      message:
-        result.message ||
-        `Informações de pagamento ${apontamentoId ? "atualizadas" : "salvas"
-        } com sucesso!`,
-    };
+    return createSuccessResponse(
+      result.message ||
+      `Informações de pagamento ${apontamentoId ? "atualizadas" : "salvas"} com sucesso!`
+    );
   } catch (error) {
     console.error(
       `Erro ao ${apontamentoId ? "atualizar" : "salvar"
@@ -256,16 +210,10 @@ export async function createFuncionarioPayment(
       error instanceof Error &&
       error.message === "Token de autenticação não encontrado"
     ) {
-      return {
-        success: false,
-        message: "Não autorizado. Faça login novamente.",
-      };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
 
-    return {
-      success: false,
-      message: "Erro de conexão com o servidor. Tente novamente.",
-    };
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
   }
 }
 
@@ -577,7 +525,7 @@ export async function AtivarFuncionario(id: string) {
   if (!id) {
     return {
       success: false,
-      message: "ID do funcionário é obrigatório para exclusão.",
+      message: "ID do funcionário é obrigatório para ativação.",
     };
   }
 
@@ -763,6 +711,7 @@ export async function HandleReplicarApontamentoPAraPRoximaQuinzena(
       `${API_URL}/funcionarios/replicar`,
       {
         method: "POST",
+        body: JSON.stringify({ ids }),
         next: { tags: ["funcionarios-apontamentos"] }, // Tag para revalidação de cache
       }
     );

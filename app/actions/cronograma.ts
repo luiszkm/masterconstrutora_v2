@@ -3,18 +3,10 @@
 import { revalidatePath, revalidateTag } from "next/cache"
 import { CronogramaRecebimento, CriarCronogramaRequest, CriarCronogramaLoteRequest } from "@/types/api-types"
 import { API_URL, makeAuthenticatedRequest } from "./common"
+import { createSuccessResponse, createErrorResponse, type ActionResponse } from "@/types/action-responses"
 
-export interface CronogramaActionResult {
-  success: boolean
-  error?: string
-  data?: CronogramaRecebimento | CronogramaRecebimento[]
-}
 
-export async function listarCronogramasAction(obraId: string): Promise<{
-  success: boolean
-  data?: CronogramaRecebimento[]
-  error?: string
-}> {
+export async function listarCronogramasAction(obraId: string): Promise<ActionResponse<CronogramaRecebimento[]>> {
   try {
     console.log('🌐 Fazendo requisição para:', `${API_URL}/obras/${obraId}/cronograma-recebimentos`)
     const response = await makeAuthenticatedRequest(`${API_URL}/obras/${obraId}/cronograma-recebimentos`)
@@ -31,17 +23,16 @@ export async function listarCronogramasAction(obraId: string): Promise<{
     console.log('📦 Dados recebidos da API:', data)
     console.log('📊 Tipo dos dados:', typeof data, 'É array?', Array.isArray(data))
     
-    return { success: true, data }
+    return createSuccessResponse("Cronogramas listados com sucesso", data)
   } catch (error) {
     console.error("💥 Erro ao buscar cronogramas:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao buscar cronogramas"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao buscar cronogramas"
+    )
   }
 }
 
-export async function criarCronogramaAction(dados: CriarCronogramaRequest): Promise<CronogramaActionResult> {
+export async function criarCronogramaAction(dados: CriarCronogramaRequest): Promise<ActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/cronograma-recebimentos`, {
       method: "POST",
@@ -62,17 +53,16 @@ export async function criarCronogramaAction(dados: CriarCronogramaRequest): Prom
     revalidatePath(`/dashboard/obras/${dados.obraId}`)
     revalidateTag('cronogramas')
     
-    return { success: true, data }
+    return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao criar cronograma:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao criar cronograma"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao criar cronograma"
+    )
   }
 }
 
-export async function criarCronogramaLoteAction(dados: CriarCronogramaLoteRequest): Promise<CronogramaActionResult> {
+export async function criarCronogramaLoteAction(dados: CriarCronogramaLoteRequest): Promise<ActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/cronograma-recebimentos/lote`, {
       method: "POST",
@@ -92,20 +82,19 @@ export async function criarCronogramaLoteAction(dados: CriarCronogramaLoteReques
     revalidatePath(`/dashboard/obras/${dados.obraId}`)
     revalidateTag('cronogramas')
     
-    return { success: true, data }
+    return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao criar cronograma em lote:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao criar cronogramas"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao criar cronogramas"
+    )
   }
 }
 
 export async function atualizarCronogramaAction(
   id: string, 
   dados: Partial<CriarCronogramaRequest>
-): Promise<CronogramaActionResult> {
+): Promise<ActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/cronograma-recebimentos/${id}`, {
       method: "PUT",
@@ -124,20 +113,16 @@ export async function atualizarCronogramaAction(
     // Revalidar as páginas relacionadas
     revalidateTag('cronogramas')
     
-    return { success: true, data }
+    return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao atualizar cronograma:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao atualizar cronograma"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao atualizar cronograma"
+    )
   }
 }
 
-export async function excluirCronogramaAction(id: string): Promise<{
-  success: boolean
-  error?: string
-}> {
+export async function excluirCronogramaAction(id: string): Promise<ActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/cronograma-recebimentos/${id}`, {
       method: "DELETE",
@@ -150,13 +135,12 @@ export async function excluirCronogramaAction(id: string): Promise<{
     // Revalidar as páginas relacionadas
     revalidateTag('cronogramas')
     
-    return { success: true }
+    return createSuccessResponse("Cronograma excluído com sucesso")
   } catch (error) {
     console.error("Erro ao excluir cronograma:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao excluir cronograma"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao excluir cronograma"
+    )
   }
 }
 
@@ -164,7 +148,7 @@ export async function marcarComoRecebidoAction(
   id: string, 
   valorRecebido: number, 
   dataRecebimento: string
-): Promise<CronogramaActionResult> {
+): Promise<ActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/cronograma-recebimentos/${id}/receber`, {
       method: "PATCH",
@@ -183,12 +167,11 @@ export async function marcarComoRecebidoAction(
     // Revalidar as páginas relacionadas
     revalidateTag('cronogramas')
     
-    return { success: true, data }
+    return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao marcar cronograma como recebido:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao marcar como recebido"
-    }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Erro ao marcar como recebido"
+    )
   }
 }

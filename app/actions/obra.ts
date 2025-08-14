@@ -2,6 +2,9 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { API_URL, makeAuthenticatedRequest } from "./common";
 import { Fornecedor } from "@/types/api-types";
+import { validateFormData } from "@/lib/validations/common";
+import { createObraSchema, updateObraSchema } from "@/lib/validations/obra";
+import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses";
 const url = new URL(`${API_URL}/obras`);
 
 // Tipos
@@ -80,9 +83,7 @@ export interface ObraListResponse {
 export async function getObrasList(
   page = 1,
   pageSize = 20
-): Promise<
-  { success: true; data: ObraListResponse } | { success: false; error: string }
-> {
+): Promise<ActionResponse<ObraListResponse>> {
   try {
     url.searchParams.append("page", page.toString());
     url.searchParams.append("pageSize", pageSize.toString());
@@ -102,7 +103,7 @@ export async function getObrasList(
           errorMessage = "Não autorizado. Faça login novamente.";
         }
       }
-      return { success: false, error: errorMessage };
+      return createErrorResponse(errorMessage);
     }
 
     const result = await response.json();
@@ -114,10 +115,10 @@ export async function getObrasList(
       result.paginacao &&
       typeof result.paginacao.totalItens === "number"
     ) {
-      return { success: true, data: result as ObraListResponse };
+      return createSuccessResponse("Obras listadas com sucesso", result as ObraListResponse);
     } else {
       console.error("Formato inesperado da resposta da API de obras:", result);
-      return { success: false, error: "Formato de dados de obras inesperado." };
+      return createErrorResponse("Formato de dados de obras inesperado.");
     }
   } catch (error) {
     console.error("Erro ao buscar lista de obras:", error);
@@ -125,38 +126,23 @@ export async function getObrasList(
       error instanceof Error &&
       error.message === "Token de autenticação não encontrado"
     ) {
-      return { success: false, error: "Não autorizado. Faça login novamente." };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
-    return {
-      success: false,
-      error: "Erro de conexão com o servidor ao buscar obras. Tente novamente.",
-    };
+    return createErrorResponse(
+      "Erro de conexão com o servidor ao buscar obras. Tente novamente."
+    );
   }
 }
-export async function criarObra(formData: FormData) {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  const novaObra: ObraData = {
-    nome: formData.get("nome") as string,
-    cliente: formData.get("cliente") as string,
-    endereco: formData.get("endereco") as string,
-    dataInicio: formData.get("dataInicio") as string,
-    dataFim: formData.get("dataFim") as string,
-    descricao: formData.get("descricao") as string,
-  };
-
-  // Validações
-  if (
-    !novaObra.nome ||
-    !novaObra.cliente ||
-    !novaObra.endereco ||
-    !novaObra.dataInicio ||
-    !novaObra.dataFim
-  ) {
-    return {
-      success: false,
-      error: "Todos os campos obrigatórios devem ser preenchidos tsees",
-    };
+export async function criarObra(formData: FormData): Promise<CreateActionResponse> {
+  // Validar dados do formulário
+  const validation = validateFormData(formData, createObraSchema)
+  
+  if (!validation.success) {
+    const firstError = Object.values(validation.errors)[0]?.[0]
+    return createErrorResponse(firstError || "Dados inválidos")
   }
+  
+  const novaObra = validation.data
 
   // Obter funcionários selecionados
   const funcionariosSelecionados = {
@@ -182,7 +168,7 @@ export async function criarObra(formData: FormData) {
         }
       }
 
-      return { success: false, message: errorMessage, funcionarioId: null };
+      return createErrorResponse(errorMessage);
     }
 
     revalidateTag("obras-list");
@@ -196,11 +182,7 @@ export async function criarObra(formData: FormData) {
         "ID do Obra não encontrado na resposta do backend:",
         result
       );
-      return {
-        success: false,
-        message: "ID do Obra não recebido do servidor.",
-        obraId: null,
-      };
+      return createErrorResponse("ID da obra não recebido do servidor.");
     }
     // Se houver funcionários selecionados, enviar em uma segunda requisição
     if (funcionariosSelecionados.funcionarioIds.length > 0) {
@@ -214,25 +196,24 @@ export async function criarObra(formData: FormData) {
       if (!response.ok) {
         let errorMessage = "Erro ao associar funcionários à obra.";
         try {
-          const errorData = await funcionariosResponse.json();
+          const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
         } catch {
-          if (funcionariosResponse.status === 401) {
+          if (response.status === 401) {
             errorMessage = "Não autorizado. Faça login novamente.";
           }
         }
-        return { success: false, message: errorMessage, obraId: null };
+        return createErrorResponse(errorMessage);
       }
 
       revalidateTag(`obra-${obraId}`);
       revalidatePath("/dashboard/obras");
     }
 
-    return {
-      success: true,
-      message: result.message || "Obra criado com sucesso!",
-      obraId: obraId,
-    };
+    return createSuccessResponse(
+      result.message || "Obra criada com sucesso!",
+      { id: obraId }
+    );
   } catch (error) {
     console.error("Erro ao criar Obra:", error);
 
@@ -241,21 +222,13 @@ export async function criarObra(formData: FormData) {
       error.message === "Token de autenticação não encontrado"
     ) {
       // Não redirecionamos aqui, o Server Component pai fará isso.
-      return {
-        success: false,
-        message: "Não autorizado. Faça login novamente.",
-        obraId: null,
-      };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
 
-    return {
-      success: false,
-      message: "Erro de conexão com o servidor. Tente novamente.",
-      obraId: null,
-    };
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
   }
 }
-export async function atualizarObra(id: string, formData: FormData) {
+export async function atualizarObra(id: string, formData: FormData): Promise<ActionResponse> {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
 
@@ -279,10 +252,9 @@ export async function atualizarObra(id: string, formData: FormData) {
     !dataInicio ||
     !dataFim
   ) {
-    return {
-      success: false,
-      error: "Todos os campos obrigatórios devem ser preenchidos",
-    };
+    return createErrorResponse(
+      "Todos os campos obrigatórios devem ser preenchidos"
+    );
   }
 
   try {
@@ -313,13 +285,13 @@ export async function atualizarObra(id: string, formData: FormData) {
           errorMessage = "Não autorizado. Faça login novamente.";
         }
       }
-      return { success: false, error: errorMessage };
+      return createErrorResponse(errorMessage);
     }
 
     revalidateTag(`obra-${id}`);
     revalidatePath("/dashboard/obras");
 
-    return { success: true, message: "Obra atualizada com sucesso!" };
+    return createSuccessResponse("Obra atualizada com sucesso!");
     
   } catch (error) {
     console.error("Erro ao atualizar obra:", error);
@@ -327,22 +299,16 @@ export async function atualizarObra(id: string, formData: FormData) {
       error instanceof Error &&
       error.message === "Token de autenticação não encontrado"
     ) {
-      return { success: false, error: "Não autorizado. Faça login novamente." };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
-    return {
-      success: false,
-      error: "Erro de conexão com o servidor ao atualizar obra. Tente novamente.",
-    };
-    
+    return createErrorResponse(
+      "Erro de conexão com o servidor ao atualizar obra. Tente novamente."
+    );
   }
-
- 
-  revalidatePath("/dashboard/obras");
-  
 }
 export async function getObraById(
   id: string
-): Promise<{ success: true; data: Obra } | { success: false; error: string }> {
+): Promise<ActionResponse<Obra>> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/obras/${id}`, {
       method: "GET",
@@ -359,13 +325,13 @@ export async function getObraById(
           errorMessage = "Não autorizado. Faça login novamente.";
         }
       }
-      return { success: false, error: errorMessage };
+      return createErrorResponse(errorMessage);
     }
 
     const result = await response.json();
     console.log("Dados da obra:", result);
     // Validação da estrutura da resposta
-      return { success: true, data: result as Obra };
+      return createSuccessResponse("Obra encontrada com sucesso", result as Obra);
    
   } catch (error) {
     console.error("Erro ao buscar obra:", error);
@@ -373,9 +339,9 @@ export async function getObraById(
       error instanceof Error &&
       error.message === "Token de autenticação não encontrado"
     ) {
-      return { success: false, error: "Não autorizado. Faça login novamente." };
+      return createErrorResponse("Não autorizado. Faça login novamente.");
     }
-    return { success: false, error: "Erro de conexão com o servidor ao buscar obra. Tente novamente." };
+    return createErrorResponse("Erro de conexão com o servidor ao buscar obra. Tente novamente.");
   }
 }
 export async function alocarFuncionario(obraId: string, funcionarioIds: string[]) {
@@ -401,7 +367,7 @@ export async function alocarFuncionario(obraId: string, funcionarioIds: string[]
           errorMessage = "Não autorizado. Faça login novamente.";
         }
       }
-        return { success: false, message: errorMessage, obraId: null };
+        return createErrorResponse(errorMessage);
       }
 
       revalidateTag(`obra-${obraId}`);

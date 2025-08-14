@@ -8,47 +8,16 @@ import type {
   FuncionariosData,
   FornecedoresData,
 } from "@/services/dashboard-service"
-import { cookies } from "next/headers"
-import { decrypt } from "../lib/session"
-import { API_BASE_URL } from "../lib/api-config"
-
-// Função para obter o token JWT do servidor (usando o mesmo padrão das outras rotas)
-async function getJWTToken(): Promise<string | null> {
-  const cookieStore = await cookies()
-  const sessionCookie = cookieStore.get("session")?.value
-  const payload = await decrypt(sessionCookie)
-
-  if (!payload || !payload.jwtToken) {
-    return null
-  }
-
-  return payload.jwtToken
-}
+import { API_URL, makeAuthenticatedRequest } from "./common"
 
 async function makeAuthenticatedDashboardRequest<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<{ data?: T; error?: string }> {
   try {
-    const jwtToken = await getJWTToken()
-
-    if (!jwtToken) {
-      return { error: "Token de autenticação não encontrado" }
-    }
-
-    const DASHBOARD_BASE_URL = `${API_BASE_URL}/dashboard`
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwtToken}`,
-        ...options.headers,
-      },
-      credentials: "include",
-    }
-
-    const response = await fetch(`${DASHBOARD_BASE_URL}${endpoint}`, config)
+    const DASHBOARD_BASE_URL = `${API_URL}/dashboard`
+    
+    const response = await makeAuthenticatedRequest(`${DASHBOARD_BASE_URL}${endpoint}`, options)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
@@ -59,10 +28,9 @@ async function makeAuthenticatedDashboardRequest<T>(
 
     const data = await response.json()
     return { data }
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Erro desconhecido na API",
-    }
+  } catch (error: any) {
+    console.error("Dashboard API Error:", error)
+    return { error: error.message || "Erro interno do servidor" }
   }
 }
 

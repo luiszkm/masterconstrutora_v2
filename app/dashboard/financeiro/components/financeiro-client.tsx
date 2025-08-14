@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/app/lib/utils"
 import { BanknoteIcon as BankIcon, Calendar, CheckCircle2, ChevronDown, CircleDollarSign, CreditCard, DollarSign, Filter, MoreHorizontal, RefreshCcw, Search, X } from 'lucide-react'
-import { getFluxoDeCaixa, registrarPagamento, registrarRecebimento } from "@/app/actions/financneiro"
+import { getFluxoDeCaixa, registrarPagamento, registrarRecebimento } from "@/app/actions/financeiro"
 import type { ContaPagar, ContaReceber, FluxoCaixaResponse } from "@/types/financeiro"
 
 const statusColors: Record<string, string> = {

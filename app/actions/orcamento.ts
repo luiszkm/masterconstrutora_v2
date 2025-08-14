@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache"
 import { API_URL, makeAuthenticatedRequest } from "./common"
 import type { OrcamentosResponse, OrcamentoDetalhado } from "@/types/orcamento"
 import type { FornecedorOrcamento } from "@/types/fornecedor"
+import { validateFormData } from "@/lib/validations/common"
+import { createOrcamentoSchema, updateOrcamentoSchema, aprovarOrcamentoSchema } from "@/lib/validations/orcamento"
+import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses"
 
 // Tipo para categoria da API
 type Categoria = {
@@ -257,11 +260,7 @@ export async function getCategorias(): Promise<Categoria[] | { error: string }> 
 export async function createOrcamento(
   etapaId: string,
   data: CreateOrcamentoData,
-): Promise<{
-  success: boolean
-  message: string
-  orcamento?: any
-}> {
+): Promise<CreateActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/etapas/${etapaId}/orcamentos`, {
       method: "POST",
@@ -270,10 +269,7 @@ export async function createOrcamento(
 
     if (!response.ok) {
       const errorData = await response.json()
-      return {
-        success: false,
-        message: errorData.message || "Erro ao criar orçamento",
-      }
+      return createErrorResponse(errorData.message || "Erro ao criar orçamento")
     }
 
     const orcamento = await response.json()
@@ -282,28 +278,17 @@ export async function createOrcamento(
     revalidatePath("/dashboard/orcamentos")
     revalidatePath(`/dashboard/etapas/${etapaId}`)
 
-    return {
-      success: true,
-      message: "Orçamento criado com sucesso",
-      orcamento,
-    }
+    return createSuccessResponse("Orçamento criado com sucesso", orcamento)
   } catch (error) {
     console.error("Erro ao criar orçamento:", error)
-    return {
-      success: false,
-      message: "Erro interno do servidor",
-    }
+    return createErrorResponse("Erro interno do servidor")
   }
 }
 
 export async function updateOrcamento(
   id: string,
   data: UpdateOrcamentoData,
-): Promise<{
-  success: boolean
-  message: string
-  orcamento?: any
-}> {
+): Promise<ActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/orcamentos/${id}`, {
       method: "PUT",
@@ -312,10 +297,7 @@ export async function updateOrcamento(
 
     if (!response.ok) {
       const errorData = await response.json()
-      return {
-        success: false,
-        message: errorData.message || "Erro ao atualizar orçamento",
-      }
+      return createErrorResponse(errorData.message || "Erro ao atualizar orçamento")
     }
 
     const orcamento = await response.json()
@@ -324,17 +306,10 @@ export async function updateOrcamento(
     revalidatePath("/dashboard/orcamentos")
     revalidatePath(`/dashboard/orcamentos/${id}`)
 
-    return {
-      success: true,
-      message: "Orçamento atualizado com sucesso",
-      orcamento,
-    }
+    return createSuccessResponse("Orçamento atualizado com sucesso", orcamento)
   } catch (error) {
     console.error("Erro ao atualizar orçamento:", error)
-    return {
-      success: false,
-      message: "Erro interno do servidor",
-    }
+    return createErrorResponse("Erro interno do servidor")
   }
 }
 
@@ -373,10 +348,7 @@ export async function deleteOrcamento(id: string): Promise<{
 export async function updateOrcamentoStatus(
   id: string,
   status: "Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado",
-): Promise<{
-  success: boolean
-  message: string
-}> {
+): Promise<ActionResponse> {
   try {
     const response = await makeAuthenticatedRequest(`${API_URL}/orcamentos/${id}/status`, {
       method: "PATCH",
@@ -385,24 +357,15 @@ export async function updateOrcamentoStatus(
 
     if (!response.ok) {
       const errorData = await response.json()
-      return {
-        success: false,
-        message: errorData.message || "Erro ao atualizar status",
-      }
+      return createErrorResponse(errorData.message || "Erro ao atualizar status")
     }
 
     revalidatePath("/dashboard/orcamentos")
 
-    return {
-      success: true,
-      message: "Status atualizado com sucesso",
-    }
+    return createSuccessResponse("Status atualizado com sucesso")
   } catch (error) {
     console.error("Erro ao atualizar status:", error)
-    return {
-      success: false,
-      message: "Erro interno do servidor",
-    }
+    return createErrorResponse("Erro interno do servidor")
   }
 }
 

@@ -6,7 +6,7 @@ import {
   getContasReceber,
   getContasReceberVencidas,
   getFluxoDeCaixa,
-} from "@/app/actions/financneiro"
+} from "@/app/actions/financeiro"
 
 const statusColors: Record<string, string> = {
   PENDENTE: "bg-yellow-500",
