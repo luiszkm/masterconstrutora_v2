@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Building, Calendar, MapPin, User, FileText, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"
 import { atualizarObra, type Obra, getObraById } from "@/app/actions/obra"
 
 const responsaveisMock = ["Maria Oliveira", "Carlos Santos", "Ana Pereira", "Pedro Souza", "João Silva"]
@@ -39,18 +39,18 @@ export default function EditarObraPage() {
     const carregarObra = async () => {
       try {
         const result = await getObraById(obraId)
-        if (result.success) {
+        if (result.success && result.data) {
           const obraData = result.data
           setObra(obraData)
           setFormData({
-            nome: obraData.nome,
-            cliente: obraData.cliente,
-            endereco: obraData.endereco,
-            dataInicio: new Date(obraData.dataInicio).toISOString().split("T")[0],
-            dataFim: new Date(obraData.dataFim).toISOString().split("T")[0],
+            nome: obraData.nome || "",
+            cliente: obraData.cliente || "",
+            endereco: obraData.endereco || "",
+            dataInicio: obraData.dataInicio ? new Date(obraData.dataInicio).toISOString().split("T")[0] : "",
+            dataFim: obraData.dataFim ? new Date(obraData.dataFim).toISOString().split("T")[0] : "",
             responsavel: "",
-            descricao: obraData.descricao,
-            status: obraData.status,
+            descricao: obraData.descricao || "",
+            status: (obraData.status as "Em andamento" | "Concluída" | "Pausada") || "Em andamento",
           })
         } else {
           toast({
@@ -73,7 +73,7 @@ export default function EditarObraPage() {
     }
 
     carregarObra()
-  }, [params.id, router])
+  }, [obraId, router])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -267,7 +267,7 @@ export default function EditarObraPage() {
                 </div>
              
                 <div className="space-y-2">
-                  <Label htmlFor="status"className="flex items-center gap-2">Status</Label>
+                  <Label htmlFor="status" className="flex items-center gap-2">Status</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value: "Em andamento" | "Concluída" | "Pausada") =>

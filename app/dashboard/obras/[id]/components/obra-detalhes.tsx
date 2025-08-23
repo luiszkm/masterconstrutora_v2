@@ -1,20 +1,33 @@
-"use client"
+'use client'
 
-import { useTransition, useState, useEffect } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useTransition, useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import {
   ArrowLeft,
   Building,
@@ -32,22 +45,39 @@ import {
   Phone,
   Mail,
   DollarSign,
-  MoreHorizontal,
-} from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
-import { concluirEtapa } from "@/app/actions/obra"
-import { calcularEvolucao, obterEtapaAtual, obterProximaEtapa } from "@/app/lib/obra-utils"
-import { CronogramaTable } from "@/components/cronograma-table"
-import { CriarCronogramaIndividual, CriarCronogramaLote } from "@/components/cronograma-forms"
-import { listarCronogramasAction } from "@/app/actions/cronograma"
-import { CronogramaRecebimento } from "@/types/api-types"
-import { getFuncionarios, type FuncionarioBase } from "@/app/actions/funcionario"
-import { alocarFuncionario } from "@/app/actions/obra"
-import type { Obra } from "@/app/actions/obra"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+  MoreHorizontal
+} from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
+import { concluirProximaEtapa } from '@/app/actions/obra'
+import {
+  calcularEvolucao,
+  obterEtapaAtual,
+  obterProximaEtapa
+} from '@/app/lib/obra-utils'
+import { CronogramaTable } from '@/components/cronograma-table'
+import {
+  CriarCronogramaIndividual,
+  CriarCronogramaLote
+} from '@/components/cronograma-forms'
+import { listarCronogramasAction } from '@/app/actions/cronograma'
+import { CronogramaRecebimento } from '@/types/api-types'
+import {
+  getFuncionarios,
+  type FuncionarioBase
+} from '@/app/actions/funcionario'
+import { alocarFuncionario } from '@/app/actions/obra'
+import type { Obra } from '@/app/actions/obra'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 
 interface ObraDetalhesProps {
   obra: Obra
@@ -57,16 +87,22 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const [isPending, startTransition] = useTransition()
   const [cronogramas, setCronogramas] = useState<CronogramaRecebimento[]>([])
   const [cronogramaLoading, setCronogramaLoading] = useState(true)
-  const [cronogramaIndividualOpen, setCronogramaIndividualOpen] = useState(false)
+  const [cronogramaIndividualOpen, setCronogramaIndividualOpen] =
+    useState(false)
   const [cronogramaLoteOpen, setCronogramaLoteOpen] = useState(false)
-  
+
   // Estados para modal de adicionar funcionário
-  const [adicionarFuncionarioOpen, setAdicionarFuncionarioOpen] = useState(false)
-  const [funcionariosDisponiveis, setFuncionariosDisponiveis] = useState<FuncionarioBase[]>([])
-  const [funcionariosSelecionados, setFuncionariosSelecionados] = useState<string[]>([])
+  const [adicionarFuncionarioOpen, setAdicionarFuncionarioOpen] =
+    useState(false)
+  const [funcionariosDisponiveis, setFuncionariosDisponiveis] = useState<
+    FuncionarioBase[]
+  >([])
+  const [funcionariosSelecionados, setFuncionariosSelecionados] = useState<
+    string[]
+  >([])
   const [loadingFuncionarios, setLoadingFuncionarios] = useState(false)
   const [salvandoAlocacao, setSalvandoAlocacao] = useState(false)
-  
+
   const evolucao = calcularEvolucao(obra.etapas)
   const etapaAtual = obterEtapaAtual(obra.etapas)
   const proximaEtapa = obterProximaEtapa(obra.etapas)
@@ -74,16 +110,12 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   // Obter dados relacionados
   const funcionariosObra = obra.funcionarios
 
-  
   // Carregar cronogramas
   const carregarCronogramas = async () => {
-    console.log('🔍 Iniciando carregamento de cronogramas para obra:', obra.id)
     setCronogramaLoading(true)
     try {
-      // Primeiro tentar a API
       const result = await listarCronogramasAction(obra.id)
-      console.log('📋 Resultado da API:', result)
-      
+
       if (result.success) {
         if (Array.isArray(result.data)) {
           setCronogramas(result.data)
@@ -92,9 +124,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
     } catch (error) {
       console.error('💥 Erro ao carregar cronogramas:', error)
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os cronogramas",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Não foi possível carregar os cronogramas',
+        variant: 'destructive'
       })
     } finally {
       setCronogramaLoading(false)
@@ -107,29 +139,30 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
     try {
       console.log('🔍 Carregando funcionários disponíveis...')
       const result = await getFuncionarios()
-      
+
       if (Array.isArray(result)) {
-        console.log('✅ Funcionários carregados:', result.length)
         // Filtrar funcionários que não estão alocados nesta obra
-        const funcionariosAlocados = obra.funcionarios.map(f => f.funcionarioId.toString())
-        const funcionariosNaoAlocados = result.filter(f => 
-          f.id && !funcionariosAlocados.includes(f.id.toString())
+        const funcionariosAlocados = obra.funcionarios.map(f =>
+          f.funcionarioId.toString()
+        )
+        const funcionariosNaoAlocados = result.filter(
+          f => f.id && !funcionariosAlocados.includes(f.id.toString())
         )
         setFuncionariosDisponiveis(funcionariosNaoAlocados)
       } else {
         console.log('❌ Erro ao carregar funcionários:', result.error)
         toast({
-          title: "Erro",
-          description: "Não foi possível carregar os funcionários",
-          variant: "destructive",
+          title: 'Erro',
+          description: 'Não foi possível carregar os funcionários',
+          variant: 'destructive'
         })
       }
     } catch (error) {
       console.error('💥 Erro ao carregar funcionários:', error)
       toast({
-        title: "Erro",
-        description: "Erro ao carregar funcionários",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao carregar funcionários',
+        variant: 'destructive'
       })
     } finally {
       setLoadingFuncionarios(false)
@@ -144,32 +177,32 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
     try {
       console.log('🔄 Alocando funcionários:', funcionariosSelecionados)
       const result = await alocarFuncionario(obra.id, funcionariosSelecionados)
-      
+
       if (result?.success) {
         toast({
-          title: "Sucesso",
-          description: `${funcionariosSelecionados.length} funcionário(s) alocado(s) com sucesso!`,
+          title: 'Sucesso',
+          description: `${funcionariosSelecionados.length} funcionário(s) alocado(s) com sucesso!`
         })
-        
+
         // Resetar estados do modal
         setAdicionarFuncionarioOpen(false)
         setFuncionariosSelecionados([])
-        
+
         // Recarregar a página para mostrar os novos funcionários
         window.location.reload()
       } else {
         toast({
-          title: "Erro",
-          description: result?.message || "Erro ao alocar funcionários",
-          variant: "destructive",
+          title: 'Erro',
+          description: result?.message || 'Erro ao alocar funcionários',
+          variant: 'destructive'
         })
       }
     } catch (error) {
       console.error('💥 Erro ao alocar funcionários:', error)
       toast({
-        title: "Erro",
-        description: "Erro ao alocar funcionários",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao alocar funcionários',
+        variant: 'destructive'
       })
     } finally {
       setSalvandoAlocacao(false)
@@ -184,8 +217,8 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
 
   // Toggle seleção de funcionário
   const toggleFuncionarioSelecionado = (funcionarioId: string) => {
-    setFuncionariosSelecionados(prev => 
-      prev.includes(funcionarioId) 
+    setFuncionariosSelecionados(prev =>
+      prev.includes(funcionarioId)
         ? prev.filter(id => id !== funcionarioId)
         : [...prev, funcionarioId]
     )
@@ -198,18 +231,18 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
 
   const handleConcluirEtapa = (etapaId: string) => {
     startTransition(async () => {
-      const result = await concluirEtapa(obra.id, etapaId)
+      const result = await concluirProximaEtapa(obra.id)
 
       if (result.success) {
         toast({
-          title: "Etapa concluída",
-          description: "A etapa foi marcada como concluída com sucesso.",
+          title: 'Etapa concluída',
+          description: 'A etapa foi marcada como concluída com sucesso.'
         })
       } else {
         toast({
-          title: "Erro",
+          title: 'Erro',
           description: result.error,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
     })
@@ -217,27 +250,27 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Concluída":
-        return "bg-green-500"
-      case "Em andamento":
-        return "bg-blue-500"
-      case "Pausada":
-        return "bg-yellow-500"
+      case 'Concluída':
+        return 'bg-green-500'
+      case 'Em andamento':
+        return 'bg-blue-500'
+      case 'Pausada':
+        return 'bg-yellow-500'
       default:
-        return "bg-gray-500"
+        return 'bg-gray-500'
     }
   }
 
   const getOrcamentoStatusColor = (status: string) => {
     switch (status) {
-      case "Pago":
-        return "bg-green-500"
-      case "Aprovado":
-        return "bg-blue-500"
-      case "Pendente":
-        return "bg-yellow-500"
+      case 'Pago':
+        return 'bg-green-500'
+      case 'Aprovado':
+        return 'bg-blue-500'
+      case 'Pendente':
+        return 'bg-yellow-500'
       default:
-        return "bg-gray-500"
+        return 'bg-gray-500'
     }
   }
 
@@ -252,7 +285,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{obra.nome}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              {obra.nome}
+            </h1>
             <p className="text-muted-foreground">{obra.cliente}</p>
           </div>
         </div>
@@ -270,7 +305,7 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="mr-2 h-4 w-4" />
-              {isPending ? "Concluindo..." : `Concluir ${proximaEtapa.nome}`}
+              {isPending ? 'Concluindo...' : `Concluir ${proximaEtapa.nome}`}
             </Button>
           )}
         </div>
@@ -344,7 +379,8 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                 Período
               </div>
               <p>
-                {new Date(obra.dataInicio).toLocaleDateString()} - {new Date(obra.dataFim).toLocaleDateString()}
+                {new Date(obra.dataInicio).toLocaleDateString()} -{' '}
+                {new Date(obra.dataFim).toLocaleDateString()}
               </p>
             </div>
             {obra.descricao && (
@@ -376,28 +412,38 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
           <Card>
             <CardHeader>
               <CardTitle>Evolução das Etapas</CardTitle>
-              <CardDescription>Acompanhe o progresso de cada etapa da obra</CardDescription>
+              <CardDescription>
+                Acompanhe o progresso de cada etapa da obra
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {obra.etapas.map((etapa, index) => (
-                  <div key={etapa.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div
+                    key={etapa.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex items-center gap-4">
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                           etapa.concluida
-                            ? "bg-green-500 text-white"
+                            ? 'bg-green-500 text-white'
                             : index === 0 || obra.etapas[index - 1]?.concluida
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-200 text-gray-500"
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 text-gray-500'
                         }`}
                       >
-                        {etapa.concluida ? <CheckCircle className="h-4 w-4" /> : index + 1}
+                        {etapa.concluida ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          index + 1
+                        )}
                       </div>
                       <div>
                         <h3 className="font-medium">{etapa.nome}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {etapa.concluida ? "Concluída" : "Pendente"} • 20% da obra
+                          {etapa.concluida ? 'Concluída' : 'Pendente'} • 20% da
+                          obra
                         </p>
                       </div>
                     </div>
@@ -431,7 +477,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Cronograma de Recebimento</CardTitle>
-                <CardDescription>Controle dos recebimentos por etapa da obra</CardDescription>
+                <CardDescription>
+                  Controle dos recebimentos por etapa da obra
+                </CardDescription>
               </div>
               <div className="flex gap-2">
                 <DropdownMenu>
@@ -443,11 +491,15 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setCronogramaIndividualOpen(true)}>
+                    <DropdownMenuItem
+                      onClick={() => setCronogramaIndividualOpen(true)}
+                    >
                       <DollarSign className="mr-2 h-4 w-4" />
                       Etapa Individual
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setCronogramaLoteOpen(true)}>
+                    <DropdownMenuItem
+                      onClick={() => setCronogramaLoteOpen(true)}
+                    >
                       <DollarSign className="mr-2 h-4 w-4" />
                       Cronograma Completo
                     </DropdownMenuItem>
@@ -460,12 +512,14 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-muted-foreground">Carregando cronograma...</p>
+                    <p className="text-muted-foreground">
+                      Carregando cronograma...
+                    </p>
                   </div>
                 </div>
               ) : (
-                <CronogramaTable 
-                  cronogramas={cronogramas} 
+                <CronogramaTable
+                  cronogramas={cronogramas}
                   onUpdate={carregarCronogramas}
                 />
               )}
@@ -489,22 +543,32 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             <CardContent>
               <div className="space-y-4">
                 {funcionariosObra.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">Nenhum funcionário alocado nesta obra.</p>
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum funcionário alocado nesta obra.
+                  </p>
                 ) : (
-                  funcionariosObra.map((funcionario) => (
-                    <div key={funcionario.funcionarioId} className="flex items-center justify-between p-4 border rounded-lg">
+                  funcionariosObra.map(funcionario => (
+                    <div
+                      key={funcionario.funcionarioId}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center gap-4">
                         <Avatar>
-                          <AvatarImage src={ "/placeholder.svg"} alt={funcionario.nomeFuncionario} />
+                          <AvatarImage
+                            src={'/placeholder.svg'}
+                            alt={funcionario.nomeFuncionario}
+                          />
                           <AvatarFallback>
                             {funcionario.nomeFuncionario
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
+                              .split(' ')
+                              .map(n => n[0])
+                              .join('')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <h3 className="font-medium">{funcionario.nomeFuncionario}</h3>
+                          <h3 className="font-medium">
+                            {funcionario.nomeFuncionario}
+                          </h3>
                           <div className="flex items-center gap-4 mt-1">
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Phone className="h-3 w-3" />
@@ -518,7 +582,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                         </div>
                       </div>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/dashboard/funcionarios/${funcionario.funcionarioId}/editar`}>
+                        <Link
+                          href={`/dashboard/funcionarios/${funcionario.funcionarioId}/editar`}
+                        >
                           <ExternalLink className="mr-2 h-4 w-4" />
                           Ver Detalhes
                         </Link>
@@ -537,7 +603,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Orçamentos</CardTitle>
-                <CardDescription>Orçamentos relacionados a esta obra</CardDescription>
+                <CardDescription>
+                  Orçamentos relacionados a esta obra
+                </CardDescription>
               </div>
               <Button size="sm" asChild>
                 <Link href="/dashboard/orcamentos/novo">
@@ -565,18 +633,31 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      obra.orcamentos.map((orcamento) => (
+                      obra.orcamentos.map(orcamento => (
                         <TableRow key={orcamento.id}>
-                          <TableCell className="font-medium">{orcamento.numero}</TableCell>
                           <TableCell className="font-medium">
-                            R$ {orcamento.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            {orcamento.numero}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            R${' '}
+                            {orcamento.valorTotal.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2
+                            })}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getOrcamentoStatusColor(orcamento.status)}>{orcamento.status}</Badge>
+                            <Badge
+                              className={getOrcamentoStatusColor(
+                                orcamento.status
+                              )}
+                            >
+                              {orcamento.status}
+                            </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <Button variant="outline" size="sm" asChild>
-                              <Link href={`/dashboard/orcamentos/${orcamento.id}`}>
+                              <Link
+                                href={`/dashboard/orcamentos/${orcamento.id}`}
+                              >
                                 <ExternalLink className="mr-2 h-4 w-4" />
                                 Ver Detalhes
                               </Link>
@@ -598,7 +679,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Fornecedores</CardTitle>
-                <CardDescription>Fornecedores envolvidos nesta obra</CardDescription>
+                <CardDescription>
+                  Fornecedores envolvidos nesta obra
+                </CardDescription>
               </div>
               <Button size="sm" asChild>
                 <Link href="/dashboard/fornecedores/novo">
@@ -609,15 +692,20 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {obra.fornecedores.map((fornecedor) => (
-                  <div key={fornecedor.id} className="flex items-center justify-between p-4 border rounded-lg">
+                {obra.fornecedores.map(fornecedor => (
+                  <div
+                    key={fornecedor.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                         <Truck className="h-5 w-5 text-blue-600" />
                       </div>
                       <div>
                         <h3 className="font-medium">{fornecedor.nome}</h3>
-                        <p className="text-sm text-muted-foreground">{fornecedor.tipo}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {fornecedor.tipo}
+                        </p>
                         <div className="flex items-center gap-4 mt-1">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Phone className="h-3 w-3" />
@@ -628,11 +716,15 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                             {fornecedor.email}
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{fornecedor.endereco}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {fornecedor.endereco}
+                        </p>
                       </div>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/dashboard/fornecedores/${fornecedor.id}/editar`}>
+                      <Link
+                        href={`/dashboard/fornecedores/${fornecedor.id}/editar`}
+                      >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Ver Detalhes
                       </Link>
@@ -660,7 +752,7 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {obra.produtos.map((material) => (
+                    {obra.produtos.map(material => (
                       <TableRow key={material.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -679,7 +771,10 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
       </Tabs>
 
       {/* Dialog para adicionar funcionários */}
-      <Dialog open={adicionarFuncionarioOpen} onOpenChange={setAdicionarFuncionarioOpen}>
+      <Dialog
+        open={adicionarFuncionarioOpen}
+        onOpenChange={setAdicionarFuncionarioOpen}
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Adicionar Funcionários</DialogTitle>
@@ -692,15 +787,20 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
                   <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-muted-foreground">Carregando funcionários...</p>
+                  <p className="text-muted-foreground">
+                    Carregando funcionários...
+                  </p>
                 </div>
               </div>
             ) : funcionariosDisponiveis.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                <h3 className="mt-4 text-lg font-medium">Nenhum funcionário disponível</h3>
+                <h3 className="mt-4 text-lg font-medium">
+                  Nenhum funcionário disponível
+                </h3>
                 <p className="mt-2 text-muted-foreground">
-                  Todos os funcionários já estão alocados nesta obra ou não há funcionários cadastrados.
+                  Todos os funcionários já estão alocados nesta obra ou não há
+                  funcionários cadastrados.
                 </p>
               </div>
             ) : (
@@ -708,19 +808,35 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                 <Label>Funcionários Disponíveis</Label>
                 <ScrollArea className="h-64 border rounded-md p-4">
                   <div className="space-y-3">
-                    {funcionariosDisponiveis.map((funcionario) => (
+                    {funcionariosDisponiveis.map(funcionario => (
                       <div
                         key={funcionario.id}
                         className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted cursor-pointer border"
-                        onClick={() => funcionario.id && toggleFuncionarioSelecionado(funcionario.id)}
+                        onClick={() =>
+                          funcionario.id &&
+                          toggleFuncionarioSelecionado(funcionario.id)
+                        }
                       >
                         <Checkbox
-                          checked={funcionario.id ? funcionariosSelecionados.includes(funcionario.id) : false}
-                          onCheckedChange={() => funcionario.id && toggleFuncionarioSelecionado(funcionario.id)}
+                          checked={
+                            funcionario.id
+                              ? funcionariosSelecionados.includes(
+                                  funcionario.id
+                                )
+                              : false
+                          }
+                          onCheckedChange={() =>
+                            funcionario.id &&
+                            toggleFuncionarioSelecionado(funcionario.id)
+                          }
                         />
                         <Avatar className="h-8 w-8">
                           <AvatarFallback>
-                            {funcionario.nome.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                            {funcionario.nome
+                              .split(' ')
+                              .map(n => n[0])
+                              .join('')
+                              .substring(0, 2)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -740,15 +856,16 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                 </ScrollArea>
                 {funcionariosSelecionados.length > 0 && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    {funcionariosSelecionados.length} funcionário(s) selecionado(s)
+                    {funcionariosSelecionados.length} funcionário(s)
+                    selecionado(s)
                   </div>
                 )}
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setAdicionarFuncionarioOpen(false)
                 setFuncionariosSelecionados([])
@@ -756,9 +873,11 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             >
               Cancelar
             </Button>
-            <Button 
-              onClick={handleAlocarFuncionarios} 
-              disabled={funcionariosSelecionados.length === 0 || salvandoAlocacao}
+            <Button
+              onClick={handleAlocarFuncionarios}
+              disabled={
+                funcionariosSelecionados.length === 0 || salvandoAlocacao
+              }
             >
               {salvandoAlocacao ? (
                 <>
@@ -766,7 +885,11 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                   Alocando...
                 </>
               ) : (
-                `Alocar ${funcionariosSelecionados.length > 0 ? `(${funcionariosSelecionados.length})` : ""}`
+                `Alocar ${
+                  funcionariosSelecionados.length > 0
+                    ? `(${funcionariosSelecionados.length})`
+                    : ''
+                }`
               )}
             </Button>
           </DialogFooter>

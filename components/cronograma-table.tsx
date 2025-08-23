@@ -1,87 +1,96 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { useState } from 'react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+  TableRow
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { toast } from "@/hooks/use-toast"
-import { MoreHorizontal, CheckCircle, DollarSign, Trash2, Edit } from "lucide-react"
-import { CronogramaRecebimento } from "@/types/api-types"
-import { marcarComoRecebidoAction, excluirCronogramaAction } from "@/app/actions/cronograma"
+  DialogDescription
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from '@/hooks/use-toast'
+import {
+  MoreHorizontal,
+  CheckCircle,
+  DollarSign,
+  Trash2,
+  Edit
+} from 'lucide-react'
+import { CronogramaRecebimento } from '@/types/api-types'
+import {
+  marcarComoRecebidoAction,
+  excluirCronogramaAction
+} from '@/app/actions/cronograma'
 
 interface CronogramaTableProps {
   cronogramas: CronogramaRecebimento[]
   onUpdate: () => void
 }
 
-export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps) {
+export function CronogramaTable({
+  cronogramas,
+  onUpdate
+}: CronogramaTableProps) {
   const [marcarRecebidoDialog, setMarcarRecebidoDialog] = useState(false)
-  const [cronogramaSelecionado, setCronogramaSelecionado] = useState<CronogramaRecebimento | null>(null)
-  const [valorRecebido, setValorRecebido] = useState("")
-  const [dataRecebimento, setDataRecebimento] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [cronogramaSelecionado, setCronogramaSelecionado] =
+    useState<CronogramaRecebimento | null>(null)
+  const [valorRecebido, setValorRecebido] = useState('')
+  const [observacoes, setObservacoes] = useState('')
   const [loading, setLoading] = useState(false)
 
-  console.log('📋 CronogramaTable recebeu:', cronogramas?.length || 0, 'cronogramas')
+  console.log(
+    '📋 CronogramaTable recebeu:',
+    cronogramas?.length || 0,
+    'cronogramas'
+  )
   console.log('📊 Dados dos cronogramas:', cronogramas)
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
     }).format(value)
   }
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR })
+    return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR })
   }
 
   const getStatusBadge = (status: string, estaVencido: boolean) => {
-    if (status === "RECEBIDO") {
+    if (status === 'RECEBIDO') {
       return (
         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
           Recebido
         </Badge>
       )
     }
-    
+
     if (estaVencido) {
-      return (
-        <Badge variant="destructive">
-          Vencido
-        </Badge>
-      )
+      return <Badge variant="destructive">Vencido</Badge>
     }
-    
-    return (
-      <Badge variant="outline">
-        Pendente
-      </Badge>
-    )
+
+    return <Badge variant="outline">Pendente</Badge>
   }
 
   const handleMarcarRecebido = async () => {
@@ -92,31 +101,32 @@ export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps)
       const result = await marcarComoRecebidoAction(
         cronogramaSelecionado.id,
         parseFloat(valorRecebido),
-        dataRecebimento
+        observacoes || undefined
       )
-      
+
       if (result.success) {
         toast({
-          title: "Sucesso",
-          description: "Etapa marcada como recebida com sucesso!",
+          title: 'Sucesso',
+          description: 'Etapa marcada como recebida com sucesso!'
         })
-        
+
         setMarcarRecebidoDialog(false)
-        setValorRecebido("")
+        setValorRecebido('')
+        setObservacoes('')
         setCronogramaSelecionado(null)
         onUpdate()
       } else {
         toast({
-          title: "Erro",
-          description: result.error || "Erro ao marcar etapa como recebida",
-          variant: "destructive",
+          title: 'Erro',
+          description: result.error || 'Erro ao marcar etapa como recebida',
+          variant: 'destructive'
         })
       }
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao marcar etapa como recebida",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao marcar etapa como recebida',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -124,30 +134,35 @@ export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps)
   }
 
   const handleExcluir = async (cronograma: CronogramaRecebimento) => {
-    if (!confirm(`Tem certeza que deseja excluir a etapa "${cronograma.descricaoEtapa}"?`)) return
+    if (
+      !confirm(
+        `Tem certeza que deseja excluir a etapa "${cronograma.descricaoEtapa}"?`
+      )
+    )
+      return
 
     try {
       const result = await excluirCronogramaAction(cronograma.id)
-      
+
       if (result.success) {
         toast({
-          title: "Sucesso",
-          description: "Etapa excluída com sucesso!",
+          title: 'Sucesso',
+          description: 'Etapa excluída com sucesso!'
         })
-        
+
         onUpdate()
       } else {
         toast({
-          title: "Erro",
-          description: result.error || "Erro ao excluir etapa",
-          variant: "destructive",
+          title: 'Erro',
+          description: result.error || 'Erro ao excluir etapa',
+          variant: 'destructive'
         })
       }
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao excluir etapa",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao excluir etapa',
+        variant: 'destructive'
       })
     }
   }
@@ -162,7 +177,9 @@ export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps)
     return (
       <div className="text-center py-12">
         <DollarSign className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-medium">Nenhum cronograma cadastrado</h3>
+        <h3 className="mt-4 text-lg font-medium">
+          Nenhum cronograma cadastrado
+        </h3>
         <p className="mt-2 text-muted-foreground">
           Comece criando um cronograma de recebimento para esta obra.
         </p>
@@ -187,13 +204,15 @@ export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {cronogramas.map((cronograma) => (
+            {cronogramas.map(cronograma => (
               <TableRow key={cronograma.id}>
                 <TableCell className="font-medium">
                   Etapa {cronograma.numeroEtapa}
                 </TableCell>
                 <TableCell>{cronograma.descricaoEtapa}</TableCell>
-                <TableCell>{formatCurrency(cronograma.valorPrevisto)}</TableCell>
+                <TableCell>
+                  {formatCurrency(cronograma.valorPrevisto)}
+                </TableCell>
                 <TableCell>
                   <div className="space-y-1">
                     <div>{formatCurrency(cronograma.valorRecebido)}</div>
@@ -227,13 +246,17 @@ export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps)
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {cronograma.status === "PENDENTE" && (
-                        <DropdownMenuItem onClick={() => abrirMarcarRecebido(cronograma)}>
+                      {cronograma.status === 'PENDENTE' && (
+                        <DropdownMenuItem
+                          onClick={() => abrirMarcarRecebido(cronograma)}
+                        >
                           <CheckCircle className="mr-2 h-4 w-4" />
                           Marcar como Recebido
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem onClick={() => handleExcluir(cronograma)}>
+                      <DropdownMenuItem
+                        onClick={() => handleExcluir(cronograma)}
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Excluir
                       </DropdownMenuItem>
@@ -247,12 +270,16 @@ export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps)
       </div>
 
       {/* Dialog para marcar como recebido */}
-      <Dialog open={marcarRecebidoDialog} onOpenChange={setMarcarRecebidoDialog}>
+      <Dialog
+        open={marcarRecebidoDialog}
+        onOpenChange={setMarcarRecebidoDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Marcar como Recebido</DialogTitle>
             <DialogDescription>
-              Confirme o recebimento da etapa "{cronogramaSelecionado?.descricaoEtapa}".
+              Confirme o recebimento da etapa "
+              {cronogramaSelecionado?.descricaoEtapa}".
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -265,30 +292,40 @@ export function CronogramaTable({ cronogramas, onUpdate }: CronogramaTableProps)
                 type="number"
                 step="0.01"
                 value={valorRecebido}
-                onChange={(e) => setValorRecebido(e.target.value)}
+                onChange={e => setValorRecebido(e.target.value)}
                 className="col-span-3"
                 placeholder="0,00"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="data-recebimento" className="text-right">
-                Data Recebimento
+              <Label htmlFor="observacoes" className="text-right">
+                Observações
               </Label>
               <Input
-                id="data-recebimento"
-                type="date"
-                value={dataRecebimento}
-                onChange={(e) => setDataRecebimento(e.target.value)}
+                id="observacoes"
+                value={observacoes}
+                onChange={e => setObservacoes(e.target.value)}
                 className="col-span-3"
+                placeholder="Observações sobre o recebimento (opcional)"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMarcarRecebidoDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMarcarRecebidoDialog(false)
+                setValorRecebido('')
+                setObservacoes('')
+              }}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleMarcarRecebido} disabled={loading || !valorRecebido}>
-              {loading ? "Processando..." : "Confirmar Recebimento"}
+            <Button
+              onClick={handleMarcarRecebido}
+              disabled={loading || !valorRecebido}
+            >
+              {loading ? 'Processando...' : 'Confirmar Recebimento'}
             </Button>
           </DialogFooter>
         </DialogContent>

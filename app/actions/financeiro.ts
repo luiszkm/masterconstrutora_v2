@@ -8,44 +8,72 @@ import { contaPagarSchema, contaReceberSchema, registrarPagamentoSchema, registr
 import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses"
 
 // GETs — seguem o padrão: retornam lista ou { error }
-export async function getContasReceber(): Promise<ContaReceber[] | { error: string }> {
+export async function getContasReceber(page = 1, pageSize = 50): Promise<ContaReceber[] | { error: string }> {
   try {
-    const res = await makeAuthenticatedRequest(`${API_URL}/contas-receber`, {
+    const searchParams = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
+    const res = await makeAuthenticatedRequest(`${API_URL}/contas-receber?${searchParams.toString()}`, {
       method: "GET",
       next: { tags: ["contas-receber"] },
     })
+    console.log('🔍 getContasReceber - URL:', `${API_URL}/contas-receber?${searchParams.toString()}`)
+    console.log('🔍 getContasReceber - Response status:', res.status)
+    
     if (!res.ok) {
       try {
         const err = await res.json()
+        console.log('❌ getContasReceber - Error response:', err)
         return { error: err.message || "Erro ao buscar contas a receber." }
       } catch {
         return { error: res.status === 401 ? "Não autorizado. Faça login novamente." : "Erro ao buscar contas a receber." }
       }
     }
-    const data: ContaReceber[] = await res.json()
-    return data
+    const data = await res.json()
+    console.log('📦 getContasReceber - Response data:', data)
+    
+    // Se a API retornar um objeto com propriedade 'data' ou 'dados', extrair o array
+    const contasArray = Array.isArray(data) ? data : (data.data || data.dados || data.items || [])
+    console.log('📋 getContasReceber - Extracted array:', contasArray)
+    
+    return contasArray
   } catch (e) {
     console.error("getContasReceber error:", e)
     return { error: "Erro de conexão com o servidor. Tente novamente." }
   }
 }
 
-export async function getContasPagar(): Promise<ContaPagar[] | { error: string }> {
+export async function getContasPagar(page = 1, pageSize = 50): Promise<ContaPagar[] | { error: string }> {
   try {
-    const res = await makeAuthenticatedRequest(`${API_URL}/contas-pagar`, {
+    const searchParams = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
+    const res = await makeAuthenticatedRequest(`${API_URL}/contas-pagar?${searchParams.toString()}`, {
       method: "GET",
       next: { tags: ["contas-pagar"] },
     })
+    console.log('🔍 getContasPagar - URL:', `${API_URL}/contas-pagar?${searchParams.toString()}`)
+    console.log('🔍 getContasPagar - Response status:', res.status)
+    
     if (!res.ok) {
       try {
         const err = await res.json()
+        console.log('❌ getContasPagar - Error response:', err)
         return { error: err.message || "Erro ao buscar contas a pagar." }
       } catch {
         return { error: res.status === 401 ? "Não autorizado. Faça login novamente." : "Erro ao buscar contas a pagar." }
       }
     }
-    const data: ContaPagar[] = await res.json()
-    return data
+    const data = await res.json()
+    console.log('📦 getContasPagar - Response data:', data)
+    
+    // Se a API retornar um objeto com propriedade 'data' ou 'dados', extrair o array
+    const contasArray = Array.isArray(data) ? data : (data.data || data.dados || data.items || [])
+    console.log('📋 getContasPagar - Extracted array:', contasArray)
+    
+    return contasArray
   } catch (e) {
     console.error("getContasPagar error:", e)
     return { error: "Erro de conexão com o servidor. Tente novamente." }

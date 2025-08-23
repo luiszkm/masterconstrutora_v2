@@ -1,43 +1,63 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { useForm, useFieldArray } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
+import { useState } from 'react'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { toast } from "@/hooks/use-toast"
-import { Plus, Trash2 } from "lucide-react"
-import { CriarCronogramaRequest, CriarCronogramaLoteRequest } from "@/types/api-types"
-import { criarCronogramaAction, criarCronogramaLoteAction } from "@/app/actions/cronograma"
+  DialogDescription
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { toast } from '@/hooks/use-toast'
+import { Plus, Trash2 } from 'lucide-react'
+import {
+  CriarCronogramaRequest,
+  CriarCronogramaLoteRequest
+} from '@/types/api-types'
+import {
+  criarCronogramaAction,
+  criarCronogramaLoteAction
+} from '@/app/actions/cronograma'
 
 // Schemas de validação
 const cronogramaIndividualSchema = z.object({
-  numeroEtapa: z.number().min(1, "Número da etapa deve ser maior que 0"),
-  descricaoEtapa: z.string().min(1, "Descrição é obrigatória"),
-  valorPrevisto: z.number().min(0.01, "Valor deve ser maior que 0"),
-  dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
+  numeroEtapa: z.number().min(1, 'Número da etapa deve ser maior que 0'),
+  descricaoEtapa: z.string().min(1, 'Descrição é obrigatória'),
+  valorPrevisto: z.number().min(0.01, 'Valor deve ser maior que 0'),
+  dataVencimento: z
+    .string()
+    .min(1, 'Data de vencimento é obrigatória')
+    .refine(date => !isNaN(new Date(date).getTime()), {
+      message: 'Data inválida'
+    })
 })
 
 const cronogramaLoteSchema = z.object({
   substituirExistente: z.boolean(),
-  cronogramas: z.array(z.object({
-    numeroEtapa: z.number().min(1, "Número da etapa deve ser maior que 0"),
-    descricaoEtapa: z.string().min(1, "Descrição é obrigatória"),
-    valorPrevisto: z.number().min(0.01, "Valor deve ser maior que 0"),
-    dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
-  })).min(1, "Pelo menos um cronograma deve ser adicionado"),
+  cronogramas: z
+    .array(
+      z.object({
+        numeroEtapa: z.number().min(1, 'Número da etapa deve ser maior que 0'),
+        descricaoEtapa: z.string().min(1, 'Descrição é obrigatória'),
+        valorPrevisto: z.number().min(0.01, 'Valor deve ser maior que 0'),
+        dataVencimento: z
+          .string()
+          .min(1, 'Data de vencimento é obrigatória')
+          .refine(date => !isNaN(new Date(date).getTime()), {
+            message: 'Data inválida'
+          })
+      })
+    )
+    .min(1, 'Pelo menos um cronograma deve ser adicionado')
 })
 
 type CronogramaIndividualForm = z.infer<typeof cronogramaIndividualSchema>
@@ -49,11 +69,11 @@ interface CronogramaFormsProps {
 }
 
 // Componente para criar cronograma individual
-export function CriarCronogramaIndividual({ 
-  open, 
-  onOpenChange, 
-  obraId, 
-  onSuccess 
+export function CriarCronogramaIndividual({
+  open,
+  onOpenChange,
+  obraId,
+  onSuccess
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -66,10 +86,10 @@ export function CriarCronogramaIndividual({
     resolver: zodResolver(cronogramaIndividualSchema),
     defaultValues: {
       numeroEtapa: 1,
-      descricaoEtapa: "",
+      descricaoEtapa: '',
       valorPrevisto: 0,
-      dataVencimento: "",
-    },
+      dataVencimento: ''
+    }
   })
 
   const onSubmit = async (data: CronogramaIndividualForm) => {
@@ -78,13 +98,13 @@ export function CriarCronogramaIndividual({
       const result = await criarCronogramaAction({
         ...data,
         dataVencimento: new Date(data.dataVencimento).toISOString(),
-        obraId,
+        obraId
       })
 
       if (result.success) {
         toast({
-          title: "Sucesso",
-          description: "Cronograma criado com sucesso!",
+          title: 'Sucesso',
+          description: 'Cronograma criado com sucesso!'
         })
 
         form.reset()
@@ -92,16 +112,16 @@ export function CriarCronogramaIndividual({
         onSuccess()
       } else {
         toast({
-          title: "Erro",
-          description: result.error || "Erro ao criar cronograma",
-          variant: "destructive",
+          title: 'Erro',
+          description: result.error || 'Erro ao criar cronograma',
+          variant: 'destructive'
         })
       }
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao criar cronograma",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao criar cronograma',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -124,7 +144,7 @@ export function CriarCronogramaIndividual({
               <Input
                 id="numeroEtapa"
                 type="number"
-                {...form.register("numeroEtapa", { valueAsNumber: true })}
+                {...form.register('numeroEtapa', { valueAsNumber: true })}
               />
               {form.formState.errors.numeroEtapa && (
                 <p className="text-sm text-red-500">
@@ -139,7 +159,7 @@ export function CriarCronogramaIndividual({
                 type="number"
                 step="0.01"
                 placeholder="0,00"
-                {...form.register("valorPrevisto", { valueAsNumber: true })}
+                {...form.register('valorPrevisto', { valueAsNumber: true })}
               />
               {form.formState.errors.valorPrevisto && (
                 <p className="text-sm text-red-500">
@@ -148,13 +168,13 @@ export function CriarCronogramaIndividual({
               )}
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="descricaoEtapa">Descrição da Etapa</Label>
             <Textarea
               id="descricaoEtapa"
               placeholder="Ex: Fundações Concluídas"
-              {...form.register("descricaoEtapa")}
+              {...form.register('descricaoEtapa')}
             />
             {form.formState.errors.descricaoEtapa && (
               <p className="text-sm text-red-500">
@@ -168,7 +188,7 @@ export function CriarCronogramaIndividual({
             <Input
               id="dataVencimento"
               type="date"
-              {...form.register("dataVencimento")}
+              {...form.register('dataVencimento')}
             />
             {form.formState.errors.dataVencimento && (
               <p className="text-sm text-red-500">
@@ -178,11 +198,15 @@ export function CriarCronogramaIndividual({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Criando..." : "Criar Cronograma"}
+              {loading ? 'Criando...' : 'Criar Cronograma'}
             </Button>
           </DialogFooter>
         </form>
@@ -192,11 +216,11 @@ export function CriarCronogramaIndividual({
 }
 
 // Componente para criar cronograma em lote
-export function CriarCronogramaLote({ 
-  open, 
-  onOpenChange, 
-  obraId, 
-  onSuccess 
+export function CriarCronogramaLote({
+  open,
+  onOpenChange,
+  obraId,
+  onSuccess
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -212,17 +236,17 @@ export function CriarCronogramaLote({
       cronogramas: [
         {
           numeroEtapa: 1,
-          descricaoEtapa: "",
+          descricaoEtapa: '',
           valorPrevisto: 0,
-          dataVencimento: "",
-        },
-      ],
-    },
+          dataVencimento: ''
+        }
+      ]
+    }
   })
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "cronogramas",
+    name: 'cronogramas'
   })
 
   const onSubmit = async (data: CronogramaLoteForm) => {
@@ -230,13 +254,13 @@ export function CriarCronogramaLote({
     try {
       const result = await criarCronogramaLoteAction({
         ...data,
-        obraId,
+        obraId
       })
 
       if (result.success) {
         toast({
-          title: "Sucesso",
-          description: `${data.cronogramas.length} cronogramas criados com sucesso!`,
+          title: 'Sucesso',
+          description: `${data.cronogramas.length} cronogramas criados com sucesso!`
         })
 
         form.reset()
@@ -244,16 +268,16 @@ export function CriarCronogramaLote({
         onSuccess()
       } else {
         toast({
-          title: "Erro",
-          description: result.error || "Erro ao criar cronogramas",
-          variant: "destructive",
+          title: 'Erro',
+          description: result.error || 'Erro ao criar cronogramas',
+          variant: 'destructive'
         })
       }
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao criar cronogramas",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao criar cronogramas',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -261,12 +285,15 @@ export function CriarCronogramaLote({
   }
 
   const adicionarCronograma = () => {
-    const ultimoNumero = Math.max(...form.getValues("cronogramas").map(c => c.numeroEtapa), 0)
+    const ultimoNumero = Math.max(
+      ...form.getValues('cronogramas').map(c => c.numeroEtapa),
+      0
+    )
     append({
       numeroEtapa: ultimoNumero + 1,
-      descricaoEtapa: "",
+      descricaoEtapa: '',
       valorPrevisto: 0,
-      dataVencimento: "",
+      dataVencimento: ''
     })
   }
 
@@ -283,7 +310,7 @@ export function CriarCronogramaLote({
           <div className="flex items-center space-x-2">
             <Checkbox
               id="substituirExistente"
-              {...form.register("substituirExistente")}
+              {...form.register('substituirExistente')}
             />
             <Label htmlFor="substituirExistente">
               Substituir cronograma existente
@@ -325,11 +352,17 @@ export function CriarCronogramaLote({
                     <Label>Número da Etapa</Label>
                     <Input
                       type="number"
-                      {...form.register(`cronogramas.${index}.numeroEtapa`, { valueAsNumber: true })}
+                      {...form.register(`cronogramas.${index}.numeroEtapa`, {
+                        valueAsNumber: true
+                      })}
                     />
-                    {form.formState.errors.cronogramas?.[index]?.numeroEtapa && (
+                    {form.formState.errors.cronogramas?.[index]
+                      ?.numeroEtapa && (
                       <p className="text-sm text-red-500">
-                        {form.formState.errors.cronogramas[index]?.numeroEtapa?.message}
+                        {
+                          form.formState.errors.cronogramas[index]?.numeroEtapa
+                            ?.message
+                        }
                       </p>
                     )}
                   </div>
@@ -339,11 +372,17 @@ export function CriarCronogramaLote({
                       type="number"
                       step="0.01"
                       placeholder="0,00"
-                      {...form.register(`cronogramas.${index}.valorPrevisto`, { valueAsNumber: true })}
+                      {...form.register(`cronogramas.${index}.valorPrevisto`, {
+                        valueAsNumber: true
+                      })}
                     />
-                    {form.formState.errors.cronogramas?.[index]?.valorPrevisto && (
+                    {form.formState.errors.cronogramas?.[index]
+                      ?.valorPrevisto && (
                       <p className="text-sm text-red-500">
-                        {form.formState.errors.cronogramas[index]?.valorPrevisto?.message}
+                        {
+                          form.formState.errors.cronogramas[index]
+                            ?.valorPrevisto?.message
+                        }
                       </p>
                     )}
                   </div>
@@ -355,9 +394,13 @@ export function CriarCronogramaLote({
                     placeholder="Ex: Fundações Concluídas"
                     {...form.register(`cronogramas.${index}.descricaoEtapa`)}
                   />
-                  {form.formState.errors.cronogramas?.[index]?.descricaoEtapa && (
+                  {form.formState.errors.cronogramas?.[index]
+                    ?.descricaoEtapa && (
                     <p className="text-sm text-red-500">
-                      {form.formState.errors.cronogramas[index]?.descricaoEtapa?.message}
+                      {
+                        form.formState.errors.cronogramas[index]?.descricaoEtapa
+                          ?.message
+                      }
                     </p>
                   )}
                 </div>
@@ -366,11 +409,18 @@ export function CriarCronogramaLote({
                   <Label>Data de Vencimento</Label>
                   <Input
                     type="date"
-                    {...form.register(`cronogramas.${index}.dataVencimento`)}
+                    {...form.register(`cronogramas.${index}.dataVencimento`, {
+                      setValueAs: value =>
+                        value ? new Date(value).toISOString() : null
+                    })}
                   />
-                  {form.formState.errors.cronogramas?.[index]?.dataVencimento && (
+                  {form.formState.errors.cronogramas?.[index]
+                    ?.dataVencimento && (
                     <p className="text-sm text-red-500">
-                      {form.formState.errors.cronogramas[index]?.dataVencimento?.message}
+                      {
+                        form.formState.errors.cronogramas[index]?.dataVencimento
+                          ?.message
+                      }
                     </p>
                   )}
                 </div>
@@ -379,11 +429,15 @@ export function CriarCronogramaLote({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Criando..." : `Criar ${fields.length} Cronogramas`}
+              {loading ? 'Criando...' : `Criar ${fields.length} Cronogramas`}
             </Button>
           </DialogFooter>
         </form>

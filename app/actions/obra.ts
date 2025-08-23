@@ -374,6 +374,74 @@ export async function alocarFuncionario(obraId: string, funcionarioIds: string[]
       revalidatePath("/dashboard/obras");
     }
 
+export async function excluirObra(id: string): Promise<ActionResponse> {
+  try {
+    const response = await makeAuthenticatedRequest(`${API_URL}/obras/${id}`, {
+      method: "DELETE",
+    });
 
-  
+    if (!response.ok) {
+      let errorMessage = "Erro ao excluir obra.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente.";
+        }
+      }
+      return createErrorResponse(errorMessage);
+    }
+
+    revalidateTag("obras-list");
+    revalidatePath("/dashboard/obras");
+
+    return createSuccessResponse("Obra excluída com sucesso!");
+  } catch (error) {
+    console.error("Erro ao excluir obra:", error);
+    if (
+      error instanceof Error &&
+      error.message === "Token de autenticação não encontrado"
+    ) {
+      return createErrorResponse("Não autorizado. Faça login novamente.");
+    }
+    return createErrorResponse("Erro de conexão com o servidor ao excluir obra. Tente novamente.");
+  }
+}
+
+export async function concluirProximaEtapa(obraId: string): Promise<ActionResponse> {
+  try {
+    const response = await makeAuthenticatedRequest(`${API_URL}/obras/${obraId}/proxima-etapa`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Erro ao concluir próxima etapa.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        if (response.status === 401) {
+          errorMessage = "Não autorizado. Faça login novamente.";
+        }
+      }
+      return createErrorResponse(errorMessage);
+    }
+
+    revalidateTag(`obra-${obraId}`);
+    revalidateTag("obras-list");
+    revalidatePath("/dashboard/obras");
+
+    return createSuccessResponse("Próxima etapa concluída com sucesso!");
+  } catch (error) {
+    console.error("Erro ao concluir próxima etapa:", error);
+    if (
+      error instanceof Error &&
+      error.message === "Token de autenticação não encontrado"
+    ) {
+      return createErrorResponse("Não autorizado. Faça login novamente.");
+    }
+    return createErrorResponse("Erro de conexão com o servidor ao concluir etapa. Tente novamente.");
+  }
+}
 

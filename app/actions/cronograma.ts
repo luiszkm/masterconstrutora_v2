@@ -10,9 +10,9 @@ export async function listarCronogramasAction(obraId: string): Promise<ActionRes
   try {
     console.log('🌐 Fazendo requisição para:', `${API_URL}/obras/${obraId}/cronograma-recebimentos`)
     const response = await makeAuthenticatedRequest(`${API_URL}/obras/${obraId}/cronograma-recebimentos`)
-    
+
     console.log('📡 Status da resposta:', response.status, response.statusText)
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       console.log('❌ Erro da API:', errorText)
@@ -22,7 +22,7 @@ export async function listarCronogramasAction(obraId: string): Promise<ActionRes
     const data = await response.json()
     console.log('📦 Dados recebidos da API:', data)
     console.log('📊 Tipo dos dados:', typeof data, 'É array?', Array.isArray(data))
-    
+
     return createSuccessResponse("Cronogramas listados com sucesso", data)
   } catch (error) {
     console.error("💥 Erro ao buscar cronogramas:", error)
@@ -48,11 +48,11 @@ export async function criarCronogramaAction(dados: CriarCronogramaRequest): Prom
     }
 
     const data = await response.json()
-    
+
     // Revalidar as páginas relacionadas
     revalidatePath(`/dashboard/obras/${dados.obraId}`)
     revalidateTag('cronogramas')
-    
+
     return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao criar cronograma:", error)
@@ -77,11 +77,11 @@ export async function criarCronogramaLoteAction(dados: CriarCronogramaLoteReques
     }
 
     const data = await response.json()
-    
+
     // Revalidar as páginas relacionadas
     revalidatePath(`/dashboard/obras/${dados.obraId}`)
     revalidateTag('cronogramas')
-    
+
     return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao criar cronograma em lote:", error)
@@ -92,7 +92,7 @@ export async function criarCronogramaLoteAction(dados: CriarCronogramaLoteReques
 }
 
 export async function atualizarCronogramaAction(
-  id: string, 
+  id: string,
   dados: Partial<CriarCronogramaRequest>
 ): Promise<ActionResponse> {
   try {
@@ -109,10 +109,10 @@ export async function atualizarCronogramaAction(
     }
 
     const data = await response.json()
-    
+
     // Revalidar as páginas relacionadas
     revalidateTag('cronogramas')
-    
+
     return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao atualizar cronograma:", error)
@@ -131,10 +131,10 @@ export async function excluirCronogramaAction(id: string): Promise<ActionRespons
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
-    
+
     // Revalidar as páginas relacionadas
     revalidateTag('cronogramas')
-    
+
     return createSuccessResponse("Cronograma excluído com sucesso")
   } catch (error) {
     console.error("Erro ao excluir cronograma:", error)
@@ -145,17 +145,17 @@ export async function excluirCronogramaAction(id: string): Promise<ActionRespons
 }
 
 export async function marcarComoRecebidoAction(
-  id: string, 
-  valorRecebido: number, 
-  dataRecebimento: string
+  id: string,
+  valor: number,
+  observacoes?: string
 ): Promise<ActionResponse> {
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/cronograma-recebimentos/${id}/receber`, {
-      method: "PATCH",
+    const response = await makeAuthenticatedRequest(`${API_URL}/cronograma-recebimentos/${id}/recebimentos`, {
+      method: "POST",
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ valorRecebido, dataRecebimento }),
+      body: JSON.stringify({ valor, observacoes }),
     })
 
     if (!response.ok) {
@@ -163,10 +163,10 @@ export async function marcarComoRecebidoAction(
     }
 
     const data = await response.json()
-    
+
     // Revalidar as páginas relacionadas
     revalidateTag('cronogramas')
-    
+
     return createSuccessResponse("Operação realizada com sucesso", data)
   } catch (error) {
     console.error("Erro ao marcar cronograma como recebido:", error)

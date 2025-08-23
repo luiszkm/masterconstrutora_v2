@@ -34,10 +34,10 @@ export default async function FinanceiroPage() {
 
 
   // Valores default em caso de erro
-  const contasReceber: ContaReceber[] = Array.isArray(receberRes.dados) ? receberRes.dados : []
-  const contasPagar: ContaPagar[] = Array.isArray(pagarRes.dados) ? pagarRes.dados : []
-  const vencidasReceber: ContaReceber[] = Array.isArray(vencRecRes) ? vencRecRes : []
-  const vencidasPagar: ContaPagar[] = Array.isArray(vencPagRes) ? vencPagRes : []
+  const contasReceber: ContaReceber[] = Array.isArray(receberRes) ? receberRes : (receberRes && typeof receberRes === 'object' && "error" in receberRes ? [] : receberRes || [])
+  const contasPagar: ContaPagar[] = Array.isArray(pagarRes) ? pagarRes : (pagarRes && typeof pagarRes === 'object' && "error" in pagarRes ? [] : pagarRes || [])
+  const vencidasReceber: ContaReceber[] = Array.isArray(vencRecRes) ? vencRecRes : (vencRecRes && typeof vencRecRes === 'object' && "error" in vencRecRes ? [] : vencRecRes || [])
+  const vencidasPagar: ContaPagar[] = Array.isArray(vencPagRes) ? vencPagRes : (vencPagRes && typeof vencPagRes === 'object' && "error" in vencPagRes ? [] : vencPagRes || [])
 
 
 
@@ -49,7 +49,7 @@ export default async function FinanceiroPage() {
   const dataFim = fim.toISOString().slice(0, 10)
 
   const fluxoRes = await getFluxoDeCaixa({ dataInicio, dataFim })
-  const fluxo: FluxoCaixaResponse | null = "error" in (fluxoRes as any) ? null : (fluxoRes as FluxoCaixaResponse)
+  const fluxo: FluxoCaixaResponse | null = fluxoRes && typeof fluxoRes === 'object' && "error" in fluxoRes ? null : (fluxoRes as FluxoCaixaResponse)
 
   return (
     <FinanceiroClient

@@ -31,6 +31,6 @@ export default async function ObrasPage() {
 
 
   return <ObrasPageClient 
-  funcionariosDisponiveis={funcionariosListResult.data}
+  funcionariosDisponiveis={Array.isArray(funcionariosListResult) ? funcionariosListResult : ("error" in funcionariosListResult ? [] : funcionariosListResult)}
   initialData={obrasListResult.data} />
 }

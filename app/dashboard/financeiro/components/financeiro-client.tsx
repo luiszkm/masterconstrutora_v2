@@ -37,10 +37,10 @@ function formatDate(dateStr?: string | null) {
 }
 
 type Props = {
-  initialReceber: ContaReceber[]
-  initialPagar: ContaPagar[]
-  initialVencidasReceber: ContaReceber[]
-  initialVencidasPagar: ContaPagar[]
+  initialReceber: ContaReceber[] | any
+  initialPagar: ContaPagar[] | any
+  initialVencidasReceber: ContaReceber[] | any
+  initialVencidasPagar: ContaPagar[] | any
   initialFluxo: FluxoCaixaResponse | null
   defaultDataInicio: string
   defaultDataFim: string
@@ -61,10 +61,10 @@ export function FinanceiroClient({
   const [tab, setTab] = useState("visao-geral")
 
   // Estados locais com dados iniciais vindos do servidor
-  const [contasReceber] = useState<ContaReceber[]>(initialReceber)
-  const [contasPagar] = useState<ContaPagar[]>(initialPagar)
-  const [vencidasReceber] = useState<ContaReceber[]>(initialVencidasReceber)
-  const [vencidasPagar] = useState<ContaPagar[]>(initialVencidasPagar)
+  const [contasReceber] = useState<ContaReceber[]>(Array.isArray(initialReceber) ? initialReceber : [])
+  const [contasPagar] = useState<ContaPagar[]>(Array.isArray(initialPagar) ? initialPagar : [])
+  const [vencidasReceber] = useState<ContaReceber[]>(Array.isArray(initialVencidasReceber) ? initialVencidasReceber : [])
+  const [vencidasPagar] = useState<ContaPagar[]>(Array.isArray(initialVencidasPagar) ? initialVencidasPagar : [])
   const [fluxo, setFluxo] = useState<FluxoCaixaResponse | null>(initialFluxo)
 
   // Filtros
