@@ -1,10 +1,9 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { API_URL, makeAuthenticatedRequest } from "./common"
 import type { ContaReceber, ContaPagar, FluxoCaixaResponse } from "@/types/financeiro"
-import { validateFormData } from "@/lib/validations/common"
-import { contaPagarSchema, contaReceberSchema, registrarPagamentoSchema, registrarRecebimentoSchema } from "@/lib/validations/financeiro"
+
 import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses"
 
 // GETs — seguem o padrão: retornam lista ou { error }
@@ -162,22 +161,43 @@ export async function registrarRecebimento(input: {
   contaBancariaId?: string
 }): Promise<ActionResponse> {
   try {
+    console.log('💰 registrarRecebimento - Input:', input)
+    
     if (!input.contaId || !input.valor || input.valor <= 0) {
+      console.log('❌ registrarRecebimento - Validation failed:', { contaId: input.contaId, valor: input.valor })
       return createErrorResponse("Informe contaId e valor válido.")
     }
-    const res = await makeAuthenticatedRequest(
-      `${API_URL}/contas-receber/${input.contaId}/recebimentos`,
-      { method: "POST", body: JSON.stringify(input) },
-    )
+    
+    const url = `${API_URL}/contas-receber/${input.contaId}/recebimentos`
+    console.log('🌐 registrarRecebimento - URL:', url)
+    console.log('📤 registrarRecebimento - Payload:', JSON.stringify(input))
+    
+    const res = await makeAuthenticatedRequest(url, { 
+      method: "POST", 
+      body: JSON.stringify(input),
+      headers: { 'Content-Type': 'application/json' }
+    })
+    console.log('📡 registrarRecebimento - Response status:', res.status)
+    
     if (!res.ok) {
       try {
         const err = await res.json()
+        console.log('❌ registrarRecebimento - Error response:', err)
         return createErrorResponse(err.message || "Erro ao registrar recebimento.")
       } catch {
         return createErrorResponse(res.status === 401 ? "Não autorizado. Faça login novamente." : "Erro ao registrar recebimento.")
       }
     }
-    revalidatePath("/financeiro")
+    
+    const responseData = await res.json()
+    console.log('✅ registrarRecebimento - Success response:', responseData)
+    
+    // Revalidar páginas relacionadas
+    revalidatePath("/dashboard/financeiro")
+    revalidatePath("/dashboard/obras")
+    revalidateTag("contas-receber")
+    revalidateTag("cronogramas")
+    
     return createSuccessResponse("Recebimento registrado com sucesso.")
   } catch (e) {
     console.error("registrarRecebimento error:", e)

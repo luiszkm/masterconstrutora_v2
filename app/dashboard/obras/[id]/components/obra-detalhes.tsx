@@ -89,7 +89,6 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const [cronogramaLoading, setCronogramaLoading] = useState(true)
   const [cronogramaIndividualOpen, setCronogramaIndividualOpen] =
     useState(false)
-  const [cronogramaLoteOpen, setCronogramaLoteOpen] = useState(false)
 
   // Estados para modal de adicionar funcionário
   const [adicionarFuncionarioOpen, setAdicionarFuncionarioOpen] =
@@ -497,12 +496,6 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                       <DollarSign className="mr-2 h-4 w-4" />
                       Etapa Individual
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setCronogramaLoteOpen(true)}
-                    >
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Cronograma Completo
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -900,13 +893,6 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
       <CriarCronogramaIndividual
         open={cronogramaIndividualOpen}
         onOpenChange={setCronogramaIndividualOpen}
-        obraId={obra.id}
-        onSuccess={carregarCronogramas}
-      />
-
-      <CriarCronogramaLote
-        open={cronogramaLoteOpen}
-        onOpenChange={setCronogramaLoteOpen}
         obraId={obra.id}
         onSuccess={carregarCronogramas}
       />

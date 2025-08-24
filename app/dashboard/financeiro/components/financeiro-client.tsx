@@ -147,15 +147,26 @@ export function FinanceiroClient({
   }
 
   function doRegistrarRecebimento() {
-    if (!contaReceberSel) return
+    console.log('🎯 doRegistrarRecebimento - Starting...', { contaReceberSel, valorReceb, formaReceb, obsReceb })
+    
+    if (!contaReceberSel) {
+      console.log('❌ doRegistrarRecebimento - No conta selected')
+      return
+    }
+    
     startTransition(async () => {
-      const res = await registrarRecebimento({
+      const payload = {
         contaId: contaReceberSel.id,
         valor: valorReceb,
         formaPagamento: formaReceb || undefined,
         observacoes: obsReceb || undefined,
         contaBancariaId: contaBancReceb || undefined,
-      })
+      }
+      
+      console.log('🚀 doRegistrarRecebimento - Calling registrarRecebimento with payload:', payload)
+      const res = await registrarRecebimento(payload)
+      
+      console.log('📥 doRegistrarRecebimento - Response:', res)
       if (res.success) {
         toast({ title: "Sucesso", description: res.message })
         setDialogReceberOpen(false)
