@@ -24,6 +24,9 @@ import {
   Upload,
   CalendarDays,
   DollarSign,
+  CheckCircle,
+  XCircle,
+  Settings,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -59,7 +62,7 @@ import {
   type FuncionarioApontamento,
 } from "@/app/actions/funcionario"
 import { aplicarMascaraMonetaria } from "@/app/lib/masks"
-import { getContasBancarias, pagarApontamentosQuinzena } from "@/app/actions/apontamentos"
+import { getContasBancarias, pagarApontamentosQuinzena, aprovarApontamentoAction, cancelarApontamentoAction } from "@/app/actions/apontamentos"
 import { getObrasList, ObraListItem } from "@/app/actions/obra"
 
 // Histórico de pagamentos (mantidos para demonstração, pois o novo endpoint não cobre todos os detalhes)
@@ -223,6 +226,11 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
   >([])
   const [contaSelecionadaQuinzena, setContaSelecionadaQuinzena] = useState("")
   const [isPaying, setIsPaying] = useState(false)
+
+  // Novos estados para operações de status
+  const [isApproving, setIsApproving] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [bulkStatusOperation, setBulkStatusOperation] = useState<"aprovar" | "cancelar" | "pagar" | null>(null)
 
   // Novos estados para o diálogo de apontamento
   const [dialogApontamentoAberto, setDialogApontamentoAberto] = useState(false)
@@ -629,6 +637,177 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     paymentAction(formData)
   }
 
+  // Handlers para aprovar/cancelar apontamentos individuais
+  const handleAprovarApontamento = async (apontamentoId: string) => {
+    setIsApproving(true)
+    try {
+      const result = await aprovarApontamentoAction(apontamentoId)
+      
+      if (result.success) {
+        toast({
+          title: "Sucesso!",
+          description: result.message,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+        // Recarregar a página para atualizar os dados
+        window.location.reload()
+      } else {
+        toast({
+          title: "Erro",
+          description: result.message,
+          variant: "destructive",
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao aprovar apontamento. Tente novamente.",
+        variant: "destructive",
+        action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+      })
+    } finally {
+      setIsApproving(false)
+    }
+  }
+
+  const handleCancelarApontamento = async (apontamentoId: string) => {
+    setIsCancelling(true)
+    try {
+      const result = await cancelarApontamentoAction(apontamentoId)
+      
+      if (result.success) {
+        toast({
+          title: "Sucesso!",
+          description: result.message,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+        // Recarregar a página para atualizar os dados
+        window.location.reload()
+      } else {
+        toast({
+          title: "Erro",
+          description: result.message,
+          variant: "destructive",
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao cancelar aprovação. Tente novamente.",
+        variant: "destructive",
+        action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+      })
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
+  // Handler para processar ações em lote
+  const processarAcaoLote = async (acao: "aprovar" | "cancelar" | "pagar") => {
+    if (selectedFuncionarios.length === 0) {
+      toast({
+        title: "Nenhum funcionário selecionado",
+        description: "Selecione pelo menos um funcionário para processar a ação.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setBulkStatusOperation(acao)
+
+    if (acao === "pagar") {
+      // Usar a lógica existente de pagamento
+      abrirDialogoPagamentoQuinzena()
+      return
+    }
+
+    // Filtrar funcionários com apontamentos
+    const funcionariosComApontamento = selectedFuncionarios.filter((id) => {
+      const funcionario = initialFuncionarios.find((f) => f.id === id)
+      return funcionario?.apontamentoId
+    })
+
+    if (funcionariosComApontamento.length === 0) {
+      toast({
+        title: "Nenhum apontamento encontrado",
+        description: "Os funcionários selecionados não possuem apontamentos.",
+        variant: "destructive",
+      })
+      setBulkStatusOperation(null)
+      return
+    }
+
+    if (acao === "aprovar") {
+      setIsApproving(true)
+    } else if (acao === "cancelar") {
+      setIsCancelling(true)
+    }
+
+    try {
+      const apontamentoIds = funcionariosComApontamento
+        .map((id) => {
+          const funcionario = initialFuncionarios.find((f) => f.id === id)
+          return funcionario?.apontamentoId
+        })
+        .filter((id): id is string => id !== null)
+
+      const results = await Promise.allSettled(
+        apontamentoIds.map((apontamentoId) => {
+          if (acao === "aprovar") {
+            return aprovarApontamentoAction(apontamentoId)
+          } else {
+            return cancelarApontamentoAction(apontamentoId)
+          }
+        })
+      )
+
+      const sucessos = results.filter((result) => 
+        result.status === "fulfilled" && result.value.success
+      ).length
+      
+      const falhas = results.length - sucessos
+
+      if (falhas === 0) {
+        toast({
+          title: "Sucesso!",
+          description: `Todos os ${sucessos} apontamentos foram ${acao === "aprovar" ? "aprovados" : "cancelados"} com sucesso!`,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+        setSelectedFuncionarios([])
+        window.location.reload()
+      } else if (sucessos === 0) {
+        toast({
+          title: "Erro",
+          description: `Nenhum apontamento foi ${acao === "aprovar" ? "aprovado" : "cancelado"}. ${falhas} erros encontrados.`,
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Parcialmente concluído",
+          description: `${sucessos} de ${results.length} apontamentos foram ${acao === "aprovar" ? "aprovados" : "cancelados"}. ${falhas} apresentaram erros.`,
+          variant: "default",
+        })
+        setSelectedFuncionarios([])
+        window.location.reload()
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao processar ação em lote. Tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
+      if (acao === "aprovar") {
+        setIsApproving(false)
+      } else if (acao === "cancelar") {
+        setIsCancelling(false)
+      }
+      setBulkStatusOperation(null)
+    }
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -684,15 +863,40 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
               />
             </div>
             <div className="flex gap-2 w-full md:w-auto">
-              <Button
-                variant="outline"
-                onClick={abrirDialogoPagamentoQuinzena}
-                disabled={selectedFuncionarios.length === 0 || isPaying}
-                className="whitespace-nowrap w-full sm:w-auto"
-              >
-                <DollarSign className="mr-2 h-4 w-4" />
-                {isPaying ? "Processando..." : "Pagar Quinzena"}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={selectedFuncionarios.length === 0 || isApproving || isCancelling || isPaying}
+                    className="whitespace-nowrap w-full sm:w-auto"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    {bulkStatusOperation === "aprovar" && isApproving
+                      ? "Aprovando..."
+                      : bulkStatusOperation === "cancelar" && isCancelling
+                        ? "Cancelando..."
+                        : bulkStatusOperation === "pagar" && isPaying
+                          ? "Processando..."
+                          : "Alterar Status"}
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => processarAcaoLote("aprovar")}>
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                    Aprovar Selecionados
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => processarAcaoLote("cancelar")}>
+                    <XCircle className="mr-2 h-4 w-4 text-orange-600" />
+                    Cancelar Aprovação
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => processarAcaoLote("pagar")}>
+                    <DollarSign className="mr-2 h-4 w-4 text-blue-600" />
+                    Pagar Aprovados
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Popover open={filtroAberto} onOpenChange={setFiltroAberto}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full sm:w-auto">
@@ -878,14 +1082,32 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                                 <Copy className="mr-2 h-4 w-4" />
                                 Copiar Chave PIX
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => abrirDialogoPagamento(funcionario)}>
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Pagar
-                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => abrirDialogoApontamento(funcionario)}>
                                 <CalendarDays className="mr-2 h-4 w-4" />
                                 {funcionario.apontamentoId === null ? "Criar Apontamento" : "Editar Apontamento"}
                               </DropdownMenuItem>
+                              
+                              {/* Ações condicionais baseadas no status do apontamento */}
+                              {funcionario.apontamentoId && funcionario.statusApontamento === "EM_ABERTO" && (
+                                <DropdownMenuItem onClick={() => handleAprovarApontamento(funcionario.apontamentoId!)}>
+                                  <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                  Aprovar
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {funcionario.apontamentoId && funcionario.statusApontamento === "APROVADO_PARA_PAGAMENTO" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleCancelarApontamento(funcionario.apontamentoId!)}>
+                                    <XCircle className="mr-2 h-4 w-4 text-orange-600" />
+                                    Cancelar Aprovação
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => abrirDialogoPagamento(funcionario)}>
+                                    <CreditCard className="mr-2 h-4 w-4 text-blue-600" />
+                                    Pagar
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive">
                                 <Trash2 className="mr-2 h-4 w-4" />

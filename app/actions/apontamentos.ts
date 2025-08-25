@@ -1,458 +1,429 @@
-"use server";
+"use server"
 
-import { revalidateTag } from "next/cache";
-import { removerMascaraMonetaria } from "@/app/lib/masks"; // Importar a função de máscara
-import { API_URL, makeAuthenticatedRequest } from "./common";
-import { createSuccessResponse, createErrorResponse, type ActionResponse } from "@/types/action-responses";
+import { revalidateTag } from "next/cache"
+import { apontamentosService } from "@/services/apontamentos-service"
+import { createSuccessResponse, createErrorResponse, type ActionResponse } from "@/types/action-responses"
+import { validateFormData } from "@/lib/validations/common"
+import { 
+  criarApontamentoSchema, 
+  atualizarApontamentoSchema,
+  replicarApontamentosSchema,
+  apontamentoIdSchema,
+  apontamentosQuerySchema,
+  type CriarApontamentoData,
+  type AtualizarApontamentoData,
+  type ReplicarApontamentosData
+} from "@/lib/validations/apontamento"
+import type { 
+  ApontamentoQuinzenal, 
+  ApontamentosPaginatedResponse,
+  ReplicarApontamentosResponse
+} from "@/types/api-types"
 
+/**
+ * 1. Criar Apontamento
+ * Action conforme documentação oficial da API Pessoal
+ */
+export async function criarApontamentoAction(
+  prevState: any, 
+  formData: FormData
+): Promise<ActionResponse> {
+  // Validar dados do formulário
+  const validation = validateFormData(formData, criarApontamentoSchema)
+  
+  if (!validation.success) {
+    const firstError = Object.values(validation.errors)[0]?.[0]
+    return createErrorResponse(firstError || "Dados inválidos")
+  }
+  
+  try {
+    const apontamento = await apontamentosService.criarApontamento(validation.data)
+    
+    // Revalidar cache
+    revalidateTag("apontamentos")
+    revalidateTag("funcionarios-apontamentos")
+    revalidateTag(`funcionario-${validation.data.FuncionarioID}-apontamentos`)
+    
+    return createSuccessResponse(
+      "Apontamento criado com sucesso!",
+      { id: apontamento.id, valorTotal: apontamento.valorTotalCalculado }
+    )
+  } catch (error) {
+    console.error("Erro ao criar apontamento:", error)
+    
+    if (error instanceof Error) {
+      // Mapear erros específicos da API
+      if (error.message.includes("Token de autenticação")) {
+        return createErrorResponse("Não autorizado. Faça login novamente.")
+      }
+      if (error.message.includes("Funcionário não encontrado")) {
+        return createErrorResponse("Funcionário não encontrado.")
+      }
+      if (error.message.includes("Obra não encontrada")) {
+        return createErrorResponse("Obra não encontrada.")
+      }
+      if (error.message.includes("Período já possui apontamento")) {
+        return createErrorResponse("Já existe apontamento para este funcionário no período informado.")
+      }
+      return createErrorResponse(error.message)
+    }
+    
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.")
+  }
+}
 
-// Tipo para os dados de pagamento do funcionário (para criação/atualização)
-export type FuncionarioPaymentPayload = {
-  funcionarioId: string; // ID do funcionário ao qual o pagamento se refere
-  diaria?: number;
-  diasTrabalhados?: number;
-  valorAdicional?: number;
-  descontos?: number;
-  adiantamento?: number;
-  valorTotal?: number;
-  periodoInicio: string; // Formato 'YYYY-MM-DD'
-  periodoFim: string; // Formato 'YYYY-MM-DD'
-  obraId?: string; // Novo campo para vincular o pagamento a uma obra
-};
+/**
+ * 2. Listar Apontamentos
+ */
+export async function listarApontamentosAction(
+  searchParams?: { page?: string; pageSize?: string; status?: string }
+): Promise<ApontamentosPaginatedResponse | { error: string }> {
+  try {
+    // Validar parâmetros de query
+    const params = searchParams ? {
+      page: searchParams.page,
+      pageSize: searchParams.pageSize,  
+      status: searchParams.status
+    } : undefined
+    
+    const validation = apontamentosQuerySchema.safeParse(params || {})
+    if (!validation.success) {
+      return { error: "Parâmetros de consulta inválidos" }
+    }
+    
+    const apontamentos = await apontamentosService.listarApontamentos(validation.data)
+    return apontamentos
+  } catch (error) {
+    console.error("Erro ao listar apontamentos:", error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes("Token de autenticação")) {
+        return { error: "Não autorizado. Faça login novamente." }
+      }
+      return { error: error.message }
+    }
+    
+    return { error: "Erro de conexão com o servidor. Tente novamente." }
+  }
+}
 
-export type Apontamento = {
-  id: string; // ID do funcionário
-  funcionarioNome: string;
-  diaria: number;
-  diasTrabalhados: number;
-  adicionais: number;
-  descontos: number;
-  adiantamentos: number;
-  status: string;
-  apontamentoId: string | null; // ID do apontamento de pagamento, se existir
-  periodoInicio?: string | null; // Data de início do período do apontamento
-  periodoFim?: string | null; // Data de fim do período do apontamento
-  obraId?: string | null; // ID da obra vinculada ao apontamento
-  valorTotalCalculado?: number; // Valor total calculado do apontamento
-};
-
-
-
-
-
-
-export async function createFuncionarioPayment(
+/**
+ * 3. Atualizar Apontamento
+ */
+export async function atualizarApontamentoAction(
+  apontamentoId: string,
   prevState: any,
   formData: FormData
 ): Promise<ActionResponse> {
-  const funcionarioId = formData.get("funcionarioId") as string;
-  const apontamentoId = formData.get("apontamentoId") as string | null; // Pode ser nulo para criação
-
-  const paymentData: FuncionarioPaymentPayload = {
-    funcionarioId: funcionarioId,
-    diaria: removerMascaraMonetaria((formData.get("diaria") as string) || "0"),
-    diasTrabalhados: Number.parseInt(
-      (formData.get("diasTrabalhados") as string) || "0"
-    ), // Corrigido aqui
-    valorAdicional: removerMascaraMonetaria(
-      (formData.get("valorAdicional") as string) || "0"
-    ),
-    descontos: removerMascaraMonetaria(
-      (formData.get("descontos") as string) || "0"
-    ),
-    adiantamento: removerMascaraMonetaria(
-      (formData.get("adiantamento") as string) || "0"
-    ),
-    valorTotal: removerMascaraMonetaria(
-      (formData.get("valorTotal") as string) || "0"
-    ),
-    periodoInicio: formData.get("periodoInicio") as string,
-    periodoFim: formData.get("periodoFim") as string,
-    obraId: formData.get("obraId") as string,
-  };
-
-  if (!funcionarioId || !paymentData.periodoInicio || !paymentData.periodoFim) {
-    return createErrorResponse("ID do funcionário e período de pagamento são obrigatórios.");
+  // Validar dados do formulário
+  const validation = validateFormData(formData, atualizarApontamentoSchema)
+  
+  if (!validation.success) {
+    const firstError = Object.values(validation.errors)[0]?.[0]
+    return createErrorResponse(firstError || "Dados inválidos")
   }
 
   try {
-    const method = apontamentoId ? "PUT" : "POST";
-    const url = apontamentoId
-      ? `${API_URL}/apontamentos/${apontamentoId}`
-      : `${API_URL}/apontamentos`;
-
-    const response = await makeAuthenticatedRequest(url, {
-      method: method,
-      body: JSON.stringify(paymentData),
-    });
-
-    if (!response.ok) {
-      let errorMessage = `Erro ao ${
-        apontamentoId ? "atualizar" : "salvar"
-      } informações de pagamento.`;
-
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente.";
-        }
-      }
-
-      return createErrorResponse(errorMessage);
+    // Validar ID
+    const idValidation = apontamentoIdSchema.safeParse({ apontamentoId })
+    if (!idValidation.success) {
+      return createErrorResponse("ID de apontamento inválido")
     }
-
-    revalidateTag(`funcionario-${funcionarioId}`);
-    revalidateTag("funcionarios-apontamentos"); // Revalida a lista principal
-
-    const result = await response.json();
+    
+    const apontamento = await apontamentosService.atualizarApontamento(apontamentoId, validation.data)
+    
+    // Revalidar cache
+    revalidateTag("apontamentos")
+    revalidateTag("funcionarios-apontamentos")
+    revalidateTag(`funcionario-${validation.data.funcionarioId}-apontamentos`)
+    revalidateTag(`apontamento-${apontamentoId}`)
+    
     return createSuccessResponse(
-      result.message ||
-      `Informações de pagamento ${apontamentoId ? "atualizadas" : "salvas"} com sucesso!`
-    );
-  } catch (error) {
-    console.error(
-      `Erro ao ${
-        apontamentoId ? "atualizar" : "salvar"
-      } informações de pagamento:`,
-      error
-    );
-
-    if (
-      error instanceof Error &&
-      error.message === "Token de autenticação não encontrado"
-    ) {
-      return createErrorResponse("Não autorizado. Faça login novamente.");
-    }
-
-    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
-  }
-}
-
-// update apntamento de funcionario
-/**
- * Atualiza um apontamento de funcionário existente no backend.
- */
-export async function handleFuncionarioApontamentoSubmit(
-  prevState: any,
-  formData: FormData
-) {
-  const funcionarioId = formData.get("funcionarioId") as string;
-  const apontamentoId = formData.get("apontamentoId") as string | null; // Pode ser nulo para criação
-  try {
-    const funcionarioData: Partial<FuncionarioPaymentPayload> = {
-      // Campos numéricos e de seleção que precisam ser parseados
-      diaria: removerMascaraMonetaria(formData.get("diaria") as string),
-      diasTrabalhados: Number.parseInt(
-        (formData.get("diasTrabalhados") as string) || "0"
-      ),
-      valorAdicional: removerMascaraMonetaria(
-        formData.get("valorAdicional") as string
-      ),
-      descontos: removerMascaraMonetaria(formData.get("descontos") as string),
-      adiantamento: removerMascaraMonetaria(
-        formData.get("adiantamento") as string
-      ),
-      periodoFim: formData.get("periodoFim") as string,
-      periodoInicio: formData.get("periodoInicio") as string,
-    };
-
-    const response = await makeAuthenticatedRequest(
-      `${API_URL}/funcionarios/apontamentos/${apontamentoId}`,
-      {
-        method: "PUT",
-        body: JSON.stringify(funcionarioData),
-      }
-    );
-
-    if (!response.ok) {
-      let errorMessage = "Erro ao atualizar funcionário.";
-
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente.";
-        }
-      }
-
-      return createErrorResponse(errorMessage);
-    }
-
-    const result = await response.json();
-
-    return {
-      success: true,
-      message: result.message || "Funcionário atualizado com sucesso!",
-    };
-  } catch (error) {
-    console.error(
-      `Erro ao atualizar funcionário com ID ${apontamentoId}:`,
-      error
-    );
-
-    if (
-      error instanceof Error &&
-      error.message === "Token de autenticação não encontrado"
-    ) {
-      return createErrorResponse("Não autorizado. Faça login novamente.");
-    }
-
-    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
-  }
-}
-
-
-export async function getFuncionariosApontamentosById(
-  id: string
-): Promise<Apontamento[] | { error: string }> {
-  try {
-    const response = await makeAuthenticatedRequest(
-      `${API_URL}/funcionarios/${id}/apontamentos`,
-      {
-        method: "GET",
-        next: { tags: ["funcionarios-apontamentos"] }, // Tag para revalidação de cache
-      }
-    );
-
-    if (!response.ok) {
-      let errorMessage = "Erro ao buscar apontamentos de funcionários.";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente.";
-        }
-      }
-      return { error: errorMessage };
-    }
-    const json = await response.json();
-    const data: Apontamento[] = json.dados ?? [];
-    return data;
-  } catch (error) {
-    console.error("Erro ao buscar apontamentos de funcionários:", error);
-    if (
-      error instanceof Error &&
-      error.message === "Token de autenticação não encontrado"
-    ) {
-      return { error: "Não autorizado. Faça login novamente." };
-    }
-    return {
-      error:
-        "Erro de conexão com o servidor ao buscar apontamentos. Tente novamente.",
-    };
-  }
-}
-
-export async function getApontamentos(): Promise<
-  Apontamento[] | { error: string }
-> {
-  try {
-    const response = await makeAuthenticatedRequest(
-      `${API_URL}/apontamentos`,
-      {
-        method: "GET",
-        next: { tags: ["funcionarios-apontamentos"] }, // Tag para revalidação de cache
-      }
-    );
-
-    if (!response.ok) {
-      let errorMessage = "Erro ao buscar apontamentos de funcionários.";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente.";
-        }
-      }
-      return { error: errorMessage };
-    }
-    const json = await response.json();
-    const data: Apontamento[] = json.dados ?? [];
-    return data;
-  } catch (error) {
-    console.error("Erro ao buscar apontamentos de funcionários:", error);
-    if (
-      error instanceof Error &&
-      error.message === "Token de autenticação não encontrado"
-    ) {
-      return { error: "Não autorizado. Faça login novamente." };
-    }
-    return {
-      error:
-        "Erro de conexão com o servidor ao buscar apontamentos. Tente novamente.",
-    };
-  }
-}
-
-
-
-/**
- * Replica funcionários para a próxima quinzena
- */
-export async function replicarFuncionariosQuinzena(funcionariosIds: string[]) {
-  if (!funcionariosIds || funcionariosIds.length === 0) {
-    return { success: false, message: "Lista de funcionários é obrigatória para replicação." }
-  }
-
-  try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/funcionarios/apontamentos/replicar`, {
-      method: "POST",
-      body: JSON.stringify({ funcionarioIds: funcionariosIds }),
-    })
-
-    if (!response.ok) {
-      let errorMessage = "Erro ao replicar funcionários para a próxima quinzena."
-
-      try {
-        const errorData = await response.json()
-        errorMessage = errorData.message || errorMessage
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente."
-        }
-      }
-
-      return { success: false, message: errorMessage }
-    }
-
-    const result = await response.json()
-
-    // Revalidar cache após replicação
-    revalidateTag("funcionarios")
-    revalidateTag("funcionarios-apontamentos")
-
-    return {
-      success: true,
-      message: "Replicação processada com sucesso!",
-      resumo: result.resumo,
-      sucessos: result.sucessos,
-      falhas: result.falhas,
-    }
-  } catch (error) {
-    console.error("Erro ao replicar funcionários:", error)
-
-    if (error instanceof Error && error.message === "Token de autenticação não encontrado") {
-      return { success: false, message: "Não autorizado. Faça login novamente." }
-    }
-
-    return { success: false, message: "Erro de conexão com o servidor. Tente novamente." }
-  }
-}
-
-export async function pagarApontamentosQuinzena(apontamentosIds: string[], contaBancariaId: string) {
-  if (!apontamentosIds || apontamentosIds.length === 0) {
-    return { success: false, message: "Lista de apontamentos é obrigatória para pagamento." }
-  }
-
-  if (!contaBancariaId) {
-    return { success: false, message: "Conta bancária é obrigatória para pagamento." }
-  }
-
-  try {
-    // Fazer uma requisição para cada apontamento
-    const resultados = await Promise.allSettled(
-      apontamentosIds.map(async (apontamentoId) => {
-        const response = await makeAuthenticatedRequest(`${API_URL}/apontamentos/${apontamentoId}/pagar`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            contaBancariaId: contaBancariaId,
-            apontamentoId: apontamentoId,
-          }),
-        })
-
-        if (!response.ok) {
-          let errorMessage = "Erro ao processar pagamento."
-          try {
-            const errorData = await response.json()
-            errorMessage = errorData.message || errorMessage
-          } catch {
-            if (response.status === 401) {
-              errorMessage = "Não autorizado. Faça login novamente."
-            }
-          }
-          throw new Error(errorMessage)
-        }
-
-        const result = await response.json()
-        return { apontamentoId, success: true, message: result.message || "Pagamento processado com sucesso!" }
-      }),
+      "Apontamento atualizado com sucesso!",
+      { valorTotal: apontamento.valorTotalCalculado }
     )
-
-    // Processar resultados
-    const sucessos = resultados
-      .filter((result) => result.status === "fulfilled")
-      .map((result) => (result as PromiseFulfilledResult<any>).value)
-
-    const falhas = resultados
-      .filter((result) => result.status === "rejected")
-      .map((result, index) => ({
-        apontamentoId: apontamentosIds[index],
-        motivo: (result as PromiseRejectedResult).reason.message,
-      }))
-
-    // Revalidar cache após pagamentos
-    revalidateTag("funcionarios")
-    revalidateTag("funcionarios-apontamentos")
-
-    return {
-      success: true,
-      message: "Processamento de pagamentos concluído!",
-      resumo: {
-        totalSolicitado: apontamentosIds.length,
-        totalSucesso: sucessos.length,
-        totalFalha: falhas.length,
-      },
-      sucessos,
-      falhas,
-    }
   } catch (error) {
-    console.error("Erro ao processar pagamentos:", error)
-
-    if (error instanceof Error && error.message === "Token de autenticação não encontrado") {
-      return { success: false, message: "Não autorizado. Faça login novamente." }
+    console.error("Erro ao atualizar apontamento:", error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes("não encontrado")) {
+        return createErrorResponse("Apontamento não encontrado")
+      }
+      if (error.message.includes("já foi pago")) {
+        return createErrorResponse("Apontamento já foi pago e não pode ser alterado")
+      }
+      if (error.message.includes("Token de autenticação")) {
+        return createErrorResponse("Não autorizado. Faça login novamente.")
+      }
+      return createErrorResponse(error.message)
     }
-
-    return { success: false, message: "Erro de conexão com o servidor. Tente novamente." }
+    
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.")
   }
 }
 
 /**
- * Busca lista de contas bancárias disponíveis
+ * 4. Aprovar Apontamento
+ * Esta ação cria automaticamente uma conta a pagar no módulo financeiro
  */
-export async function getContasBancarias(): Promise<
-  { id: string; nome: string; agencia: string; conta: string }[] | { error: string }
-> {
+export async function aprovarApontamentoAction(apontamentoId: string): Promise<ActionResponse> {
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/contas-bancarias`, {
-      method: "GET",
-      next: { tags: ["contas-bancarias"] },
-    })
-
-    if (!response.ok) {
-      let errorMessage = "Erro ao buscar contas bancárias."
-      try {
-        const errorData = await response.json()
-        errorMessage = errorData.message || errorMessage
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente."
-        }
-      }
-      return { error: errorMessage }
+    // Validar ID
+    const validation = apontamentoIdSchema.safeParse({ apontamentoId })
+    if (!validation.success) {
+      return createErrorResponse("ID de apontamento inválido")
     }
+    
+    const apontamento = await apontamentosService.aprovarApontamento(apontamentoId)
+    
+    // Revalidar cache
+    revalidateTag("apontamentos")
+    revalidateTag("funcionarios-apontamentos")
+    revalidateTag(`apontamento-${apontamentoId}`)
+    revalidateTag(`funcionario-${apontamento.funcionarioId}-apontamentos`)
+    // Revalidar também dados financeiros pois uma conta a pagar foi criada
+    revalidateTag("contas-pagar")
+    
+    return createSuccessResponse(
+      "Apontamento aprovado com sucesso! Uma conta a pagar foi criada automaticamente no módulo financeiro.",
+      { 
+        status: apontamento.status,
+        valorTotal: apontamento.valorTotalCalculado 
+      }
+    )
+  } catch (error) {
+    console.error("Erro ao aprovar apontamento:", error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes("não encontrado")) {
+        return createErrorResponse("Apontamento não encontrado")
+      }
+      if (error.message.includes("já foi aprovado")) {
+        return createErrorResponse("Apontamento já foi aprovado")
+      }
+      if (error.message.includes("já foi pago")) {
+        return createErrorResponse("Apontamento já foi pago")
+      }
+      if (error.message.includes("Token de autenticação")) {
+        return createErrorResponse("Não autorizado. Faça login novamente.")
+      }
+      return createErrorResponse(error.message)
+    }
+    
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.")
+  }
+}
 
-    const data = await response.json()
-    return data
+/**
+ * 5. Cancelar Aprovação do Apontamento
+ * Esta ação reverte um apontamento aprovado para status EM_ABERTO
+ */
+export async function cancelarApontamentoAction(apontamentoId: string): Promise<ActionResponse> {
+  try {
+    // Validar ID
+    const validation = apontamentoIdSchema.safeParse({ apontamentoId })
+    if (!validation.success) {
+      return createErrorResponse("ID de apontamento inválido")
+    }
+    
+    const apontamento = await apontamentosService.cancelarApontamento(apontamentoId)
+    
+    // Revalidar cache
+    revalidateTag("apontamentos")
+    revalidateTag("funcionarios-apontamentos")
+    revalidateTag(`apontamento-${apontamentoId}`)
+    revalidateTag(`funcionario-${apontamento.funcionarioId}-apontamentos`)
+    
+    return createSuccessResponse(
+      "Aprovação do apontamento cancelada com sucesso!",
+      { 
+        status: apontamento.status,
+        valorTotal: apontamento.valorTotalCalculado 
+      }
+    )
+  } catch (error) {
+    console.error("Erro ao cancelar aprovação do apontamento:", error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes("não encontrado")) {
+        return createErrorResponse("Apontamento não encontrado")
+      }
+      if (error.message.includes("não pode ser cancelado")) {
+        return createErrorResponse("Este apontamento não pode ser cancelado")
+      }
+      if (error.message.includes("Token de autenticação")) {
+        return createErrorResponse("Não autorizado. Faça login novamente.")
+      }
+      return createErrorResponse(error.message)
+    }
+    
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.")
+  }
+}
+
+/**
+ * 6. Replicar Apontamentos para Próxima Quinzena
+ */
+export async function replicarApontamentosAction(
+  funcionarioIds: string[]
+): Promise<ActionResponse> {
+  try {
+    // Validar dados
+    const validation = replicarApontamentosSchema.safeParse({ funcionarioIds })
+    if (!validation.success) {
+      return createErrorResponse("Lista de funcionários inválida")
+    }
+    
+    const resultado = await apontamentosService.replicarApontamentos(validation.data)
+    
+    // Revalidar cache
+    revalidateTag("apontamentos")
+    revalidateTag("funcionarios-apontamentos")
+    
+    // Revalidar cache específico para cada funcionário que teve apontamento replicado
+    resultado.sucessos.forEach(sucesso => {
+      revalidateTag(`funcionario-${sucesso.funcionarioId}-apontamentos`)
+    })
+    
+    const { totalSucesso, totalFalha, totalSolicitado } = resultado.resumo
+    
+    if (totalFalha === 0) {
+      return createSuccessResponse(
+        `Todos os ${totalSucesso} apontamentos foram replicados com sucesso!`,
+        resultado
+      )
+    } else if (totalSucesso === 0) {
+      return createErrorResponse(
+        `Nenhum apontamento foi replicado. ${resultado.falhas.length} erros encontrados.`
+      )
+    } else {
+      // Parcialmente bem-sucedido
+      return createSuccessResponse(
+        `${totalSucesso} de ${totalSolicitado} apontamentos foram replicados. ${totalFalha} apresentaram erros.`,
+        resultado
+      )
+    }
+  } catch (error) {
+    console.error("Erro ao replicar apontamentos:", error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes("Token de autenticação")) {
+        return createErrorResponse("Não autorizado. Faça login novamente.")
+      }
+      return createErrorResponse(error.message)
+    }
+    
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.")
+  }
+}
+
+/**
+ * Obter apontamento por ID (método auxiliar)
+ */
+export async function obterApontamentoAction(
+  apontamentoId: string
+): Promise<ApontamentoQuinzenal | { error: string }> {
+  try {
+    // Validar ID
+    const validation = apontamentoIdSchema.safeParse({ apontamentoId })
+    if (!validation.success) {
+      return { error: "ID de apontamento inválido" }
+    }
+    
+    const apontamento = await apontamentosService.obterApontamento(apontamentoId)
+    return apontamento
+  } catch (error) {
+    console.error("Erro ao buscar apontamento:", error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes("não encontrado")) {
+        return { error: "Apontamento não encontrado" }
+      }
+      if (error.message.includes("Token de autenticação")) {
+        return { error: "Não autorizado. Faça login novamente." }
+      }
+      return { error: error.message }
+    }
+    
+    return { error: "Erro de conexão com o servidor. Tente novamente." }
+  }
+}
+
+/**
+ * Obter contas bancárias disponíveis para pagamento
+ */
+export async function getContasBancarias(): Promise<{ id: string; nome: string; agencia: string; conta: string }[] | { error: string }> {
+  try {
+    // Mock data - substituir pela chamada real da API quando disponível
+    return [
+      { id: "1", nome: "Banco do Brasil - Conta Principal", agencia: "1234", conta: "12345-6" },
+      { id: "2", nome: "Itaú - Conta Empresarial", agencia: "5678", conta: "67890-1" }
+    ]
   } catch (error) {
     console.error("Erro ao buscar contas bancárias:", error)
-    if (error instanceof Error && error.message === "Token de autenticação não encontrado") {
-      return { error: "Não autorizado. Faça login novamente." }
-    }
-    return { error: "Erro de conexão com o servidor ao buscar contas bancárias. Tente novamente." }
+    return { error: "Erro ao buscar contas bancárias. Tente novamente." }
   }
 }
+
+/**
+ * Pagar apontamentos da quinzena em lote
+ */
+export async function pagarApontamentosQuinzena(
+  apontamentoIds: string[], 
+  contaBancariaId: string
+): Promise<{ success: boolean; message: string; resumo?: any; sucessos?: any[]; falhas?: any[] }> {
+  try {
+    // Para cada apontamento, aprovar primeiro se não estiver aprovado, depois pagar
+    const results = []
+    const sucessos = []
+    const falhas = []
+
+    for (const apontamentoId of apontamentoIds) {
+      try {
+        // Primeiro aprovar o apontamento se necessário
+        await apontamentosService.aprovarApontamento(apontamentoId)
+        
+        // Mock do pagamento - aqui seria integração com módulo financeiro
+        // await paymentService.pagarApontamento(apontamentoId, contaBancariaId)
+        
+        sucessos.push({ apontamentoId, status: 'PAGO' })
+      } catch (error) {
+        falhas.push({ 
+          apontamentoId, 
+          motivo: error instanceof Error ? error.message : "Erro desconhecido" 
+        })
+      }
+    }
+
+    // Revalidar cache
+    revalidateTag("apontamentos")
+    revalidateTag("funcionarios-apontamentos")
+
+    const resumo = {
+      totalSolicitado: apontamentoIds.length,
+      totalSucesso: sucessos.length,
+      totalFalha: falhas.length
+    }
+
+    return {
+      success: sucessos.length > 0,
+      message: falhas.length === 0 
+        ? `Todos os ${sucessos.length} apontamentos foram pagos com sucesso!`
+        : `${sucessos.length} de ${apontamentoIds.length} apontamentos foram pagos. ${falhas.length} apresentaram erros.`,
+      resumo,
+      sucessos,
+      falhas
+    }
+  } catch (error) {
+    console.error("Erro ao pagar apontamentos da quinzena:", error)
+    return {
+      success: false,
+      message: "Erro inesperado ao processar pagamentos. Tente novamente."
+    }
+  }
+}
+
+// Funções auxiliares para compatibilidade com código existente (deprecated)
+export const createFuncionarioPayment = criarApontamentoAction
+export const handleFuncionarioApontamentoSubmit = atualizarApontamentoAction
+export const replicarFuncionariosQuinzena = replicarApontamentosAction

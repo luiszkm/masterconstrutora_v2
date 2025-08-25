@@ -15,31 +15,142 @@ export interface User {
   permissoes: string[]
 }
 
-// Funcionário
+// Funcionário - Conforme documentação oficial da API
 export interface Funcionario {
   id: string
   nome: string
+  cpf: string
+  telefone: string
   cargo: string
+  email?: string
   departamento: string
   dataContratacao: string
-  salario: number
-  status: "ativo" | "afastado" | "ferias" | "desligado"
-  telefone: string
-  email: string
-  endereco: string
-  documentos: {
-    cpf: string
-    rg?: string
-    ctps?: string
-  }
-  dadosBancarios: {
-    banco: string
-    agencia: string
-    conta: string
-    tipoConta: "corrente" | "poupanca"
-  }
-  avatar?: string
+  valorDiaria: number
+  chavePix: string
+  status: "ATIVO" | "INATIVO" | "DESLIGADO"
+  desligamentoData?: string
+  motivoDesligamento?: string
+  created_at: string
+  updated_at: string
+  diaria: number // Alias para valorDiaria para compatibilidade
+  avaliacaoDesempenho?: string
   observacoes?: string
+}
+
+// Payload para criar funcionário
+export interface CriarFuncionarioRequest {
+  nome: string
+  cpf: string
+  cargo: string
+  departamento: string
+  diaria: number
+  chavePix: string
+  observacoes?: string
+  telefone: string
+}
+
+// Payload para atualizar funcionário
+export interface AtualizarFuncionarioRequest {
+  nome?: string
+  cpf?: string
+  cargo?: string
+  departamento?: string
+  valorDiaria?: number
+  chavePix?: string
+  status?: "ATIVO" | "INATIVO" | "DESLIGADO"
+  telefone?: string
+  motivoDesligamento?: string
+  dataContratacao?: string
+  desligamentoData?: string
+  observacoes?: string
+  avaliacaoDesempenho?: string
+  email?: string
+}
+
+// Funcionário com último apontamento
+export interface FuncionarioComUltimoApontamento {
+  funcionarioId: string
+  funcionarioNome: string
+  ultimoApontamento?: ApontamentoQuinzenal
+}
+
+// Apontamento Quinzenal - Conforme documentação oficial da API
+export interface ApontamentoQuinzenal {
+  id: string
+  funcionarioId: string
+  obraId: string
+  periodoInicio: string
+  periodoFim: string
+  diaria: number
+  diasTrabalhados: number
+  adicionais: number
+  descontos: number
+  adiantamentos: number
+  valorTotalCalculado: number
+  status: "EM_ABERTO" | "APROVADO_PARA_PAGAMENTO" | "PAGO"
+  createdAt: string
+  updatedAt: string
+  funcionarioNome: string
+}
+
+// Payload para criar apontamento
+export interface CriarApontamentoRequest {
+  FuncionarioID: string
+  ObraID: string
+  PeriodoInicio: string // "YYYY-MM-DD"
+  PeriodoFim: string // "YYYY-MM-DD"
+  Diaria: number
+  DiasTrabalhados: number
+  ValorAdicional: number
+  Descontos: number
+  Adiantamento: number
+}
+
+// Payload para atualizar apontamento
+export interface AtualizarApontamentoRequest {
+  funcionarioId: string
+  obraId: string
+  periodoInicio: string // "YYYY-MM-DD"
+  periodoFim: string // "YYYY-MM-DD"
+  diaria: number
+  diasTrabalhados: number
+  valorAdicional: number
+  descontos: number
+  adiantamento: number
+  status: "EM_ABERTO" | "APROVADO_PARA_PAGAMENTO" | "PAGO"
+}
+
+// Payload para replicar apontamentos
+export interface ReplicarApontamentosRequest {
+  funcionarioIds: string[]
+}
+
+// Resposta da replicação de apontamentos
+export interface ReplicarApontamentosResponse {
+  resumo: {
+    totalSolicitado: number
+    totalSucesso: number
+    totalFalha: number
+  }
+  sucessos: {
+    funcionarioId: string
+    novoApontamentoId: string
+  }[]
+  falhas: {
+    funcionarioId: string
+    motivo: string
+  }[]
+}
+
+// Resposta paginada de apontamentos
+export interface ApontamentosPaginatedResponse {
+  data: ApontamentoQuinzenal[]
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
 }
 
 // Pagamento de Funcionário

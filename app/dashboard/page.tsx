@@ -626,8 +626,8 @@ export default function DashboardPage() {
                 <div>
                   <h4 className="text-sm font-medium mb-2">Obras com Atraso</h4>
                   <div className="space-y-1">
-                    {dashboardData.alertas.obrasComAtraso.map((obra) => (
-                      <Badge key={obra} variant="destructive" className="text-xs">
+                    {dashboardData.alertas.obrasComAtraso.map((obra, index) => (
+                      <Badge key={`obra-atraso-${index}`} variant="destructive" className="text-xs">
                         {obra}
                       </Badge>
                     ))}
@@ -639,8 +639,8 @@ export default function DashboardPage() {
                 <div>
                   <h4 className="text-sm font-medium mb-2">Fornecedores Inativos</h4>
                   <div className="space-y-1">
-                    {dashboardData.alertas.fornecedoresInativos.map((fornecedor) => (
-                      <Badge key={fornecedor} variant="secondary" className="text-xs">
+                    {dashboardData.alertas.fornecedoresInativos.map((fornecedor, index) => (
+                      <Badge key={`fornecedor-inativo-${index}`} variant="secondary" className="text-xs">
                         {fornecedor}
                       </Badge>
                     ))}
@@ -652,8 +652,8 @@ export default function DashboardPage() {
                 <div>
                   <h4 className="text-sm font-medium mb-2">Funcionários sem Apontamento</h4>
                   <div className="space-y-1">
-                    {dashboardData.alertas.funcionariosSemApontamento.map((funcionario) => (
-                      <Badge key={funcionario} variant="outline" className="text-xs">
+                    {dashboardData.alertas.funcionariosSemApontamento.map((funcionario, index) => (
+                      <Badge key={`funcionario-sem-apontamento-${index}`} variant="outline" className="text-xs">
                         {funcionario}
                       </Badge>
                     ))}
@@ -787,7 +787,7 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {funcionariosData.topFuncionarios?.top5Funcionarios?.map((funcionario, index) => (
-                      <div key={funcionario.funcionarioId} className="flex items-center justify-between">
+                      <div key={`funcionario-mobile-${index}`} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
                             {index + 1}
@@ -851,7 +851,7 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {fornecedoresData.topFornecedores?.top5Fornecedores?.map((fornecedor, index) => (
-                      <div key={fornecedor.fornecedorId} className="flex items-center justify-between">
+                      <div key={`fornecedor-mobile-${index}`} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
                             {index + 1}
@@ -1083,7 +1083,7 @@ export default function DashboardPage() {
                     <CardContent>
                       <div className="space-y-4">
                         {funcionariosData.topFuncionarios?.top5Funcionarios?.map((funcionario, index) => (
-                          <div key={funcionario.funcionarioId} className="flex items-center justify-between">
+                          <div key={`funcionario-desktop-${index}`} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
                                 {index + 1}
@@ -1167,8 +1167,8 @@ export default function DashboardPage() {
 
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium">Top 5 Custos por Funcionário</h4>
-                          {funcionariosData.custosMaoObra?.custosPorFuncionario?.slice(0, 5)?.map((funcionario) => (
-                            <div key={funcionario.funcionarioId} className="flex items-center justify-between">
+                          {funcionariosData.custosMaoObra?.custosPorFuncionario?.slice(0, 5)?.map((funcionario, index) => (
+                            <div key={`funcionario-custo-${index}`} className="flex items-center justify-between">
                               <div>
                                 <span className="text-sm font-medium">{funcionario.nomeFuncionario}</span>
                                 <span className="text-xs text-muted-foreground ml-2">({funcionario.cargo})</span>
@@ -1189,7 +1189,7 @@ export default function DashboardPage() {
                     <CardContent>
                       <div className="space-y-4">
                         {funcionariosData.produtividade?.top5Produtivos?.map((funcionario, index) => (
-                          <div key={funcionario.funcionarioId} className="space-y-2">
+                          <div key={`funcionario-produtividade-${index}`} className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
@@ -1242,8 +1242,8 @@ export default function DashboardPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {fornecedoresData.topFornecedores?.top5Fornecedores?.map((fornecedor) => (
-                              <TableRow key={fornecedor.fornecedorId}>
+                            {fornecedoresData.topFornecedores?.top5Fornecedores?.map((fornecedor, index) => (
+                              <TableRow key={`fornecedor-table-${index}`}>
                                 <TableCell>
                                   <div>
                                     <div className="font-medium">{fornecedor.nomeFornecedor}</div>
@@ -1311,8 +1311,8 @@ export default function DashboardPage() {
 
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium">Top 5 Gastos</h4>
-                          {fornecedoresData.gastosFornecedores?.top10Gastos?.slice(0, 5)?.map((fornecedor) => (
-                            <div key={fornecedor.fornecedorId} className="flex items-center justify-between">
+                          {fornecedoresData.gastosFornecedores?.top10Gastos?.slice(0, 5)?.map((fornecedor, index) => (
+                            <div key={`fornecedor-gastos-${index}`} className="flex items-center justify-between">
                               <div>
                                 <span className="text-sm font-medium">{fornecedor.nomeFornecedor}</span>
                                 <div className="text-xs text-muted-foreground">

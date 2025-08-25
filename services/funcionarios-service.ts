@@ -1,28 +1,32 @@
 import { apiClient } from "@/app/lib/api-client"
-import { DEFAULT_CACHE_TIME, LONG_CACHE_TIME } from "@/app/lib/api-config"
-import type { Funcionario, PagamentoFuncionario, FilterOptions, PaginatedResponse } from "@/types/api-types"
+import { DEFAULT_CACHE_TIME } from "@/app/lib/api-config"
+import type { 
+  Funcionario, 
+  CriarFuncionarioRequest, 
+  AtualizarFuncionarioRequest,
+  FuncionarioComUltimoApontamento,
+  ApontamentoQuinzenal,
+  ApontamentosPaginatedResponse
+} from "@/types/api-types"
 
 /**
- * Serviço para gerenciar funcionários
+ * Serviço para gerenciar funcionários conforme documentação oficial da API Pessoal
  */
 export const funcionariosService = {
   /**
-   * Busca todos os funcionários com paginação e filtros
+   * 1. Cadastrar Funcionário
+   * POST /funcionarios
    */
-  async listarFuncionarios(filtros?: FilterOptions): Promise<PaginatedResponse<Funcionario>> {
-    // Constrói a query string a partir dos filtros
-    const queryParams = new URLSearchParams()
-    if (filtros) {
-      Object.entries(filtros).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value))
-        }
-      })
-    }
+  async criarFuncionario(funcionario: CriarFuncionarioRequest): Promise<Funcionario> {
+    return apiClient.post<Funcionario>("/funcionarios", funcionario)
+  },
 
-    const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
-
-    return apiClient.get<PaginatedResponse<Funcionario>>(`/funcionarios${query}`, {
+  /**
+   * 2. Listar Funcionários
+   * GET /funcionarios
+   */
+  async listarFuncionarios(): Promise<Funcionario[]> {
+    return apiClient.get<Funcionario[]>("/funcionarios", {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["funcionarios"],
@@ -31,49 +35,55 @@ export const funcionariosService = {
   },
 
   /**
-   * Busca um funcionário pelo ID
+   * 3. Buscar Funcionário por ID
+   * GET /funcionarios/{funcionarioId}
    */
-  async obterFuncionario(id: string): Promise<Funcionario> {
-    return apiClient.get<Funcionario>(`/funcionarios/${id}`, {
+  async obterFuncionario(funcionarioId: string): Promise<Funcionario> {
+    return apiClient.get<Funcionario>(`/funcionarios/${funcionarioId}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
-        tags: [`funcionario-${id}`],
+        tags: [`funcionario-${funcionarioId}`],
       },
     })
   },
 
   /**
-   * Cria um novo funcionário
+   * 4. Atualizar Funcionário
+   * PUT /funcionarios/{funcionarioId}
    */
-  async criarFuncionario(funcionario: Omit<Funcionario, "id">): Promise<Funcionario> {
-    return apiClient.post<Funcionario>("/funcionarios", funcionario)
+  async atualizarFuncionario(funcionarioId: string, funcionario: AtualizarFuncionarioRequest): Promise<Funcionario> {
+    return apiClient.put<Funcionario>(`/funcionarios/${funcionarioId}`, funcionario)
   },
 
   /**
-   * Atualiza um funcionário existente
+   * 5. Ativar Funcionário
+   * PATCH /funcionarios/{funcionarioId}/ativar
    */
-  async atualizarFuncionario(id: string, funcionario: Partial<Funcionario>): Promise<Funcionario> {
-    return apiClient.put<Funcionario>(`/funcionarios/${id}`, funcionario)
+  async ativarFuncionario(funcionarioId: string): Promise<void> {
+    return apiClient.patch<void>(`/funcionarios/${funcionarioId}/ativar`)
   },
 
   /**
-   * Remove um funcionário
+   * 6. Deletar Funcionário
+   * DELETE /funcionarios/{funcionarioId}
    */
-  async removerFuncionario(id: string): Promise<void> {
-    return apiClient.delete<void>(`/funcionarios/${id}`)
+  async removerFuncionario(funcionarioId: string): Promise<void> {
+    return apiClient.delete<void>(`/funcionarios/${funcionarioId}`)
   },
 
   /**
-   * Busca o histórico de pagamentos de um funcionário
+   * 7. Listar Funcionários com Último Apontamento
+   * GET /funcionarios/apontamentos
    */
-  async listarPagamentos(
-    funcionarioId: string,
-    filtros?: FilterOptions,
-  ): Promise<PaginatedResponse<PagamentoFuncionario>> {
-    // Constrói a query string a partir dos filtros
+  async listarFuncionariosComUltimoApontamento(params?: {
+    page?: number
+    pageSize?: number
+    status?: string
+  }): Promise<FuncionarioComUltimoApontamento[]> {
+    // Constrói a query string a partir dos parâmetros
     const queryParams = new URLSearchParams()
-    if (filtros) {
-      Object.entries(filtros).forEach(([key, value]) => {
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           queryParams.append(key, String(value))
         }
@@ -82,72 +92,42 @@ export const funcionariosService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<PagamentoFuncionario>>(`/funcionarios/${funcionarioId}/pagamentos${query}`, {
+    return apiClient.get<FuncionarioComUltimoApontamento[]>(`/funcionarios/apontamentos${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
-        tags: [`funcionario-${funcionarioId}-pagamentos`],
+        tags: ["funcionarios-apontamentos"],
       },
     })
   },
 
   /**
-   * Registra um novo pagamento para um funcionário
+   * 8. Listar Apontamentos por Funcionário
+   * GET /funcionarios/{funcionarioId}/apontamentos
    */
-  async registrarPagamento(
+  async listarApontamentosPorFuncionario(
     funcionarioId: string,
-    pagamento: Omit<PagamentoFuncionario, "id" | "funcionarioId">,
-  ): Promise<PagamentoFuncionario> {
-    return apiClient.post<PagamentoFuncionario>(`/funcionarios/${funcionarioId}/pagamentos`, pagamento)
-  },
+    params?: {
+      page?: number
+      pageSize?: number
+      status?: string
+    }
+  ): Promise<ApontamentosPaginatedResponse> {
+    // Constrói a query string a partir dos parâmetros
+    const queryParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value))
+        }
+      })
+    }
 
-  /**
-   * Atualiza o status de um pagamento
-   */
-  async atualizarPagamento(pagamentoId: string, dados: Partial<PagamentoFuncionario>): Promise<PagamentoFuncionario> {
-    return apiClient.patch<PagamentoFuncionario>(`/pagamentos/${pagamentoId}`, dados)
-  },
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-  /**
-   * Registra múltiplos pagamentos de uma vez
-   */
-  async registrarPagamentosEmMassa(
-    pagamentos: Array<{
-      funcionarioId: string
-      valor: number
-      data: string
-      tipo: PagamentoFuncionario["tipo"]
-      descricao?: string
-      referencia: {
-        mes: number
-        ano: number
-      }
-    }>,
-    comprovante?: string,
-  ): Promise<PagamentoFuncionario[]> {
-    return apiClient.post<PagamentoFuncionario[]>("/pagamentos/massa", {
-      pagamentos,
-      comprovante,
-    })
-  },
-
-  /**
-   * Busca estatísticas de funcionários
-   */
-  async obterEstatisticas(): Promise<{
-    total: number
-    ativos: number
-    afastados: number
-    distribuicaoPorDepartamento: Array<{
-      departamento: string
-      quantidade: number
-      porcentagem: number
-    }>
-    custoMensal: number
-  }> {
-    return apiClient.get<any>("/funcionarios/estatisticas", {
+    return apiClient.get<ApontamentosPaginatedResponse>(`/funcionarios/${funcionarioId}/apontamentos${query}`, {
       next: {
-        revalidate: LONG_CACHE_TIME,
-        tags: ["funcionarios-estatisticas"],
+        revalidate: DEFAULT_CACHE_TIME,
+        tags: [`funcionario-${funcionarioId}-apontamentos`],
       },
     })
   },
