@@ -27,7 +27,8 @@ const getStatusColor = (status: string) => {
 }
 
 export function ProjectsProgressChart({ data, height = 300 }: ProjectsProgressChartProps) {
-  const chartData = data.progresso.progressoPorObra
+  const progressoPorObra = data?.progresso?.progressoPorObra || []
+  const chartData = progressoPorObra
     .filter(obra => obra.status === 'Em Andamento')
     .slice(0, 8) // Mostrar apenas as 8 primeiras para melhor visualização
     .map(obra => ({
@@ -108,7 +109,7 @@ export function ProjectsProgressChart({ data, height = 300 }: ProjectsProgressCh
         {/* Lista detalhada das obras */}
         <div className="mt-6 space-y-4">
           <h4 className="text-sm font-medium">Obras em Andamento</h4>
-          {data.progresso.progressoPorObra
+          {progressoPorObra
             .filter(obra => obra.status === 'Em Andamento')
             .slice(0, 6)
             .map((obra) => (

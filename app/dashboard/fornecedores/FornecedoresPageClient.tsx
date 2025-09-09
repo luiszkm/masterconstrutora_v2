@@ -24,6 +24,8 @@ import {
   PowerOff,
   MapPin,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -44,12 +46,13 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { deleteFornecedor, toggleFornecedorStatus, getCategorias } from "@/app/actions/fornecedor"
-import type { Fornecedor } from "@/types/fornecedor"
+import { deleteFornecedor, toggleFornecedorStatus, getCategorias, getFornecedores } from "@/app/actions/fornecedor"
+import type { Fornecedor, FornecedoresResponse } from "@/types/fornecedor"
 
 // Tipo para ordenação
 type SortConfig = {
@@ -72,7 +75,21 @@ type Categoria = {
   updatedAt: string
 }
 
-export function FornecedoresPageClient({ initialFornecedores }: { initialFornecedores: Fornecedor[] }) {
+interface FornecedoresPageClientProps {
+  initialData: FornecedoresResponse | any // Allow for backwards compatibility
+}
+
+export function FornecedoresPageClient({ initialData }: FornecedoresPageClientProps) {
+  // Ensure we have properly formatted data with fallbacks
+  const safeInitialData = {
+    dados: initialData?.dados || [],
+    paginacao: initialData?.paginacao || {
+      totalItens: initialData?.dados?.length || 0,
+      totalPages: 1,
+      currentPage: 1,
+      pageSize: initialData?.dados?.length || 20
+    }
+  }
   // Estados para categorias da API
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loadingCategorias, setLoadingCategorias] = useState(true)
@@ -82,14 +99,21 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
     async function loadCategorias() {
       try {
         const categoriasData = await getCategorias()
-        if (!("error" in categoriasData)) {
+        if (categoriasData && typeof categoriasData === 'object' && !("error" in categoriasData) && Array.isArray(categoriasData)) {
           setCategorias(categoriasData)
           console.log("Categorias carregadas da API:", categoriasData)
-        } else {
+        } else if (categoriasData && typeof categoriasData === 'object' && "error" in categoriasData) {
           console.error("Erro ao carregar categorias:", categoriasData.error)
           toast({
             title: "Erro ao carregar categorias",
             description: categoriasData.error,
+            variant: "destructive",
+          })
+        } else {
+          console.error("Formato de dados inesperado para categorias:", categoriasData)
+          toast({
+            title: "Erro ao carregar categorias",
+            description: "Formato de dados inesperado",
             variant: "destructive",
           })
         }
@@ -108,11 +132,15 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
   }, [])
 
   // Estados principais - garantir que sempre sejam arrays válidos
-  const safeFornecedores = Array.isArray(initialFornecedores) ? initialFornecedores : []
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>(safeFornecedores)
-  const [filteredFornecedores, setFilteredFornecedores] = useState<Fornecedor[]>(safeFornecedores)
+  const [data, setData] = useState<FornecedoresResponse>(safeInitialData)
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>(safeInitialData.dados || [])
+  const [filteredFornecedores, setFilteredFornecedores] = useState<Fornecedor[]>(safeInitialData.dados || [])
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(safeInitialData.paginacao.currentPage)
+  const [pageSize, setPageSize] = useState(safeInitialData.paginacao.pageSize)
 
   // Estados para ordenação e filtros
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "", direction: "asc" })
@@ -133,8 +161,38 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
   // Estados para popovers
   const [filtersOpen, setFiltersOpen] = useState(false)
 
+  // Função para carregar dados da API
+  const loadFornecedores = async (page: number = currentPage, size: number = pageSize) => {
+    setLoading(true)
+    try {
+      const result = await getFornecedores(page, size)
+      if ("error" in result) {
+        toast({
+          title: "Erro ao carregar fornecedores",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        setData(result)
+        const novosFornecedores = result.dados || []
+        setFornecedores(novosFornecedores)
+        setFilteredFornecedores(novosFornecedores)
+        setCurrentPage(result.paginacao?.currentPage || 1)
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar fornecedores",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Extrair nomes das categorias para os filtros
   const uniqueCategories = React.useMemo(() => {
+    if (!Array.isArray(categorias)) return []
     return categorias.map((cat) => cat.Nome).sort()
   }, [categorias])
 
@@ -160,7 +218,7 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
   // }
 
   // Debug: log dos dados recebidos
-  console.log("FornecedoresPageClient - dados recebidos:", initialFornecedores)
+  console.log("FornecedoresPageClient - dados recebidos:", safeInitialData)
 
   // Debug: log das categorias extraídas
   console.log("Categorias únicas extraídas:", uniqueCategories)
@@ -178,10 +236,10 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
     if (searchTerm) {
       result = result.filter(
         (fornecedor) =>
-          fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (fornecedor.nome && fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (fornecedor.contato && fornecedor.contato.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (fornecedor.email && fornecedor.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          fornecedor.cnpj.includes(searchTerm),
+          (fornecedor.cnpj && fornecedor.cnpj.includes(searchTerm)),
       )
     }
 
@@ -272,10 +330,10 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
       if (aValue !== undefined && bValue === undefined) return direction === "asc" ? -1 : 1
       if (aValue === undefined && bValue === undefined) return 0
 
-      if (aValue < bValue) {
+      if (aValue! < bValue!) {
         return direction === "asc" ? -1 : 1
       }
-      if (aValue > bValue) {
+      if (aValue! > bValue!) {
         return direction === "asc" ? 1 : -1
       }
       return 0
@@ -296,12 +354,25 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
     setFiltersOpen(false)
   }
 
+  // Função para navegar entre páginas
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= (data.paginacao?.totalPages || 1)) {
+      loadFornecedores(newPage, pageSize)
+    }
+  }
+
+  // Função para alterar tamanho da página
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
+    loadFornecedores(1, newSize) // Volta para primeira página
+  }
+
   // Função para excluir fornecedor
   const handleDelete = async () => {
     if (!fornecedorToDelete) return
 
     startTransition(async () => {
-      const result = await deleteFornecedor(fornecedorToDelete.id)
+      const result = await deleteFornecedor(fornecedorToDelete.id!)
 
       if (result.success) {
         toast({
@@ -310,10 +381,8 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
 
-        // Atualizar lista local
-        const updatedFornecedores = fornecedores.filter((f) => f.id !== fornecedorToDelete.id)
-        setFornecedores(updatedFornecedores)
-        setFilteredFornecedores(updatedFornecedores)
+        // Recarregar dados da página atual
+        await loadFornecedores(currentPage, pageSize)
       } else {
         toast({
           title: "Erro ao excluir fornecedor",
@@ -330,7 +399,7 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
   // Função para alternar status
   const handleToggleStatus = async (fornecedor: Fornecedor) => {
     startTransition(async () => {
-      const result = await toggleFornecedorStatus(fornecedor.id)
+      const result = await toggleFornecedorStatus(fornecedor.id!)
 
       if (result.success) {
         toast({
@@ -339,11 +408,8 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
 
-        // Atualizar lista local
-        const updatedFornecedores = fornecedores.map((f) =>
-          f.id === fornecedor.id ? { ...f, status: result.status as "Ativo" | "Inativo" } : f,
-        )
-        setFornecedores(updatedFornecedores)
+        // Recarregar dados da página atual
+        await loadFornecedores(currentPage, pageSize)
       } else {
         toast({
           title: "Erro ao atualizar status",
@@ -399,7 +465,10 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fornecedores.length}</div>
+            <div className="text-2xl font-bold">{data.paginacao?.totalItens || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Página {data.paginacao?.currentPage || 1} de {data.paginacao?.totalPages || 1}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -576,7 +645,7 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
 
       {/* Debug Info */}
       <div className="text-xs text-muted-foreground">
-        Debug: {fornecedores.length} fornecedores carregados, {categorias.length} categorias da API,{" "}
+        Debug: {fornecedores.length} fornecedores na página, {data.paginacao?.totalItens || 0} total, {categorias.length} categorias da API,{" "}
         {uniqueCategories.length} nomes únicos
       </div>
 
@@ -709,13 +778,23 @@ export function FornecedoresPageClient({ initialFornecedores }: { initialFornece
         </div>
       </div>
 
+      {/* Pagination */}
+      <DataTablePagination
+        totalItems={data.paginacao?.totalItens || 0}
+        totalPages={data.paginacao?.totalPages || 1}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
+
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir o fornecedor "{fornecedorToDelete?.nome}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir o fornecedor &ldquo;{fornecedorToDelete?.nome}&rdquo;? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

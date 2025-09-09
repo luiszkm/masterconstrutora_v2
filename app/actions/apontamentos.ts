@@ -17,7 +17,8 @@ import {
 import type { 
   ApontamentoQuinzenal, 
   ApontamentosPaginatedResponse,
-  ReplicarApontamentosResponse
+  ReplicarApontamentosResponse,
+  BackendPaginatedResponse
 } from "@/types/api-types"
 
 /**
@@ -215,10 +216,14 @@ export async function aprovarApontamentoAction(apontamentoId: string): Promise<A
 }
 
 /**
- * 5. Cancelar Aprovação do Apontamento
- * Esta ação reverte um apontamento aprovado para status EM_ABERTO
+ * 5. Cancelar Apontamento
+ * Esta ação cancela um apontamento com motivo obrigatório
+ * A conta a pagar correspondente é cancelada automaticamente no módulo financeiro
  */
-export async function cancelarApontamentoAction(apontamentoId: string): Promise<ActionResponse> {
+export async function cancelarApontamentoAction(
+  apontamentoId: string, 
+  motivoCancelamento: string
+): Promise<ActionResponse> {
   try {
     // Validar ID
     const validation = apontamentoIdSchema.safeParse({ apontamentoId })
@@ -226,30 +231,36 @@ export async function cancelarApontamentoAction(apontamentoId: string): Promise<
       return createErrorResponse("ID de apontamento inválido")
     }
     
-    const apontamento = await apontamentosService.cancelarApontamento(apontamentoId)
+    if (!motivoCancelamento || motivoCancelamento.trim().length === 0) {
+      return createErrorResponse("Motivo do cancelamento é obrigatório")
+    }
+    
+    const apontamento = await apontamentosService.cancelarApontamento(apontamentoId, motivoCancelamento)
     
     // Revalidar cache
     revalidateTag("apontamentos")
     revalidateTag("funcionarios-apontamentos")
     revalidateTag(`apontamento-${apontamentoId}`)
     revalidateTag(`funcionario-${apontamento.funcionarioId}-apontamentos`)
+    // Revalidar também dados financeiros pois a conta a pagar foi cancelada
+    revalidateTag("contas-pagar")
     
     return createSuccessResponse(
-      "Aprovação do apontamento cancelada com sucesso!",
+      "Apontamento cancelado com sucesso! A conta a pagar correspondente foi cancelada automaticamente.",
       { 
         status: apontamento.status,
         valorTotal: apontamento.valorTotalCalculado 
       }
     )
   } catch (error) {
-    console.error("Erro ao cancelar aprovação do apontamento:", error)
+    console.error("Erro ao cancelar apontamento:", error)
     
     if (error instanceof Error) {
       if (error.message.includes("não encontrado")) {
         return createErrorResponse("Apontamento não encontrado")
       }
-      if (error.message.includes("não pode ser cancelado")) {
-        return createErrorResponse("Este apontamento não pode ser cancelado")
+      if (error.message.includes("já foi pago")) {
+        return createErrorResponse("Apontamento já foi pago e não pode ser cancelado")
       }
       if (error.message.includes("Token de autenticação")) {
         return createErrorResponse("Não autorizado. Faça login novamente.")

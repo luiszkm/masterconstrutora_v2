@@ -91,6 +91,41 @@ export const funcionarioBaseSchema = criarFuncionarioSchema
 export const createFuncionarioSchema = criarFuncionarioSchema
 export const updateFuncionarioSchema = atualizarFuncionarioSchema
 
+/**
+ * Schema para pagamento de funcionário (apontamento) - Deprecated
+ * Use criarApontamentoSchema ou atualizarApontamentoSchema do arquivo apontamento.ts
+ */
+export const funcionarioPaymentSchema = createFormDataSchema({
+  funcionarioId: idSchema,
+  obraId: emptyStringToUndefined.pipe(idSchema).optional(),
+  diaria: z.union([
+    z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
+    z.number()
+  ]).pipe(z.number().min(0.01, "Diária deve ser maior que 0")).optional(),
+  diasTrabalhados: z.union([
+    z.string().transform(val => parseInt(val)),
+    z.number()
+  ]).pipe(z.number().min(1, "Dias trabalhados deve ser maior que 0").max(31, "Dias trabalhados não pode ser maior que 31")).optional(),
+  valorAdicional: z.union([
+    z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
+    z.number()
+  ]).pipe(valorMonetarioSchema).optional(),
+  descontos: z.union([
+    z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
+    z.number()
+  ]).pipe(valorMonetarioSchema).optional(),
+  adiantamento: z.union([
+    z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
+    z.number()
+  ]).pipe(valorMonetarioSchema).optional(),
+  periodoInicio: dateSchema.transform(date => {
+    return new Date(date).toISOString().split('T')[0]
+  }),
+  periodoFim: dateSchema.transform(date => {
+    return new Date(date).toISOString().split('T')[0]
+  })
+})
+
 // Tipos antigos (deprecated)
 export type FuncionarioBaseData = CriarFuncionarioData
 export type CreateFuncionarioData = CriarFuncionarioData

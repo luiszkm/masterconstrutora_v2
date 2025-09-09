@@ -1,6 +1,6 @@
 import { apiClient } from "@/app/lib/api-client"
 import { DEFAULT_CACHE_TIME, LONG_CACHE_TIME } from "@/app/lib/api-config"
-import type { Material, FilterOptions, PaginatedResponse } from "@/types/api-types"
+import type { Material, FilterOptions, BackendPaginatedResponse } from "@/types/api-types"
 
 /**
  * Serviço para gerenciar materiais
@@ -9,7 +9,7 @@ export const materiaisService = {
   /**
    * Busca todos os materiais com paginação e filtros
    */
-  async listarMateriais(filtros?: FilterOptions): Promise<PaginatedResponse<Material>> {
+  async listarMateriais(filtros?: FilterOptions): Promise<BackendPaginatedResponse<Material>> {
     // Constrói a query string a partir dos filtros
     const queryParams = new URLSearchParams()
     if (filtros) {
@@ -22,7 +22,7 @@ export const materiaisService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<Material>>(`/materiais${query}`, {
+    return apiClient.get<BackendPaginatedResponse<Material>>(`/materiais${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["materiais"],

@@ -10,7 +10,8 @@ interface RevenueChartProps {
 }
 
 export function RevenueChart({ data, height = 300 }: RevenueChartProps) {
-  const chartData = data.fluxoCaixa.fluxoPorPeriodo.map(item => ({
+  const fluxoPorPeriodo = data?.fluxoCaixa?.fluxoPorPeriodo || []
+  const chartData = fluxoPorPeriodo.map(item => ({
     periodo: item.periodo,
     entradas: item.entradas,
     saidas: item.saidas,

@@ -6,7 +6,8 @@ import type {
   AtualizarApontamentoRequest,
   ReplicarApontamentosRequest,
   ReplicarApontamentosResponse,
-  ApontamentosPaginatedResponse
+  ApontamentosPaginatedResponse,
+  BackendPaginatedResponse
 } from "@/types/api-types"
 
 /**
@@ -67,11 +68,13 @@ export const apontamentosService = {
   },
 
   /**
-   * 5. Cancelar Aprovação do Apontamento
-   * PATCH /apontamentos/{apontamentoId}/cancelar-aprovacao
+   * 5. Cancelar Apontamento
+   * PATCH /apontamentos/{apontamentoId}/cancelar
    */
-  async cancelarApontamento(apontamentoId: string): Promise<ApontamentoQuinzenal> {
-    return apiClient.patch<ApontamentoQuinzenal>(`/apontamentos/${apontamentoId}/cancelar-aprovacao`)
+  async cancelarApontamento(apontamentoId: string, motivoCancelamento: string): Promise<ApontamentoQuinzenal> {
+    return apiClient.patch<ApontamentoQuinzenal>(`/apontamentos/${apontamentoId}/cancelar`, {
+      motivoCancelamento
+    })
   },
 
   /**

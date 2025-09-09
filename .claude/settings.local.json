@@ -4,8 +4,13 @@
       "Bash(mv:*)",
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "C:\\c\\www\\freela"
+    ]
   }
 }

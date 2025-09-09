@@ -30,7 +30,23 @@ export default async function ObrasPage() {
   }
 
 
+  // Handle backwards compatibility - if API returns old format, convert to new format
+  let formattedData = obrasListResult.data
+  if (!formattedData || (!formattedData.dados && !formattedData.paginacao)) {
+    // If data doesn't have the expected structure, create it
+    const obrasList = Array.isArray(formattedData) ? formattedData : (formattedData ? [formattedData] : [])
+    formattedData = {
+      dados: obrasList,
+      paginacao: {
+        totalItens: obrasList.length,
+        totalPages: 1,
+        currentPage: 1,
+        pageSize: obrasList.length || 20
+      }
+    }
+  }
+
   return <ObrasPageClient 
-  funcionariosDisponiveis={Array.isArray(funcionariosListResult) ? funcionariosListResult : ("error" in funcionariosListResult ? [] : funcionariosListResult)}
-  initialData={obrasListResult.data} />
+    funcionariosDisponiveis={Array.isArray(funcionariosListResult) ? funcionariosListResult : ("error" in funcionariosListResult ? [] : funcionariosListResult)}
+    initialData={formattedData} />
 }

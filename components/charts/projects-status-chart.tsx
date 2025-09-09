@@ -20,7 +20,8 @@ const STATUS_COLORS = {
 }
 
 export function ProjectsStatusChart({ data, height = 300 }: ProjectsStatusChartProps) {
-  const chartData = data.distribuicao.distribuicaoPorStatus.map(item => ({
+  const distribuicaoPorStatus = data?.distribuicao?.distribuicaoPorStatus || []
+  const chartData = distribuicaoPorStatus.map(item => ({
     name: item.status,
     value: item.quantidade,
     percentual: item.percentual,
@@ -110,7 +111,7 @@ export function ProjectsStatusChart({ data, height = 300 }: ProjectsStatusChartP
         </ResponsiveContainer>
         
         <div className="mt-4 space-y-2">
-          {data.distribuicao.distribuicaoPorStatus.map((status) => (
+          {distribuicaoPorStatus.map((status) => (
             <div key={status.status} className="flex items-center justify-between">
               <div className="flex items-center">
                 <div 

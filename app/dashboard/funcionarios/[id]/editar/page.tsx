@@ -1,8 +1,8 @@
 import { Star } from "lucide-react"
 import EditarFuncionarioClient from "./editar-funcionario-client"
 import { redirect } from "next/navigation"
-import { getFuncionarioById,  } from "@/app/actions/funcionario"
-import { getJWTToken } from "@/app/actions/apontamentos"
+import { getFuncionarioById } from "@/app/actions/funcionario"
+import { getJWTToken } from "@/app/actions/common"
 
 
 

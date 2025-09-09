@@ -87,7 +87,7 @@ export interface ApontamentoQuinzenal {
   descontos: number
   adiantamentos: number
   valorTotalCalculado: number
-  status: "EM_ABERTO" | "APROVADO_PARA_PAGAMENTO" | "PAGO"
+  status: "EM_ABERTO" | "APROVADO_PARA_PAGAMENTO" | "PAGO" | "CANCELADO"
   createdAt: string
   updatedAt: string
   funcionarioNome: string
@@ -117,7 +117,7 @@ export interface AtualizarApontamentoRequest {
   valorAdicional: number
   descontos: number
   adiantamento: number
-  status: "EM_ABERTO" | "APROVADO_PARA_PAGAMENTO" | "PAGO"
+  status: "EM_ABERTO" | "APROVADO_PARA_PAGAMENTO" | "PAGO" | "CANCELADO"
 }
 
 // Payload para replicar apontamentos
@@ -142,16 +142,19 @@ export interface ReplicarApontamentosResponse {
   }[]
 }
 
-// Resposta paginada de apontamentos
-export interface ApontamentosPaginatedResponse {
-  data: ApontamentoQuinzenal[]
-  pagination: {
-    page: number
-    pageSize: number
-    total: number
+// Padrão de paginação compatível com o backend
+export interface BackendPaginatedResponse<T> {
+  dados: T[]
+  paginacao: {
+    totalItens: number
     totalPages: number
+    currentPage: number
+    pageSize: number
   }
 }
+
+// Resposta paginada de apontamentos (usando padrão backend)
+export type ApontamentosPaginatedResponse = BackendPaginatedResponse<ApontamentoQuinzenal>
 
 // Pagamento de Funcionário
 export interface PagamentoFuncionario {
@@ -273,7 +276,7 @@ export interface Cliente {
   observacoes?: string
 }
 
-// Paginação
+// Paginação (DEPRECATED - usar BackendPaginatedResponse)
 export interface PaginatedResponse<T> {
   data: T[]
   total: number
@@ -328,10 +331,10 @@ export interface ComparacaoOrcamentosResponse {
   orcamentos: OrcamentoComparacao[]
 }
 
-// Filtros
+// Filtros (atualizado para usar pageSize em vez de limit)
 export interface FilterOptions {
   page?: number
-  limit?: number
+  pageSize?: number
   sort?: string
   order?: "asc" | "desc"
   search?: string

@@ -2,7 +2,10 @@
 
 import type React from "react"
 import { Label } from "@/components/ui/label"
-import { useState, useEffect } from "react"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useState, useEffect, useTransition } from "react"
+import type { FuncionariosResponse } from "@/types/funcionario"
+import { listarFuncionariosComUltimoApontamentoAction } from "@/app/actions/funcionarios"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +30,8 @@ import {
   CheckCircle,
   XCircle,
   Settings,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -207,7 +212,32 @@ function RatingStars({ rating }: { rating: number }) {
 }
 
 // Client Component to handle state and interactions
-export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncionarios: FuncionarioApontamento[] }) {
+interface FuncionariosPageClientProps {
+  initialData: FuncionariosResponse
+}
+
+export function FuncionariosPageClient({ initialData }: FuncionariosPageClientProps) {
+  // Ensure we have properly formatted data with fallbacks
+  const safeInitialData = {
+    dados: initialData?.dados || [],
+    paginacao: initialData?.paginacao || {
+      totalItens: initialData?.dados?.length || 0,
+      totalPages: 1,
+      currentPage: 1,
+      pageSize: initialData?.dados?.length || 20
+    }
+  }
+
+  // Estados principais - garantir que sempre sejam arrays válidos
+  const [data, setData] = useState<FuncionariosResponse>(safeInitialData)
+  const [funcionarios, setFuncionarios] = useState(safeInitialData.dados || [])
+  const [loading, setLoading] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(safeInitialData.paginacao.currentPage)
+  const [pageSize, setPageSize] = useState(safeInitialData.paginacao.pageSize)
+
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroDepartamento, setFiltroDepartamento] = useState<string[]>([])
@@ -248,6 +278,50 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     periodoFim: format(endOfMonth(new Date()), "yyyy-MM-dd"),
     obraId: "",
   })
+
+  // Função para carregar dados da API
+  const loadFuncionarios = async (page: number = currentPage, size: number = pageSize) => {
+    setLoading(true)
+    try {
+      const result = await listarFuncionariosComUltimoApontamentoAction({
+        page: page.toString(),
+        pageSize: size.toString()
+      })
+      if ("error" in result) {
+        toast({
+          title: "Erro ao carregar funcionários",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        setData(result)
+        const novosFuncionarios = result.dados || []
+        setFuncionarios(novosFuncionarios)
+        setCurrentPage(result.paginacao.currentPage)
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar funcionários", 
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Função para navegar entre páginas
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= (data.paginacao?.totalPages || 1)) {
+      loadFuncionarios(newPage, pageSize)
+    }
+  }
+
+  // Função para alterar tamanho da página
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
+    loadFuncionarios(1, newSize) // Volta para primeira página
+  }
 
   // State para a Server Action de pagamento
   const [paymentState, paymentAction] = useActionState(handleFuncionarioApontamentoSubmit, {
@@ -329,7 +403,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     ? `Primeira quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
     : `Segunda quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
 
-  const valorTotalQuinzena = initialFuncionarios.reduce((total, funcionario) => {
+  const valorTotalQuinzena = funcionarios.reduce((total, funcionario) => {
     const valorFuncionario =
       funcionario.valorDiaria * funcionario.diasTrabalhados +
       funcionario.valorAdicional -
@@ -338,7 +412,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     return total + valorFuncionario
   }, 0)
 
-  const funcionariosApontamentosFiltrados = initialFuncionarios.filter((funcionario) => {
+  const funcionariosApontamentosFiltrados = funcionarios.filter((funcionario) => {
     const matchesSearch =
       funcionario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       funcionario.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -462,7 +536,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
 
     // Verificar se todos os funcionários selecionados têm apontamentos em aberto
     const funcionariosComApontamento = selectedFuncionarios.filter((id) => {
-      const funcionario = initialFuncionarios.find((f) => f.id === id)
+      const funcionario = funcionarios.find((f) => f.id === id)
       return funcionario?.apontamentoId && funcionario?.statusApontamento === "EM_ABERTO"
     })
 
@@ -503,7 +577,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
       // Filtrar apenas funcionários com apontamentos em aberto
       const apontamentosParaPagar = selectedFuncionarios
         .map((id) => {
-          const funcionario = initialFuncionarios.find((f) => f.id === id)
+          const funcionario = funcionarios.find((f) => f.id === id)
           return funcionario?.apontamentoId && funcionario?.statusApontamento === "EM_ABERTO"
             ? funcionario.apontamentoId
             : null
@@ -527,7 +601,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
         if (falhas && falhas.length > 0) {
           mensagem += `\n\nFalhas encontradas:`
           falhas.forEach((falha: any) => {
-            const funcionario = initialFuncionarios.find((f) => f.apontamentoId === falha.apontamentoId)
+            const funcionario = funcionarios.find((f) => f.apontamentoId === falha.apontamentoId)
             mensagem += `\n• ${funcionario?.nome || "Funcionário"}: ${falha.motivo}`
           })
         }
@@ -725,7 +799,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
 
     // Filtrar funcionários com apontamentos
     const funcionariosComApontamento = selectedFuncionarios.filter((id) => {
-      const funcionario = initialFuncionarios.find((f) => f.id === id)
+      const funcionario = funcionarios.find((f) => f.id === id)
       return funcionario?.apontamentoId
     })
 
@@ -748,7 +822,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
     try {
       const apontamentoIds = funcionariosComApontamento
         .map((id) => {
-          const funcionario = initialFuncionarios.find((f) => f.id === id)
+          const funcionario = funcionarios.find((f) => f.id === id)
           return funcionario?.apontamentoId
         })
         .filter((id): id is string => id !== null)
@@ -1170,7 +1244,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
                   ) : (
                     historicoPagamentosFiltrados.map((pagamento) => {
                       // Encontra o funcionário correspondente na lista de apontamentos
-                      const funcionario = initialFuncionarios.find((f) => f.id === pagamento.funcionarioId)
+                      const funcionario = funcionarios.find((f) => f.id === pagamento.funcionarioId)
                       return (
                         <TableRow key={pagamento.id}>
                           <TableCell className="font-medium">
@@ -1244,6 +1318,16 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Paginação */}
+      <DataTablePagination
+        totalItems={data.paginacao?.totalItens || 0}
+        totalPages={data.paginacao?.totalPages || 1}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
 
       {/* Diálogo de Pagamento Individual (existente) */}
       <Dialog open={dialogPagamentoAberto} onOpenChange={setDialogPagamentoAberto}>
@@ -1355,7 +1439,7 @@ export function FuncionariosPageClient({ initialFuncionarios }: { initialFuncion
               <h4 className="font-medium">Funcionários com apontamentos em aberto</h4>
               <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
                 {selectedFuncionarios.map((id) => {
-                  const funcionario = initialFuncionarios.find((f) => f.id === id)
+                  const funcionario = funcionarios.find((f) => f.id === id)
                   if (funcionario?.apontamentoId && funcionario?.statusApontamento === "EM_ABERTO") {
                     const valorTotal =
                       funcionario.valorDiaria * funcionario.diasTrabalhados +

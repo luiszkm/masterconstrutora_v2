@@ -15,8 +15,11 @@ import {
 import type { 
   Funcionario, 
   FuncionarioComUltimoApontamento, 
-  ApontamentosPaginatedResponse 
+  ApontamentosPaginatedResponse,
+  BackendPaginatedResponse,
+  FilterOptions
 } from "@/types/api-types"
+import type { FuncionariosResponse } from "@/types/funcionario"
 
 /**
  * 1. Cadastrar Funcionário
@@ -66,9 +69,17 @@ export async function criarFuncionarioAction(
 /**
  * 2. Listar Funcionários
  */
-export async function listarFuncionariosAction(): Promise<Funcionario[] | { error: string }> {
+export async function listarFuncionariosAction(
+  searchParams?: { page?: string; pageSize?: string; search?: string }
+): Promise<BackendPaginatedResponse<Funcionario> | { error: string }> {
   try {
-    const funcionarios = await funcionariosService.listarFuncionarios()
+    // Converter parâmetros de string para objeto de filtros
+    const filtros: FilterOptions = {}
+    if (searchParams?.page) filtros.page = parseInt(searchParams.page)
+    if (searchParams?.pageSize) filtros.pageSize = parseInt(searchParams.pageSize)
+    if (searchParams?.search) filtros.search = searchParams.search
+    
+    const funcionarios = await funcionariosService.listarFuncionarios(filtros)
     return funcionarios
   } catch (error) {
     console.error("Erro ao listar funcionários:", error)
@@ -243,7 +254,7 @@ export async function removerFuncionarioAction(funcionarioId: string): Promise<A
  */
 export async function listarFuncionariosComUltimoApontamentoAction(
   searchParams?: { page?: string; pageSize?: string; status?: string }
-): Promise<FuncionarioComUltimoApontamento[] | { error: string }> {
+): Promise<FuncionariosResponse | { error: string }> {
   try {
     // Validar parâmetros de query
     const params = searchParams ? {

@@ -25,7 +25,21 @@ export default async function FornecedoresPage() {
     )
   }
 
-  console.log("Fornecedores fetched successfully:", fornecedoresResult)
+  // Handle backwards compatibility - if API returns old format (array), convert to new format
+  let formattedData = fornecedoresResult
+  if (Array.isArray(fornecedoresResult)) {
+    formattedData = {
+      dados: fornecedoresResult,
+      paginacao: {
+        totalItens: fornecedoresResult.length,
+        totalPages: 1,
+        currentPage: 1,
+        pageSize: fornecedoresResult.length
+      }
+    }
+  }
 
-  return <FornecedoresPageClient initialFornecedores={fornecedoresResult} />
+  console.log("Fornecedores fetched successfully:", formattedData)
+
+  return <FornecedoresPageClient initialData={formattedData} />
 }

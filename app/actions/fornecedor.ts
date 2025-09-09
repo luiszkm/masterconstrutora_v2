@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { API_URL, makeAuthenticatedRequest } from "./common"
-import type { Fornecedor, CreateFornecedor } from "@/types/fornecedor"
+import type { Fornecedor, CreateFornecedor, FornecedoresResponse } from "@/types/fornecedor"
+import type { BackendPaginatedResponse } from "@/types/api-types"
 import { validateFormData } from "@/lib/validations/common"
 import { createFornecedorSchema, updateFornecedorSchema } from "@/lib/validations/fornecedor"
 import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses"
@@ -45,9 +46,9 @@ export async function getCategorias(): Promise<Categoria[] | { error: string }> 
   }
 }
 
-export async function getFornecedores(): Promise<Fornecedor[] | { error: string }> {
+export async function getFornecedores(page = 1, pageSize = 20): Promise<BackendPaginatedResponse<Fornecedor> | { error: string }> {
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/fornecedores`, {
+    const response = await makeAuthenticatedRequest(`${API_URL}/fornecedores?page=${page}&pageSize=${pageSize}`, {
       method: "GET",
       next: { tags: ["fornecedores"] },
     })
@@ -67,7 +68,7 @@ export async function getFornecedores(): Promise<Fornecedor[] | { error: string 
       return { error: errorMessage }
     }
 
-    const data: Fornecedor[] = await response.json()
+    const data: BackendPaginatedResponse<Fornecedor> = await response.json()
     return data
   } catch (error) {
     console.error("Erro ao buscar fornecedores:", error)

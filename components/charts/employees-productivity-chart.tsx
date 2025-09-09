@@ -16,7 +16,8 @@ export function EmployeesProductivityChart({
   height = 300, 
   chartType = 'bar' 
 }: EmployeesProductivityChartProps) {
-  const chartData = data.produtividade.top5Produtivos.map(funcionario => ({
+  const top5Produtivos = data?.produtividade?.top5Produtivos || []
+  const chartData = top5Produtivos.map(funcionario => ({
     nome: funcionario.nomeFuncionario.split(' ')[0], // Apenas primeiro nome para o gráfico
     nomeCompleto: funcionario.nomeFuncionario,
     cargo: funcionario.cargo,
@@ -122,7 +123,7 @@ export function EmployeesProductivityChart({
         {/* Lista detalhada dos top 5 */}
         <div className="mt-6 space-y-4">
           <h4 className="text-sm font-medium">Top 5 Mais Produtivos</h4>
-          {data.produtividade.top5Produtivos.map((funcionario, index) => (
+          {top5Produtivos.map((funcionario, index) => (
             <div key={funcionario.funcionarioId} className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -75,10 +76,10 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
   const [filtroStatus, setFiltroStatus] = useState<string[]>([])
   const [filtroEtapa, setFiltroEtapa] = useState<string[]>([])
 
-  const carregarObras = async (page = 1) => {
+  const carregarObras = async (page = 1, pageSize?: number) => {
     setLoading(true)
     try {
-      const result = await getObrasList(page, paginacao.pageSize)
+      const result = await getObrasList(page, pageSize || paginacao.pageSize)
 
       if (result.success && result.data) {
         setObras(result.data.dados)
@@ -160,6 +161,22 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
     setFiltroStatus([])
     setFiltroEtapa([])
     setSearchTerm("")
+  }
+
+  // Funções de paginação
+
+  const handlePageChange = (page: number) => {
+    setPaginacao(prev => ({ ...prev, currentPage: page }))
+    carregarObras(page)
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPaginacao(prev => ({ 
+      ...prev, 
+      pageSize: newPageSize, 
+      currentPage: 1 
+    }))
+    carregarObras(1, newPageSize)
   }
 
   // Ação: Concluir próxima etapa
@@ -538,48 +555,14 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
       </div>
 
       {/* Paginação */}
-      {paginacao.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Mostrando {obras.length} de {paginacao.totalItens} obras
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => irParaPagina(paginacao.currentPage - 1)}
-              disabled={paginacao.currentPage <= 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Anterior
-            </Button>
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: Math.min(5, paginacao.totalPages) }, (_, i) => {
-                const page = i + 1
-                return (
-                  <Button
-                    key={page}
-                    variant={page === paginacao.currentPage ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => irParaPagina(page)}
-                  >
-                    {page}
-                  </Button>
-                )
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => irParaPagina(paginacao.currentPage + 1)}
-              disabled={paginacao.currentPage >= paginacao.totalPages}
-            >
-              Próxima
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <DataTablePagination
+        totalItems={paginacao.totalItens}
+        totalPages={paginacao.totalPages}
+        currentPage={paginacao.currentPage}
+        pageSize={paginacao.pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
     </div>
   )
 }

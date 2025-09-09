@@ -63,6 +63,17 @@ export type FornecedorOrcamento = {
   orcamentosCount: number
 }
 
+// Tipo para resposta da API com paginação
+export type FornecedoresResponse = {
+  dados: Fornecedor[]
+  paginacao: {
+    totalItens: number
+    totalPages: number
+    currentPage: number
+    pageSize: number
+  }
+}
+
 export type CreateFornecedor = {
   Nome: string
   Contato: string

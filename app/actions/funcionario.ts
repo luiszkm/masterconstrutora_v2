@@ -1,5 +1,13 @@
 "use server";
 
+/**
+ * @deprecated Este arquivo está sendo migrado para o novo padrão da API
+ * Use app/actions/funcionarios.ts para actions de funcionários
+ * Use app/actions/apontamentos.ts para actions de apontamentos
+ * 
+ * Mantenha este arquivo apenas para compatibilidade com código legado
+ */
+
 import { revalidateTag } from "next/cache";
 import { removerMascaraMonetaria } from "@/app/lib/masks"; // Importar a função de máscara
 import { makeAuthenticatedRequest, API_URL } from "./common";
@@ -708,10 +716,10 @@ export async function HandleReplicarApontamentoPAraPRoximaQuinzena(
 ): Promise<Apontamento[] | { error: string }> {
   try {
     const response = await makeAuthenticatedRequest(
-      `${API_URL}/funcionarios/replicar`,
+      `${API_URL}/funcionarios/apontamentos/replicar`,
       {
         method: "POST",
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ funcionarioIds: ids }),
         next: { tags: ["funcionarios-apontamentos"] }, // Tag para revalidação de cache
       }
     );

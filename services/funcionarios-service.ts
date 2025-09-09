@@ -6,7 +6,9 @@ import type {
   AtualizarFuncionarioRequest,
   FuncionarioComUltimoApontamento,
   ApontamentoQuinzenal,
-  ApontamentosPaginatedResponse
+  ApontamentosPaginatedResponse,
+  BackendPaginatedResponse,
+  FilterOptions
 } from "@/types/api-types"
 
 /**
@@ -25,8 +27,20 @@ export const funcionariosService = {
    * 2. Listar Funcionários
    * GET /funcionarios
    */
-  async listarFuncionarios(): Promise<Funcionario[]> {
-    return apiClient.get<Funcionario[]>("/funcionarios", {
+  async listarFuncionarios(filtros?: FilterOptions): Promise<BackendPaginatedResponse<Funcionario>> {
+    // Constrói a query string a partir dos filtros
+    const queryParams = new URLSearchParams()
+    if (filtros) {
+      Object.entries(filtros).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value))
+        }
+      })
+    }
+
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
+
+    return apiClient.get<BackendPaginatedResponse<Funcionario>>(`/funcionarios${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["funcionarios"],
@@ -79,7 +93,7 @@ export const funcionariosService = {
     page?: number
     pageSize?: number
     status?: string
-  }): Promise<FuncionarioComUltimoApontamento[]> {
+  }): Promise<BackendPaginatedResponse<FuncionarioComUltimoApontamento>> {
     // Constrói a query string a partir dos parâmetros
     const queryParams = new URLSearchParams()
     if (params) {
@@ -92,7 +106,7 @@ export const funcionariosService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<FuncionarioComUltimoApontamento[]>(`/funcionarios/apontamentos${query}`, {
+    return apiClient.get<BackendPaginatedResponse<FuncionarioComUltimoApontamento>>(`/funcionarios/apontamentos${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["funcionarios-apontamentos"],

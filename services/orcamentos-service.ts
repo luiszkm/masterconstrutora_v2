@@ -1,6 +1,6 @@
 import { apiClient } from "@/app/lib/api-client"
 import { DEFAULT_CACHE_TIME } from "@/app/lib/api-config"
-import type { Orcamento, FilterOptions, PaginatedResponse } from "@/types/api-types"
+import type { Orcamento, FilterOptions, BackendPaginatedResponse } from "@/types/api-types"
 
 /**
  * Serviço para gerenciar orçamentos
@@ -9,7 +9,7 @@ export const orcamentosService = {
   /**
    * Busca todos os orçamentos com paginação e filtros
    */
-  async listarOrcamentos(filtros?: FilterOptions): Promise<PaginatedResponse<Orcamento>> {
+  async listarOrcamentos(filtros?: FilterOptions): Promise<BackendPaginatedResponse<Orcamento>> {
     // Constrói a query string a partir dos filtros
     const queryParams = new URLSearchParams()
     if (filtros) {
@@ -22,7 +22,7 @@ export const orcamentosService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<Orcamento>>(`/orcamentos${query}`, {
+    return apiClient.get<BackendPaginatedResponse<Orcamento>>(`/orcamentos${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["orcamentos"],

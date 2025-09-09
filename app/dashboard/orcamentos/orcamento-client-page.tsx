@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -789,81 +790,14 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
       </div>
 
       {/* Pagination */}
-      {data.paginacao.totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              Mostrando {(currentPage - 1) * pageSize + 1} a{" "}
-              {Math.min(currentPage * pageSize, data.paginacao.totalItens)} de {data.paginacao.totalItens} orçamentos
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Page Size Selector */}
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Itens por página:</Label>
-              <Select value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(Number(value))}>
-                <SelectTrigger className="w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            {/* Pagination Controls */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage <= 1 || loading}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Anterior
-              </Button>
-
-              <div className="flex items-center gap-1">
-                {/* Mostrar páginas próximas */}
-                {Array.from({ length: Math.min(5, data.paginacao.totalPages) }, (_, i) => {
-                  const startPage = Math.max(1, currentPage - 2)
-                  const pageNumber = startPage + i
-                  if (pageNumber > data.paginacao.totalPages) return null
-
-                  return (
-                    <Button
-                      key={pageNumber}
-                      variant={pageNumber === currentPage ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNumber)}
-                      disabled={loading}
-                      className="w-8 h-8 p-0"
-                    >
-                      {pageNumber}
-                    </Button>
-                  )
-                })}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= data.paginacao.totalPages || loading}
-              >
-                Próxima
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DataTablePagination
+        totalItems={data.paginacao?.totalItens || 0}
+        totalPages={data.paginacao?.totalPages || 1}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

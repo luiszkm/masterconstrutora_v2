@@ -23,7 +23,10 @@ const COLORS = [
 ]
 
 export function ExpensesChart({ data, height = 300 }: ExpensesChartProps) {
-  const chartData = data.distribuicaoDespesas.distribuicao.map((item, index) => ({
+  // Verificação de segurança para dados nulos ou undefined
+  const distribuicao = data?.distribuicaoDespesas?.distribuicao || []
+  
+  const chartData = distribuicao.map((item, index) => ({
     name: item.categoria,
     value: item.valor,
     percentual: item.percentual,
@@ -71,47 +74,52 @@ export function ExpensesChart({ data, height = 300 }: ExpensesChartProps) {
     return null
   }
 
+  // Verificar se há dados para exibir
+  const hasData = distribuicao.length > 0
+  
   return (
     <Card>
       <CardHeader>
         <CardTitle>Distribuição de Despesas</CardTitle>
         <CardDescription>
-          Total: R$ {data.distribuicaoDespesas.totalGasto.toLocaleString("pt-BR")} | 
-          Maior categoria: {data.distribuicaoDespesas.maiorCategoria}
+          Total: R$ {(data?.distribuicaoDespesas?.totalGasto || 0).toLocaleString("pt-BR")} | 
+          Maior categoria: {data?.distribuicaoDespesas?.maiorCategoria || 'N/A'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={height}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={renderCustomizedLabel}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              verticalAlign="bottom" 
-              height={36}
-              formatter={(value, entry: any) => (
-                <span style={{ color: entry.color }}>
-                  {value}
-                </span>
-              )}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-        
-        <div className="mt-4 space-y-2">
-          {data.distribuicaoDespesas.distribuicao.slice(0, 5).map((item, index) => (
+        {hasData ? (
+          <>
+            <ResponsiveContainer width="100%" height={height}>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={renderCustomizedLabel}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  formatter={(value, entry: any) => (
+                    <span style={{ color: entry.color }}>
+                      {value}
+                    </span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            
+            <div className="mt-4 space-y-2">
+              {distribuicao.slice(0, 5).map((item, index) => (
             <div key={item.categoria} className="flex items-center justify-between">
               <div className="flex items-center">
                 <div 
@@ -124,8 +132,17 @@ export function ExpensesChart({ data, height = 300 }: ExpensesChartProps) {
                 R$ {item.valor.toLocaleString("pt-BR")} ({item.percentual.toFixed(1)}%)
               </span>
             </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center text-muted-foreground">
+              <p>Nenhum dado de despesas disponível</p>
+              <p className="text-sm mt-1">Os dados serão exibidos quando houver despesas registradas</p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

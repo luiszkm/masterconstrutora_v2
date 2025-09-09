@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { getFuncionariosApontamentos } from "@/app/actions/funcionario"
+import { listarFuncionariosComUltimoApontamentoAction } from "@/app/actions/funcionarios"
 import { FuncionariosPageClient } from "./components/funcionarios-page-client"
 import { getJWTToken } from "@/app/actions/common"
 
@@ -12,7 +12,7 @@ export default async function FuncionariosPage() {
   }
 
   // Fetch data on the server side
-  const funcionariosApontamentosResult = await getFuncionariosApontamentos()
+  const funcionariosApontamentosResult = await listarFuncionariosComUltimoApontamentoAction()
 
 
   // Handle error if fetching fails
@@ -27,7 +27,19 @@ export default async function FuncionariosPage() {
     )
   }
 
-  const initialFuncionarios = funcionariosApontamentosResult
+  // Handle backwards compatibility - if API returns old format, convert to new format
+  let formattedData = funcionariosApontamentosResult
+  if (Array.isArray(funcionariosApontamentosResult)) {
+    formattedData = {
+      dados: funcionariosApontamentosResult,
+      paginacao: {
+        totalItens: funcionariosApontamentosResult.length,
+        totalPages: 1,
+        currentPage: 1,
+        pageSize: funcionariosApontamentosResult.length || 20
+      }
+    }
+  }
 
-  return <FuncionariosPageClient initialFuncionarios={initialFuncionarios} />
+  return <FuncionariosPageClient initialData={formattedData} />
 }

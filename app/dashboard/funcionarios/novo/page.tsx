@@ -1,10 +1,7 @@
 'use client'
 
 import { useActionState, useState, useEffect } from 'react'
-import {
-  createFuncionario,
-  createFuncionarioPayment
-} from '@/app/actions/funcionario'
+import { criarFuncionarioAction } from '@/app/actions/funcionarios'
 import { getObrasList, type ObraListItem } from '@/app/actions/obra'
 import {
   Card,
@@ -35,18 +32,19 @@ export default function NovoFuncionarioPage() {
   const { push } = useRouter()
 
   const [basicFormState, basicFormAction, isBasicFormPending] = useActionState(
-    createFuncionario,
+    criarFuncionarioAction,
     null
   )
 
   useEffect(() => {
-    if (basicFormState?.success && basicFormState.funcionarioId) {
-
+    if (basicFormState?.success && basicFormState.data?.id) {
       toast({
         title: 'Sucesso!',
         description: basicFormState.message,
         variant: 'default'
       })
+      // Redirect to funcionarios list after successful creation
+      push('/dashboard/funcionarios')
     } else if (basicFormState?.success === false) {
       toast({
         title: 'Erro',
@@ -54,7 +52,7 @@ export default function NovoFuncionarioPage() {
         variant: 'destructive'
       })
     }
-  }, [basicFormState, toast])
+  }, [basicFormState, toast, push])
 
   const [departamento, setDepartamento] = useState('')
 
@@ -154,13 +152,30 @@ export default function NovoFuncionarioPage() {
               </Select>
               <input type="hidden" name="departamento" value={departamento} />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="chavePix">Chave Pix</Label>
                 <Input
                   id="chavePix"
                   name="chavePix"
                   placeholder="CPF, email, telefone ou chave aleatória"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="diaria">Diária (R$)</Label>
+                <NumericFormat
+                  thousandSeparator="."
+                  decimalSeparator=","
+                  prefix="R$ "
+                  decimalScale={2}
+                  fixedDecimalScale={true}
+                  allowNegative={false}
+                  customInput={Input}
+                  id="diaria"
+                  name="diaria"
+                  placeholder="R$ 0,00"
+                  required
                 />
               </div>
             </div>

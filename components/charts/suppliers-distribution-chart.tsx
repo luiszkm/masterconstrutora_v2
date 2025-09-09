@@ -29,7 +29,8 @@ export function SuppliersDistributionChart({
   height = 300,
   chartType = 'pie' 
 }: SuppliersDistributionChartProps) {
-  const chartData = data.fornecedoresPorCategoria.distribuicaoPorCategoria.map((item, index) => ({
+  const distribuicaoPorCategoria = data?.fornecedoresPorCategoria?.distribuicaoPorCategoria || []
+  const chartData = distribuicaoPorCategoria.map((item, index) => ({
     name: item.categoriaNome,
     value: item.quantidadeFornecedores,
     percentual: item.percentual,
@@ -158,7 +159,7 @@ export function SuppliersDistributionChart({
         </ResponsiveContainer>
         
         <div className="mt-4 space-y-2">
-          {data.fornecedoresPorCategoria.distribuicaoPorCategoria.map((categoria, index) => (
+          {distribuicaoPorCategoria.map((categoria, index) => (
             <div key={categoria.categoriaId} className="flex items-center justify-between">
               <div className="flex items-center">
                 <div 

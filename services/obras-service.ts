@@ -1,6 +1,6 @@
 import { apiClient } from "@/app/lib/api-client"
 import { DEFAULT_CACHE_TIME, LONG_CACHE_TIME } from "@/app/lib/api-config"
-import type { Obra, FilterOptions, PaginatedResponse } from "@/types/api-types"
+import type { Obra, FilterOptions, BackendPaginatedResponse } from "@/types/api-types"
 
 /**
  * Serviço para gerenciar obras
@@ -9,7 +9,7 @@ export const obrasService = {
   /**
    * Busca todas as obras com paginação e filtros
    */
-  async listarObras(filtros?: FilterOptions): Promise<PaginatedResponse<Obra>> {
+  async listarObras(filtros?: FilterOptions): Promise<BackendPaginatedResponse<Obra>> {
     // Constrói a query string a partir dos filtros
     const queryParams = new URLSearchParams()
     if (filtros) {
@@ -22,7 +22,7 @@ export const obrasService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<Obra>>(`/obras${query}`, {
+    return apiClient.get<BackendPaginatedResponse<Obra>>(`/obras${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["obras"],

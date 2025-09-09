@@ -10,7 +10,7 @@ import {
 /**
  * Schema para status de apontamento conforme documentação oficial
  */
-const statusApontamentoSchema = z.enum(["EM_ABERTO", "APROVADO_PARA_PAGAMENTO", "PAGO"])
+const statusApontamentoSchema = z.enum(["EM_ABERTO", "APROVADO_PARA_PAGAMENTO", "PAGO", "CANCELADO"])
 
 /**
  * Schema para criação de apontamento - Payload CriarApontamentoRequest

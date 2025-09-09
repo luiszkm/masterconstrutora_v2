@@ -1,6 +1,6 @@
 import { apiClient } from "@/app/lib/api-client"
 import { DEFAULT_CACHE_TIME } from "@/app/lib/api-config"
-import type { Cliente, Obra, FilterOptions, PaginatedResponse } from "@/types/api-types"
+import type { Cliente, Obra, FilterOptions, BackendPaginatedResponse } from "@/types/api-types"
 
 /**
  * Serviço para gerenciar clientes
@@ -9,7 +9,7 @@ export const clientesService = {
   /**
    * Busca todos os clientes com paginação e filtros
    */
-  async listarClientes(filtros?: FilterOptions): Promise<PaginatedResponse<Cliente>> {
+  async listarClientes(filtros?: FilterOptions): Promise<BackendPaginatedResponse<Cliente>> {
     // Constrói a query string a partir dos filtros
     const queryParams = new URLSearchParams()
     if (filtros) {
@@ -22,7 +22,7 @@ export const clientesService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<Cliente>>(`/clientes${query}`, {
+    return apiClient.get<BackendPaginatedResponse<Cliente>>(`/clientes${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["clientes"],
@@ -66,7 +66,7 @@ export const clientesService = {
   /**
    * Busca as obras de um cliente
    */
-  async listarObras(clienteId: string, filtros?: FilterOptions): Promise<PaginatedResponse<Obra>> {
+  async listarObras(clienteId: string, filtros?: FilterOptions): Promise<BackendPaginatedResponse<Obra>> {
     // Constrói a query string a partir dos filtros
     const queryParams = new URLSearchParams()
     if (filtros) {
@@ -79,7 +79,7 @@ export const clientesService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<Obra>>(`/clientes/${clienteId}/obras${query}`, {
+    return apiClient.get<BackendPaginatedResponse<Obra>>(`/clientes/${clienteId}/obras${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: [`cliente-${clienteId}-obras`],

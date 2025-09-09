@@ -1,6 +1,6 @@
 import { apiClient } from "@/app/lib/api-client"
 import { DEFAULT_CACHE_TIME, LONG_CACHE_TIME } from "@/app/lib/api-config"
-import type { Fornecedor, Orcamento, FilterOptions, PaginatedResponse } from "@/types/api-types"
+import type { Fornecedor, Orcamento, FilterOptions, BackendPaginatedResponse } from "@/types/api-types"
 
 /**
  * Serviço para gerenciar fornecedores
@@ -9,7 +9,7 @@ export const fornecedoresService = {
   /**
    * Busca todos os fornecedores com paginação e filtros
    */
-  async listarFornecedores(filtros?: FilterOptions): Promise<PaginatedResponse<Fornecedor>> {
+  async listarFornecedores(filtros?: FilterOptions): Promise<BackendPaginatedResponse<Fornecedor>> {
     // Constrói a query string a partir dos filtros
     const queryParams = new URLSearchParams()
     if (filtros) {
@@ -22,7 +22,7 @@ export const fornecedoresService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<Fornecedor>>(`/fornecedores${query}`, {
+    return apiClient.get<BackendPaginatedResponse<Fornecedor>>(`/fornecedores${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: ["fornecedores"],
@@ -66,7 +66,7 @@ export const fornecedoresService = {
   /**
    * Busca os orçamentos de um fornecedor
    */
-  async listarOrcamentos(fornecedorId: string, filtros?: FilterOptions): Promise<PaginatedResponse<Orcamento>> {
+  async listarOrcamentos(fornecedorId: string, filtros?: FilterOptions): Promise<BackendPaginatedResponse<Orcamento>> {
     // Constrói a query string a partir dos filtros
     const queryParams = new URLSearchParams()
     if (filtros) {
@@ -79,7 +79,7 @@ export const fornecedoresService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<PaginatedResponse<Orcamento>>(`/fornecedores/${fornecedorId}/orcamentos${query}`, {
+    return apiClient.get<BackendPaginatedResponse<Orcamento>>(`/fornecedores/${fornecedorId}/orcamentos${query}`, {
       next: {
         revalidate: DEFAULT_CACHE_TIME,
         tags: [`fornecedor-${fornecedorId}-orcamentos`],
