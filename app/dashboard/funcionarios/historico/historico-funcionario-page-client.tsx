@@ -2,6 +2,26 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import type { FuncionariosResponse } from "@/types/funcionario"
+
+// Tipo baseado na resposta real do backend
+type FuncionarioHistorico = {
+  id: string
+  nome: string
+  cpf?: string
+  telefone?: string
+  cargo?: string
+  departamento?: string
+  dataContratacao?: string
+  valorDiaria?: number
+  chavePix?: string
+  status: string
+  created_at?: string
+  updated_at?: string
+  diaria?: number
+}
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -31,7 +51,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import type { FuncionarioBase } from "@/app/actions/funcionario" // Importar a Server Action
+// Removed unused FuncionarioBase import
 import { deleteFuncionario, AtivarFuncionario } from "@/app/actions/funcionario" // Importar a nova Server Action
 import { replicarFuncionariosQuinzena } from "@/app/actions/apontamentos"
 
@@ -92,15 +112,25 @@ function RatingStars({ rating }: { rating: number }) {
 }
 
 export default function HistoricoFuncionariosClientPage({
-  initialFuncionarios,
+  initialData,
 }: {
-  initialFuncionarios: FuncionarioBase[]
+  initialData: { dados: FuncionarioHistorico[], paginacao: { totalItens: number, totalPages: number, currentPage: number, pageSize: number } }
 }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Extract funcionarios from paginated data
+  const initialFuncionarios = initialData.dados || []
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(initialData.paginacao?.currentPage || 1)
+  const [pageSize, setPageSize] = useState(initialData.paginacao?.pageSize || 20)
+  
   const [dialogExclusaoAberto, setDialogExclusaoAberto] = useState(false)
-  const [funcionarioParaExcluir, setFuncionarioParaExcluir] = useState<FuncionarioBase | null>(null)
+  const [funcionarioParaExcluir, setFuncionarioParaExcluir] = useState<FuncionarioHistorico | null>(null)
 
   const [dialogAtivacaoAberto, setDialogAtivacaoAberto] = useState(false) // Novo estado para o diálogo de ativação
-  const [funcionarioParaAtivar, setFuncionarioParaAtivar] = useState<FuncionarioBase | null>(null) // Novo estado para o funcionário a ativar
+  const [funcionarioParaAtivar, setFuncionarioParaAtivar] = useState<FuncionarioHistorico | null>(null) // Novo estado para o funcionário a ativar
 
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroAberto, setFiltroAberto] = useState(false)
@@ -123,7 +153,18 @@ export default function HistoricoFuncionariosClientPage({
     ? `Segunda quinzena de ${format(hoje, "MMMM/yyyy", { locale: ptBR })}`
     : `Primeira quinzena de ${format(addMonths(hoje, 1), "MMMM/yyyy", { locale: ptBR })}`
 
-  const todosFuncionariosFiltrados = initialFuncionarios.filter((funcionario) => {
+  // Funções para controlar paginação (lado cliente)
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage)
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
+    setCurrentPage(1) // Reset to first page when changing page size
+  }
+
+  // Primeiro filtrar os dados
+  const funcionariosFiltrados = (Array.isArray(initialFuncionarios) ? initialFuncionarios : []).filter((funcionario) => {
     const matchesSearch =
       funcionario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (funcionario.cargo && funcionario.cargo.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -183,6 +224,15 @@ export default function HistoricoFuncionariosClientPage({
       matchesDataDemissao
     )
   })
+
+  // Aplicar paginação do lado cliente
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const todosFuncionariosFiltrados = funcionariosFiltrados.slice(startIndex, endIndex)
+  
+  // Atualizar paginação baseada nos dados filtrados
+  const totalFiltrados = funcionariosFiltrados.length
+  const totalPagesFiltrados = Math.ceil(totalFiltrados / pageSize)
 
   const toggleDepartamento = (departamento: string) => {
     setFiltroDepartamento((current) => {
@@ -263,7 +313,7 @@ export default function HistoricoFuncionariosClientPage({
     }
 
     const funcionariosInativos = selectedFuncionarios.filter(
-      (id) => initialFuncionarios.find((f) => f.id === id)?.status === "Inativo",
+      (id) => (Array.isArray(initialFuncionarios) ? initialFuncionarios : []).find((f) => f.id === id)?.status === "Inativo",
     )
 
     if (funcionariosInativos.length > 0) {
@@ -302,7 +352,7 @@ export default function HistoricoFuncionariosClientPage({
         if (falhas && falhas.length > 0) {
           mensagem += `\n\nFalhas encontradas:`
           falhas.forEach((falha: any) => {
-            const funcionario = initialFuncionarios.find((f) => f.id === falha.funcionarioId)
+            const funcionario = (Array.isArray(initialFuncionarios) ? initialFuncionarios : []).find((f) => f.id === falha.funcionarioId)
             mensagem += `\n• ${funcionario?.nome || "Funcionário"}: ${falha.motivo}`
           })
         }
@@ -338,7 +388,7 @@ export default function HistoricoFuncionariosClientPage({
     }
   }
 
-  const abrirDialogoExclusao = (funcionario: FuncionarioBase) => {
+  const abrirDialogoExclusao = (funcionario: FuncionarioHistorico) => {
     setFuncionarioParaExcluir(funcionario)
     setDialogExclusaoAberto(true)
   }
@@ -375,7 +425,7 @@ export default function HistoricoFuncionariosClientPage({
     setFuncionarioParaExcluir(null) // Limpar o funcionário selecionado
   }
 
-  const abrirDialogoAtivacao = (funcionario: FuncionarioBase) => {
+  const abrirDialogoAtivacao = (funcionario: FuncionarioHistorico) => {
     setFuncionarioParaAtivar(funcionario)
     setDialogAtivacaoAberto(true)
   }
@@ -682,7 +732,7 @@ export default function HistoricoFuncionariosClientPage({
               <h4 className="font-medium">Funcionários a serem replicados</h4>
               <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
                 {selectedFuncionarios.map((id) => {
-                  const funcionario = initialFuncionarios.find((f) => f.id === id)
+                  const funcionario = (Array.isArray(initialFuncionarios) ? initialFuncionarios : []).find((f) => f.id === id)
                   return funcionario?.status === "Ativo" ? (
                     <li key={id} className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-green-500" />
@@ -703,6 +753,16 @@ export default function HistoricoFuncionariosClientPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Paginação */}
+      <DataTablePagination
+        totalItems={totalFiltrados}
+        totalPages={totalPagesFiltrados}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
+
       {/* Diálogo de Confirmação de Exclusão */}
       <Dialog open={dialogExclusaoAberto} onOpenChange={setDialogExclusaoAberto}>
         <DialogContent className="sm:max-w-[425px]">

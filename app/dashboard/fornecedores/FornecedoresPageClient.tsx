@@ -1,10 +1,17 @@
-"use client"
+'use client'
 
-import React, { useState, useEffect, useTransition } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import React, { useState, useEffect, useTransition } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
 import {
   Plus,
   Search,
@@ -23,41 +30,55 @@ import {
   Power,
   PowerOff,
   MapPin,
-  User,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react"
+  User
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { DataTablePagination } from "@/components/ui/data-table-pagination"
-import { toast } from "@/components/ui/use-toast"
-import { ToastAction } from "@/components/ui/toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { deleteFornecedor, toggleFornecedorStatus, getCategorias, getFornecedores } from "@/app/actions/fornecedor"
-import type { Fornecedor, FornecedoresResponse } from "@/types/fornecedor"
+  DialogDescription
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { DataTablePagination } from '@/components/ui/data-table-pagination'
+import { toast } from '@/components/ui/use-toast'
+import { ToastAction } from '@/components/ui/toast'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import {
+  deleteFornecedor,
+  getCategorias,
+  getFornecedores
+} from '@/app/actions/fornecedor'
+import type { Fornecedor, FornecedoresResponse } from '@/types/fornecedor'
+import { CategoryBadges } from '@/components/categoryBadges'
+import { usePagination } from '@/hooks/usePagination'
 
 // Tipo para ordenação
 type SortConfig = {
-  key: keyof Fornecedor | ""
-  direction: "asc" | "desc"
+  key: keyof Fornecedor | ''
+  direction: 'asc' | 'desc'
 }
 
 // Tipo para filtros
@@ -76,11 +97,12 @@ type Categoria = {
 }
 
 interface FornecedoresPageClientProps {
-  initialData: FornecedoresResponse | any // Allow for backwards compatibility
+  readonly initialData: FornecedoresResponse
 }
 
-export function FornecedoresPageClient({ initialData }: FornecedoresPageClientProps) {
-  // Ensure we have properly formatted data with fallbacks
+export function FornecedoresPageClient({
+  initialData
+}: FornecedoresPageClientProps) {
   const safeInitialData = {
     dados: initialData?.dados || [],
     paginacao: initialData?.paginacao || {
@@ -99,30 +121,26 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
     async function loadCategorias() {
       try {
         const categoriasData = await getCategorias()
-        if (categoriasData && typeof categoriasData === 'object' && !("error" in categoriasData) && Array.isArray(categoriasData)) {
-          setCategorias(categoriasData)
-          console.log("Categorias carregadas da API:", categoriasData)
-        } else if (categoriasData && typeof categoriasData === 'object' && "error" in categoriasData) {
-          console.error("Erro ao carregar categorias:", categoriasData.error)
-          toast({
-            title: "Erro ao carregar categorias",
-            description: categoriasData.error,
-            variant: "destructive",
-          })
+        if (!('error' in categoriasData)) {
+          const categoriesArray = Array.isArray(categoriasData)
+            ? categoriasData
+            : []
+          setCategorias(categoriesArray)
         } else {
-          console.error("Formato de dados inesperado para categorias:", categoriasData)
+          console.error('Erro ao carregar categorias:', categoriasData.error)
           toast({
-            title: "Erro ao carregar categorias",
-            description: "Formato de dados inesperado",
-            variant: "destructive",
+            title: 'Erro ao carregar categorias',
+            description: categoriasData.error,
+            variant: 'destructive'
           })
+          setCategorias([])
         }
       } catch (error) {
-        console.error("Erro ao carregar categorias:", error)
+        console.error('Erro ao carregar categorias:', error)
         toast({
-          title: "Erro ao carregar categorias",
-          description: "Tente novamente em alguns instantes",
-          variant: "destructive",
+          title: 'Erro ao carregar categorias',
+          description: 'Tente novamente em alguns instantes',
+          variant: 'destructive'
         })
       } finally {
         setLoadingCategorias(false)
@@ -133,57 +151,63 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
 
   // Estados principais - garantir que sempre sejam arrays válidos
   const [data, setData] = useState<FornecedoresResponse>(safeInitialData)
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>(safeInitialData.dados || [])
-  const [filteredFornecedores, setFilteredFornecedores] = useState<Fornecedor[]>(safeInitialData.dados || [])
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>(
+    safeInitialData.dados || []
+  )
+  const [filteredFornecedores, setFilteredFornecedores] = useState<
+    Fornecedor[]
+  >(safeInitialData.dados || [])
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Estados para paginação
-  const [currentPage, setCurrentPage] = useState(safeInitialData.paginacao.currentPage)
-  const [pageSize, setPageSize] = useState(safeInitialData.paginacao.pageSize)
-
   // Estados para ordenação e filtros
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "", direction: "asc" })
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: '',
+    direction: 'asc'
+  })
   const [filters, setFilters] = useState<Filters>({
-    categoria: "",
-    status: "",
-    avaliacao: "",
+    categoria: '',
+    status: '',
+    avaliacao: ''
   })
 
   // Estados para pesquisa
-  const [searchTerm, setSearchTerm] = useState("")
-  const [searchCategoria, setSearchCategoria] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchCategoria, setSearchCategoria] = useState('')
 
   // Estados para diálogos
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null)
+  const [fornecedorToDelete, setFornecedorToDelete] =
+    useState<Fornecedor | null>(null)
 
   // Estados para popovers
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Função para carregar dados da API
-  const loadFornecedores = async (page: number = currentPage, size: number = pageSize) => {
+  const loadFornecedores = async (
+    page: number = currentPage,
+    size: number = pageSize
+  ) => {
     setLoading(true)
     try {
       const result = await getFornecedores(page, size)
-      if ("error" in result) {
+      if ('error' in result) {
         toast({
-          title: "Erro ao carregar fornecedores",
+          title: 'Erro ao carregar fornecedores',
           description: result.error,
-          variant: "destructive",
+          variant: 'destructive'
         })
       } else {
         setData(result)
         const novosFornecedores = result.dados || []
         setFornecedores(novosFornecedores)
         setFilteredFornecedores(novosFornecedores)
-        setCurrentPage(result.paginacao?.currentPage || 1)
       }
     } catch (error) {
       toast({
-        title: "Erro ao carregar fornecedores",
-        description: "Tente novamente em alguns instantes",
-        variant: "destructive",
+        title: 'Erro ao carregar fornecedores',
+        description: 'Tente novamente em alguns instantes',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -193,35 +217,8 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
   // Extrair nomes das categorias para os filtros
   const uniqueCategories = React.useMemo(() => {
     if (!Array.isArray(categorias)) return []
-    return categorias.map((cat) => cat.Nome).sort()
+    return categorias.map(cat => cat.Nome).sort()
   }, [categorias])
-
-  // Função auxiliar para extrair categorias de forma segura
-  // function extractUniqueCategories(fornecedores: Fornecedor[]): string[] {
-  //   const categoriesSet = new Set<string>()
-
-  //   if (!Array.isArray(fornecedores)) {
-  //     return []
-  //   }
-
-  //   fornecedores.forEach((fornecedor) => {
-  //     if (fornecedor && fornecedor.categorias && Array.isArray(fornecedor.categorias)) {
-  //       fornecedor.categorias.forEach((categoria) => {
-  //         if (categoria && categoria.Nome && typeof categoria.Nome === "string") {
-  //           categoriesSet.add(categoria.Nome)
-  //         }
-  //       })
-  //     }
-  //   })
-
-  //   return Array.from(categoriesSet).sort()
-  // }
-
-  // Debug: log dos dados recebidos
-  console.log("FornecedoresPageClient - dados recebidos:", safeInitialData)
-
-  // Debug: log das categorias extraídas
-  console.log("Categorias únicas extraídas:", uniqueCategories)
 
   // Aplicar filtros e pesquisa
   useEffect(() => {
@@ -235,43 +232,57 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
     // Filtro por pesquisa geral
     if (searchTerm) {
       result = result.filter(
-        (fornecedor) =>
-          (fornecedor.nome && fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (fornecedor.contato && fornecedor.contato.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (fornecedor.email && fornecedor.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (fornecedor.cnpj && fornecedor.cnpj.includes(searchTerm)),
+        fornecedor =>
+          (fornecedor.nome &&
+            fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (fornecedor.contato &&
+            fornecedor.contato
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (fornecedor.email &&
+            fornecedor.email
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (fornecedor.cnpj && fornecedor.cnpj.includes(searchTerm))
       )
     }
 
     // Filtro por pesquisa de categoria
     if (searchCategoria) {
-      result = result.filter((fornecedor) =>
+      result = result.filter(fornecedor =>
         fornecedor.categorias && Array.isArray(fornecedor.categorias)
           ? fornecedor.categorias.some(
-              (cat) => cat && cat.Nome && cat.Nome.toLowerCase().includes(searchCategoria.toLowerCase()),
+              cat =>
+                cat &&
+                cat.Nome &&
+                cat.Nome.toLowerCase().includes(searchCategoria.toLowerCase())
             )
-          : false,
+          : false
       )
     }
 
     // Filtros específicos
     if (filters.categoria) {
-      result = result.filter((fornecedor) =>
+      result = result.filter(fornecedor =>
         fornecedor.categorias && Array.isArray(fornecedor.categorias)
-          ? fornecedor.categorias.some((cat) => cat && cat.Nome === filters.categoria)
-          : false,
+          ? fornecedor.categorias.some(
+              cat => cat && cat.Nome === filters.categoria
+            )
+          : false
       )
     }
 
     if (filters.status) {
-      result = result.filter((fornecedor) => fornecedor.status === filters.status)
+      result = result.filter(fornecedor => fornecedor.status === filters.status)
     }
 
     if (filters.avaliacao) {
       const minRating = Number.parseFloat(filters.avaliacao)
       result = result.filter(
-        (fornecedor) =>
-          fornecedor.avaliacao !== null && fornecedor.avaliacao !== undefined && fornecedor.avaliacao >= minRating,
+        fornecedor =>
+          fornecedor.avaliacao !== null &&
+          fornecedor.avaliacao !== undefined &&
+          fornecedor.avaliacao >= minRating
       )
     }
 
@@ -281,7 +292,9 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
   // Função para renderizar as estrelas de avaliação
   const renderStars = (rating: number | null | undefined) => {
     if (rating === null || rating === undefined) {
-      return <span className="text-sm text-muted-foreground">Sem avaliação</span>
+      return (
+        <span className="text-sm text-muted-foreground">Sem avaliação</span>
+      )
     }
 
     const stars = []
@@ -289,11 +302,21 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
     const hasHalfStar = rating % 1 !== 0
 
     for (let i = 0; i < fullStars; i++) {
-      stars.push(<Star key={`full-${i}`} className="h-4 w-4 fill-yellow-500 text-yellow-500" />)
+      stars.push(
+        <Star
+          key={`full-${i}`}
+          className="h-4 w-4 fill-yellow-500 text-yellow-500"
+        />
+      )
     }
 
     if (hasHalfStar) {
-      stars.push(<StarHalf key="half" className="h-4 w-4 fill-yellow-500 text-yellow-500" />)
+      stars.push(
+        <StarHalf
+          key="half"
+          className="h-4 w-4 fill-yellow-500 text-yellow-500"
+        />
+      )
     }
 
     const emptyStars = 5 - Math.ceil(rating)
@@ -311,9 +334,9 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
 
   // Função para ordenar
   const requestSort = (key: keyof Fornecedor) => {
-    let direction: "asc" | "desc" = "asc"
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc"
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
     }
     setSortConfig({ key, direction })
 
@@ -321,20 +344,26 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
       const aValue = a[key]
       const bValue = b[key]
 
-      if ((aValue === null || aValue === undefined) && (bValue === null || bValue === undefined)) return 0
-      if (aValue === null) return direction === "asc" ? 1 : -1
-      if (bValue === null) return direction === "asc" ? -1 : 1
+      if (
+        (aValue === null || aValue === undefined) &&
+        (bValue === null || bValue === undefined)
+      )
+        return 0
+      if (aValue === null) return direction === 'asc' ? 1 : -1
+      if (bValue === null) return direction === 'asc' ? -1 : 1
 
       // Handle undefined values explicitly
-      if (aValue === undefined && bValue !== undefined) return direction === "asc" ? 1 : -1
-      if (aValue !== undefined && bValue === undefined) return direction === "asc" ? -1 : 1
+      if (aValue === undefined && bValue !== undefined)
+        return direction === 'asc' ? 1 : -1
+      if (aValue !== undefined && bValue === undefined)
+        return direction === 'asc' ? -1 : 1
       if (aValue === undefined && bValue === undefined) return 0
 
       if (aValue! < bValue!) {
-        return direction === "asc" ? -1 : 1
+        return direction === 'asc' ? -1 : 1
       }
       if (aValue! > bValue!) {
-        return direction === "asc" ? 1 : -1
+        return direction === 'asc' ? 1 : -1
       }
       return 0
     })
@@ -345,27 +374,22 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
   // Função para limpar filtros
   const clearFilters = () => {
     setFilters({
-      categoria: "",
-      status: "",
-      avaliacao: "",
+      categoria: '',
+      status: '',
+      avaliacao: ''
     })
-    setSearchTerm("")
-    setSearchCategoria("")
+    setSearchTerm('')
+    setSearchCategoria('')
     setFiltersOpen(false)
   }
-
-  // Função para navegar entre páginas
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= (data.paginacao?.totalPages || 1)) {
-      loadFornecedores(newPage, pageSize)
-    }
-  }
-
-  // Função para alterar tamanho da página
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize)
-    loadFornecedores(1, newSize) // Volta para primeira página
-  }
+  // hook personalizado paginacao
+  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } =
+    usePagination({
+      initialPage: safeInitialData.paginacao.currentPage,
+      initialPageSize: safeInitialData.paginacao.pageSize,
+      totalPages: data.paginacao?.totalPages || 1,
+      onLoad: loadFornecedores
+    })
 
   // Função para excluir fornecedor
   const handleDelete = async () => {
@@ -376,18 +400,18 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
 
       if (result.success) {
         toast({
-          title: "Fornecedor excluído",
+          title: 'Fornecedor excluído',
           description: result.message,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>
         })
 
         // Recarregar dados da página atual
         await loadFornecedores(currentPage, pageSize)
       } else {
         toast({
-          title: "Erro ao excluir fornecedor",
+          title: 'Erro ao excluir fornecedor',
           description: result.message,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
 
@@ -396,58 +420,41 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
     })
   }
 
-  // Função para alternar status
-  const handleToggleStatus = async (fornecedor: Fornecedor) => {
-    startTransition(async () => {
-      const result = await toggleFornecedorStatus(fornecedor.id!)
-
-      if (result.success) {
-        toast({
-          title: "Status atualizado",
-          description: result.message,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
-        })
-
-        // Recarregar dados da página atual
-        await loadFornecedores(currentPage, pageSize)
-      } else {
-        toast({
-          title: "Erro ao atualizar status",
-          description: result.message,
-          variant: "destructive",
-        })
-      }
-    })
-  }
-
   // Renderizar cabeçalho da tabela com ordenação
-  const renderSortableHeader = (key: keyof Fornecedor, label: string) => (
-    <TableHead className="cursor-pointer select-none">
-      <button
-        className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
-        onClick={() => requestSort(key)}
-      >
-        {label}
-        {sortConfig.key === key ? (
-          sortConfig.direction === "asc" ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )
+  const renderSortableHeader = (key: keyof Fornecedor, label: string) => {
+    let sortIcon: React.ReactNode = <div className="w-4" />
+    if (sortConfig.key === key) {
+      sortIcon =
+        sortConfig.direction === 'asc' ? (
+          <ChevronUp className="h-4 w-4" />
         ) : (
-          <div className="w-4" />
-        )}
-      </button>
-    </TableHead>
-  )
+          <ChevronDown className="h-4 w-4" />
+        )
+    }
+    return (
+      <TableHead className="cursor-pointer select-none">
+        <button
+          className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
+          onClick={() => requestSort(key)}
+        >
+          {label}
+          {sortIcon}
+        </button>
+      </TableHead>
+    )
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Fornecedores</h2>
-          <p className="text-muted-foreground">Gerencie seus fornecedores e categorias</p>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Fornecedores
+          </h2>
+          <p className="text-muted-foreground">
+            Gerencie seus fornecedores e categorias
+          </p>
         </div>
         <Button asChild className="w-full sm:w-auto">
           <Link href="/dashboard/fornecedores/novo">
@@ -465,9 +472,12 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.paginacao?.totalItens || 0}</div>
+            <div className="text-2xl font-bold">
+              {data.paginacao?.totalItens || 0}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Página {data.paginacao?.currentPage || 1} de {data.paginacao?.totalPages || 1}
+              Página {data.paginacao?.currentPage || 1} de{' '}
+              {data.paginacao?.totalPages || 1}
             </p>
           </CardContent>
         </Card>
@@ -478,7 +488,7 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {fornecedores.filter((f) => f.status === "Ativo").length}
+              {fornecedores.filter(f => f.status === 'Ativo').length}
             </div>
           </CardContent>
         </Card>
@@ -489,7 +499,7 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {fornecedores.filter((f) => f.status === "Inativo").length}
+              {fornecedores.filter(f => f.status === 'Inativo').length}
             </div>
           </CardContent>
         </Card>
@@ -500,7 +510,10 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {fornecedores.reduce((total, f) => total + (f.orcamentosCount || 0), 0)}
+              {fornecedores.reduce(
+                (total, f) => total + (f.orcamentosCount || 0),
+                0
+              )}
             </div>
           </CardContent>
         </Card>
@@ -518,7 +531,7 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
               placeholder="Buscar por nome, contato, email ou CNPJ..."
               className="pl-8"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
 
@@ -530,7 +543,7 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
               placeholder="Buscar por categoria..."
               className="pl-8"
               value={searchCategoria}
-              onChange={(e) => setSearchCategoria(e.target.value)}
+              onChange={e => setSearchCategoria(e.target.value)}
             />
           </div>
         </div>
@@ -539,12 +552,24 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
         <div className="flex justify-end">
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto bg-transparent">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto bg-transparent"
+              >
                 <Filter className="mr-2 h-4 w-4" />
                 Filtros Avançados
                 {(filters.categoria || filters.status || filters.avaliacao) && (
-                  <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
-                    {[filters.categoria, filters.status, filters.avaliacao].filter(Boolean).length}
+                  <Badge
+                    variant="secondary"
+                    className="ml-2 h-5 w-5 rounded-full p-0 text-xs"
+                  >
+                    {
+                      [
+                        filters.categoria,
+                        filters.status,
+                        filters.avaliacao
+                      ].filter(Boolean).length
+                    }
                   </Badge>
                 )}
               </Button>
@@ -565,17 +590,26 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
                   <Label className="text-sm font-medium">Categoria</Label>
                   <Select
                     value={filters.categoria}
-                    onValueChange={(value) =>
-                      setFilters((prev) => ({ ...prev, categoria: value === "all" ? "" : value }))
+                    onValueChange={value =>
+                      setFilters(prev => ({
+                        ...prev,
+                        categoria: value === 'all' ? '' : value
+                      }))
                     }
                     disabled={loadingCategorias}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={loadingCategorias ? "Carregando..." : "Todas as categorias"} />
+                      <SelectValue
+                        placeholder={
+                          loadingCategorias
+                            ? 'Carregando...'
+                            : 'Todas as categorias'
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas as categorias</SelectItem>
-                      {uniqueCategories.map((categoria) => (
+                      {uniqueCategories.map(categoria => (
                         <SelectItem key={categoria} value={categoria}>
                           {categoria}
                         </SelectItem>
@@ -589,7 +623,12 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
                   <Label className="text-sm font-medium">Status</Label>
                   <Select
                     value={filters.status}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value === "all" ? "" : value }))}
+                    onValueChange={value =>
+                      setFilters(prev => ({
+                        ...prev,
+                        status: value === 'all' ? '' : value
+                      }))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Todos os status" />
@@ -604,11 +643,16 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
 
                 {/* Filtro por Avaliação */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Avaliação Mínima</Label>
+                  <Label className="text-sm font-medium">
+                    Avaliação Mínima
+                  </Label>
                   <Select
                     value={filters.avaliacao}
-                    onValueChange={(value) =>
-                      setFilters((prev) => ({ ...prev, avaliacao: value === "any" ? "" : value }))
+                    onValueChange={value =>
+                      setFilters(prev => ({
+                        ...prev,
+                        avaliacao: value === 'any' ? '' : value
+                      }))
                     }
                   >
                     <SelectTrigger>
@@ -630,10 +674,15 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
       </div>
 
       {/* Results Info */}
-      {(searchTerm || searchCategoria || filters.categoria || filters.status || filters.avaliacao) && (
+      {(searchTerm ||
+        searchCategoria ||
+        filters.categoria ||
+        filters.status ||
+        filters.avaliacao) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
-            Mostrando {filteredFornecedores.length} de {fornecedores.length} fornecedores
+            Mostrando {filteredFornecedores.length} de {fornecedores.length}{' '}
+            fornecedores
           </span>
           {filteredFornecedores.length !== fornecedores.length && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -643,26 +692,22 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
         </div>
       )}
 
-      {/* Debug Info */}
-      <div className="text-xs text-muted-foreground">
-        Debug: {fornecedores.length} fornecedores na página, {data.paginacao?.totalItens || 0} total, {categorias.length} categorias da API,{" "}
-        {uniqueCategories.length} nomes únicos
-      </div>
-
       {/* Table */}
       <div className="rounded-md border">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                {renderSortableHeader("nome", "Nome")}
+                {renderSortableHeader('nome', 'Nome')}
                 <TableHead>Categorias</TableHead>
                 <TableHead className="hidden md:table-cell">Contato</TableHead>
                 <TableHead className="hidden lg:table-cell">Email</TableHead>
                 <TableHead className="hidden xl:table-cell">CNPJ</TableHead>
                 <TableHead>Avaliação</TableHead>
-                <TableHead className="hidden sm:table-cell">Orçamentos</TableHead>
-                {renderSortableHeader("status", "Status")}
+                <TableHead className="hidden sm:table-cell">
+                  Orçamentos
+                </TableHead>
+                {renderSortableHeader('status', 'Status')}
                 <TableHead className="text-right w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -673,8 +718,16 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="h-8 w-8 text-muted-foreground" />
                       <p>Nenhum fornecedor encontrado</p>
-                      {(searchTerm || searchCategoria || filters.categoria || filters.status || filters.avaliacao) && (
-                        <Button variant="outline" size="sm" onClick={clearFilters}>
+                      {(searchTerm ||
+                        searchCategoria ||
+                        filters.categoria ||
+                        filters.status ||
+                        filters.avaliacao) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearFilters}
+                        >
                           Limpar filtros
                         </Button>
                       )}
@@ -682,12 +735,14 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredFornecedores.map((fornecedor) => (
+                filteredFornecedores.map(fornecedor => (
                   <TableRow key={fornecedor.id}>
                     <TableCell className="font-medium min-w-[200px]">
                       <div>
                         <div className="font-medium">{fornecedor.nome}</div>
-                        <div className="text-sm text-muted-foreground md:hidden">{fornecedor.contato}</div>
+                        <div className="text-sm text-muted-foreground md:hidden">
+                          {fornecedor.contato}
+                        </div>
                         {fornecedor.endereco && (
                           <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3" />
@@ -697,50 +752,54 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
                       </div>
                     </TableCell>
                     <TableCell className="min-w-[150px]">
-                      <div className="flex flex-wrap gap-1">
-                        {fornecedor.categorias &&
-                        Array.isArray(fornecedor.categorias) &&
-                        fornecedor.categorias.length > 0 ? (
-                          fornecedor.categorias.map((categoria, index) => (
-                            <Badge key={`${categoria.ID}-${index}`} variant="outline" className="text-xs">
-                              {categoria.Nome}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Sem categoria</span>
-                        )}
-                      </div>
+                      <CategoryBadges categorias={fornecedor.categorias} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell min-w-[150px]">
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        {fornecedor.contato || "Não informado"}
+                        {fornecedor.contato || 'Não informado'}
                       </div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell min-w-[200px]">
-                      <div>{fornecedor.email || "Não informado"}</div>
+                      <div>{fornecedor.email || 'Não informado'}</div>
                     </TableCell>
                     <TableCell className="hidden xl:table-cell min-w-[150px]">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">{fornecedor.cnpj}</code>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">
+                        {fornecedor.cnpj}
+                      </code>
                     </TableCell>
-                    <TableCell className="min-w-[120px]">{renderStars(fornecedor.avaliacao)}</TableCell>
+                    <TableCell className="min-w-[120px]">
+                      {renderStars(fornecedor.avaliacao)}
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell min-w-[100px]">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/dashboard/fornecedores/${fornecedor.id}/orcamentos`}>
+                        <Link
+                          href={`/dashboard/fornecedores/${fornecedor.id}/orcamentos`}
+                        >
                           <FileText className="mr-2 h-4 w-4" />
                           {fornecedor.orcamentosCount || 0}
                         </Link>
                       </Button>
                     </TableCell>
                     <TableCell className="min-w-[80px]">
-                      <Badge variant={fornecedor.status === "Ativo" ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          fornecedor.status === 'Ativo'
+                            ? 'default'
+                            : 'secondary'
+                        }
+                      >
                         {fornecedor.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={isPending}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isPending}
+                          >
                             {isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
@@ -751,7 +810,9 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/fornecedores/${fornecedor.id}/editar`}>
+                            <Link
+                              href={`/dashboard/fornecedores/${fornecedor.id}/editar`}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </Link>
@@ -794,7 +855,9 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir o fornecedor &ldquo;{fornecedorToDelete?.nome}&rdquo;? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir o fornecedor &ldquo;
+              {fornecedorToDelete?.nome}&rdquo;? Esta ação não pode ser
+              desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -807,14 +870,18 @@ export function FornecedoresPageClient({ initialData }: FornecedoresPageClientPr
             >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isPending}
+            >
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Excluindo...
                 </>
               ) : (
-                "Excluir"
+                'Excluir'
               )}
             </Button>
           </DialogFooter>

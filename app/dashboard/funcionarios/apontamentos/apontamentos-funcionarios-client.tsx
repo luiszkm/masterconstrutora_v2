@@ -70,7 +70,7 @@ export default function ApontamentosFuncionariosClient({  apontamentos }: { apon
   const [filtroStatus, setFiltroStatus] = useState<string[]>([])
 
   // Filtrar apontamentos
-  const apontamentosFiltrados = apontamentos.filter((apontamento) => {
+  const apontamentosFiltrados = (Array.isArray(apontamentos) ? apontamentos : []).filter((apontamento) => {
     const matchesSearch =
       apontamento.funcionarioNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (apontamento.periodoInicio && apontamento.periodoInicio.includes(searchTerm)) ||
@@ -281,7 +281,7 @@ export default function ApontamentosFuncionariosClient({  apontamentos }: { apon
                   </TableCell>
                 </TableRow>
               ) : (
-                apontamentosFiltrados.map((apontamento) => {
+                apontamentosFiltrados.map((apontamento, index) => {
                   const valorTotal =
                     apontamento.diaria * apontamento.diasTrabalhados +
                     apontamento.adicionais -
@@ -289,7 +289,7 @@ export default function ApontamentosFuncionariosClient({  apontamentos }: { apon
                     apontamento.adiantamentos
 
                   return (
-                    <TableRow key={apontamento.apontamentoId}>
+                    <TableRow key={apontamento.apontamentoId || `apontamento-${index}`}>
                       <TableCell>
                         <div className="space-y-1">
                           <div className="text-sm font-medium">

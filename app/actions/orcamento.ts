@@ -188,7 +188,9 @@ export async function getEtapasByObra(obraId: string): Promise<Etapa[] | { error
       return { error: errorMessage }
     }
 
-    const data: Etapa[] = await response.json()
+    const result = await response.json()
+    // Handle paginated response structure
+    const data: Etapa[] = result.dados || result || []
     return data
   } catch (error) {
     console.error("Erro ao buscar etapas:", error)
@@ -199,7 +201,7 @@ export async function getEtapasByObra(obraId: string): Promise<Etapa[] | { error
 // Função atualizada para trabalhar com a estrutura real da API de fornecedores
 export async function getFornecedores(): Promise<FornecedorOrcamento[] | { error: string }> {
   try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/fornecedores`, {
+    const response = await makeAuthenticatedRequest(`${API_URL}/fornecedores?pageSize=1000`, {
       method: "GET",
       next: { tags: ["fornecedores"] },
     })
@@ -219,7 +221,9 @@ export async function getFornecedores(): Promise<FornecedorOrcamento[] | { error
       return { error: errorMessage }
     }
 
-    const data: FornecedorOrcamento[] = await response.json()
+    const result = await response.json()
+    // Handle paginated response structure
+    const data: FornecedorOrcamento[] = result.dados || result || []
     return data
   } catch (error) {
     console.error("Erro ao buscar fornecedores:", error)
@@ -249,7 +253,9 @@ export async function getCategorias(): Promise<Categoria[] | { error: string }> 
       return { error: errorMessage }
     }
 
-    const data: Categoria[] = await response.json()
+    const result = await response.json()
+    // Handle paginated response structure
+    const data: Categoria[] = result.dados || result || []
     return data
   } catch (error) {
     console.error("Erro ao buscar categorias:", error)

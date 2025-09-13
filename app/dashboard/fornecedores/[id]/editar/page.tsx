@@ -1,22 +1,39 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { useState, useEffect, useTransition, use } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { toast } from "@/components/ui/use-toast"
-import { ArrowLeft, X, Loader2, Globe, MapPin, Copy, ExternalLink, AlertCircle } from "lucide-react"
-import { getFornecedorById, updateFornecedor, getCategorias } from "@/app/actions/fornecedor"
-import type { Fornecedor } from "@/types/fornecedor"
-import { FileText } from "lucide-react"
+import type React from 'react'
+import { useState, useEffect, useTransition, use } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { toast } from '@/components/ui/use-toast'
+import {
+  ArrowLeft,
+  X,
+  Loader2,
+  MapPin,
+  ExternalLink,
+  FileText,
+  AlertCircle
+} from 'lucide-react'
+import {
+  getFornecedorById,
+  updateFornecedor,
+  getCategorias
+} from '@/app/actions/fornecedor'
+import type { Fornecedor } from '@/types/fornecedor'
 
 // Tipo para categoria da API
 type Categoria = {
@@ -26,7 +43,11 @@ type Categoria = {
   updatedAt: string
 }
 
-export default function EditarFornecedorPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditarFornecedorPage({
+  params
+}: {
+  readonly params: Promise<{ id: string }>
+}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)
@@ -38,29 +59,31 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
 
   // Estados do formulário baseados na estrutura real da API
   const [formData, setFormData] = useState({
-    Nome: "",
-    Contato: "",
-    Email: "",
-    CNPJ: "",
-    Website: "",
-    Endereco: "",
-    NomeAtendente: "",
+    Nome: '',
+    Contato: '',
+    Email: '',
+    CNPJ: '',
+    Website: '',
+    Endereco: '',
+    NomeAtendente: '',
     Avaliacao: null as number | null,
-    Observacoes: "",
+    Observacoes: ''
   })
 
-  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([])
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<
+    string[]
+  >([])
 
   // Carregar categorias disponíveis
   useEffect(() => {
     async function loadCategorias() {
       try {
         const categoriasData = await getCategorias()
-        if (!("error" in categoriasData)) {
+        if (!('error' in categoriasData)) {
           setCategorias(categoriasData)
         }
       } catch (error) {
-        console.error("Erro ao carregar categorias:", error)
+        console.error('Erro ao carregar categorias:', error)
       }
     }
     loadCategorias()
@@ -75,36 +98,37 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
           setFornecedor(data)
           // Mapear corretamente baseado na estrutura real da API
           setFormData({
-            Nome: data.nome || data.Nome || "",
-            Contato: data.contato || data.Contato || "",
-            Email: data.email || data.Email || "",
-            CNPJ: data.cnpj || data.CNPJ || "",
-            Website: data.website || data.Website || "",
-            Endereco: data.endereco || data.Endereco || "",
-            NomeAtendente: data.nomeAtendente || data.NomeAtendente || "",
+            Nome: data.nome || data.Nome || '',
+            Contato: data.contato || data.Contato || '',
+            Email: data.email || data.Email || '',
+            CNPJ: data.cnpj || data.CNPJ || '',
+            Website: data.website || data.Website || '',
+            Endereco: data.endereco || data.Endereco || '',
+            NomeAtendente: data.nomeAtendente || data.NomeAtendente || '',
             Avaliacao: data.avaliacao || data.Avaliacao || null,
-            Observacoes: data.observacoes || data.Observacoes || "",
+            Observacoes: data.observacoes || data.Observacoes || ''
           })
           // Mapear categorias corretamente
-          const categoriasIds = data.categorias
-            ? data.categorias.map((cat) => cat.ID)
-            : data.Categorias
-              ? data.Categorias.map((cat) => cat.ID)
-              : []
+          let categoriasIds: string[] = []
+          if (data.categorias) {
+            categoriasIds = data.categorias.map(cat => cat.ID)
+          } else if (data.Categorias) {
+            categoriasIds = data.Categorias.map(cat => cat.ID)
+          }
           setCategoriasSelecionadas(categoriasIds)
         } else {
           toast({
-            title: "Fornecedor não encontrado",
-            description: "O fornecedor solicitado não existe",
-            variant: "destructive",
+            title: 'Fornecedor não encontrado',
+            description: 'O fornecedor solicitado não existe',
+            variant: 'destructive'
           })
-          router.push("/dashboard/fornecedores")
+          router.push('/dashboard/fornecedores')
         }
       } catch (error) {
         toast({
-          title: "Erro ao carregar fornecedor",
-          description: "Tente novamente em alguns instantes",
-          variant: "destructive",
+          title: 'Erro ao carregar fornecedor',
+          description: 'Tente novamente em alguns instantes',
+          variant: 'destructive'
         })
       } finally {
         setLoading(false)
@@ -116,22 +140,24 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
 
   // Função para atualizar dados do formulário
   const updateFormData = (field: string, value: string | number | null) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [field]: value,
+      [field]: value
     }))
   }
 
   // Função para adicionar categoria
   const adicionarCategoria = (categoriaId: string) => {
     if (categoriaId && !categoriasSelecionadas.includes(categoriaId)) {
-      setCategoriasSelecionadas((prev) => [...prev, categoriaId])
+      setCategoriasSelecionadas(prev => [...prev, categoriaId])
     }
   }
 
   // Função para remover categoria
   const removerCategoria = (categoriaId: string) => {
-    setCategoriasSelecionadas((prev) => prev.filter((catId) => catId !== categoriaId))
+    setCategoriasSelecionadas(prev =>
+      prev.filter(catId => catId !== categoriaId)
+    )
   }
 
   // Função para submeter o formulário
@@ -141,45 +167,45 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
     // Validações básicas
     if (!formData.Nome.trim()) {
       toast({
-        title: "Erro de validação",
-        description: "Nome da empresa é obrigatório",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Nome da empresa é obrigatório',
+        variant: 'destructive'
       })
       return
     }
 
     if (!formData.Email.trim()) {
       toast({
-        title: "Erro de validação",
-        description: "Email é obrigatório",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Email é obrigatório',
+        variant: 'destructive'
       })
       return
     }
 
     if (!formData.Contato.trim()) {
       toast({
-        title: "Erro de validação",
-        description: "Pessoa de contato é obrigatória",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Pessoa de contato é obrigatória',
+        variant: 'destructive'
       })
       return
     }
 
     if (!formData.CNPJ.trim()) {
       toast({
-        title: "Erro de validação",
-        description: "CNPJ é obrigatório",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'CNPJ é obrigatório',
+        variant: 'destructive'
       })
       return
     }
 
     if (categoriasSelecionadas.length === 0) {
       toast({
-        title: "Erro de validação",
-        description: "Selecione pelo menos uma categoria",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Selecione pelo menos uma categoria',
+        variant: 'destructive'
       })
       return
     }
@@ -188,9 +214,9 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.Email)) {
       toast({
-        title: "Erro de validação",
-        description: "Email deve ter um formato válido",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Email deve ter um formato válido',
+        variant: 'destructive'
       })
       return
     }
@@ -203,22 +229,22 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
         Website: formData.Website.trim() || null,
         Endereco: formData.Endereco.trim() || null,
         NomeAtendente: formData.NomeAtendente.trim() || null,
-        Observacoes: formData.Observacoes.trim() || null,
+        Observacoes: formData.Observacoes.trim() || null
       }
 
       const result = await updateFornecedor(id, updateData)
 
       if (result.success) {
         toast({
-          title: "Fornecedor atualizado",
-          description: result.message,
+          title: 'Fornecedor atualizado',
+          description: result.message
         })
-        router.push("/dashboard/fornecedores")
+        router.push('/dashboard/fornecedores')
       } else {
         toast({
-          title: "Erro ao atualizar fornecedor",
+          title: 'Erro ao atualizar fornecedor',
           description: result.message,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
     })
@@ -234,8 +260,12 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
             </Link>
           </Button>
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Carregando Fornecedor</h2>
-            <p className="text-muted-foreground">Aguarde enquanto carregamos os dados...</p>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+              Carregando Fornecedor
+            </h2>
+            <p className="text-muted-foreground">
+              Aguarde enquanto carregamos os dados...
+            </p>
           </div>
         </div>
         <div className="flex items-center justify-center h-64">
@@ -256,15 +286,21 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
             </Link>
           </Button>
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Fornecedor não encontrado</h2>
-            <p className="text-muted-foreground">O fornecedor solicitado não existe ou foi removido</p>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+              Fornecedor não encontrado
+            </h2>
+            <p className="text-muted-foreground">
+              O fornecedor solicitado não existe ou foi removido
+            </p>
           </div>
         </div>
         <div className="flex items-center justify-center h-64">
           <AlertCircle className="h-8 w-8 text-muted-foreground" />
           <div className="ml-4">
             <p className="text-lg font-medium">Fornecedor não encontrado</p>
-            <p className="text-muted-foreground">Verifique se o ID está correto ou se o fornecedor ainda existe</p>
+            <p className="text-muted-foreground">
+              Verifique se o ID está correto ou se o fornecedor ainda existe
+            </p>
           </div>
         </div>
       </div>
@@ -281,8 +317,12 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
           </Link>
         </Button>
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Editar Fornecedor</h2>
-          <p className="text-muted-foreground">Atualize as informações do fornecedor</p>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Editar Fornecedor
+          </h2>
+          <p className="text-muted-foreground">
+            Atualize as informações do fornecedor
+          </p>
         </div>
       </div>
 
@@ -298,44 +338,39 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">ID do Fornecedor</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Status Atual
+                    </Label>
                     <div className="flex items-center gap-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                        {fornecedor.id || fornecedor.ID}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(fornecedor.id || fornecedor.ID || "")
-                          toast({
-                            title: "ID copiado",
-                            description: "ID do fornecedor copiado para a área de transferência",
-                          })
-                        }}
+                      <Badge
+                        variant={
+                          (fornecedor.status || fornecedor.Status) === 'Ativo'
+                            ? 'default'
+                            : 'secondary'
+                        }
                       >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Status Atual</Label>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={(fornecedor.status || fornecedor.Status) === "Ativo" ? "default" : "secondary"}>
                         {fornecedor.status || fornecedor.Status}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">(Use as ações da lista para alterar)</span>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Orçamentos</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Orçamentos
+                    </Label>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="flex items-center gap-1">
+                      <Badge
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
                         <FileText className="h-3 w-3" />
                         {fornecedor.orcamentosCount || 0}
                       </Badge>
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/dashboard/fornecedores/${fornecedor.id || fornecedor.ID}/orcamentos`}>
+                        <Link
+                          href={`/dashboard/fornecedores/${
+                            fornecedor.id || fornecedor.ID
+                          }/orcamentos`}
+                        >
                           <ExternalLink className="h-3 w-3" />
                         </Link>
                       </Button>
@@ -358,7 +393,7 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                     <Input
                       id="nome"
                       value={formData.Nome}
-                      onChange={(e) => updateFormData("Nome", e.target.value)}
+                      onChange={e => updateFormData('Nome', e.target.value)}
                       placeholder="Ex: Casa do Construtor Center"
                       required
                     />
@@ -370,7 +405,7 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                     <Input
                       id="cnpj"
                       value={formData.CNPJ}
-                      onChange={(e) => updateFormData("CNPJ", e.target.value)}
+                      onChange={e => updateFormData('CNPJ', e.target.value)}
                       placeholder="00.000.000/0000-00"
                       required
                     />
@@ -385,7 +420,7 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                     <Input
                       id="contato"
                       value={formData.Contato}
-                      onChange={(e) => updateFormData("Contato", e.target.value)}
+                      onChange={e => updateFormData('Contato', e.target.value)}
                       placeholder="Ex: Carlos Andrade"
                       required
                     />
@@ -397,7 +432,9 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                   <Textarea
                     id="observacoes"
                     value={formData.Observacoes}
-                    onChange={(e) => updateFormData("Observacoes", e.target.value)}
+                    onChange={e =>
+                      updateFormData('Observacoes', e.target.value)
+                    }
                     placeholder="Informações adicionais sobre o fornecedor..."
                     rows={3}
                   />
@@ -420,27 +457,28 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                       id="email"
                       type="email"
                       value={formData.Email}
-                      onChange={(e) => updateFormData("Email", e.target.value)}
+                      onChange={e => updateFormData('Email', e.target.value)}
                       placeholder="comercial@empresa.com.br"
                       required
                     />
                   </div>
-                 
-                <div className="space-y-2">
-                  <Label htmlFor="endereco">Endereço</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="endereco"
-                      value={formData.Endereco}
-                      onChange={(e) => updateFormData("Endereco", e.target.value)}
-                      placeholder="Rua, número, bairro, cidade"
-                      className="pl-8"
-                    />
+
+                  <div className="space-y-2">
+                    <Label htmlFor="endereco">Endereço</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="endereco"
+                        value={formData.Endereco}
+                        onChange={e =>
+                          updateFormData('Endereco', e.target.value)
+                        }
+                        placeholder="Rua, número, bairro, cidade"
+                        className="pl-8"
+                      />
+                    </div>
                   </div>
                 </div>
-                </div>
-
               </CardContent>
             </Card>
           </div>
@@ -456,18 +494,31 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <div className="flex items-center gap-2">
-                    <Badge variant={(fornecedor.status || fornecedor.Status) === "Ativo" ? "default" : "secondary"}>
+                    <Badge
+                      variant={
+                        (fornecedor.status || fornecedor.Status) === 'Ativo'
+                          ? 'default'
+                          : 'secondary'
+                      }
+                    >
                       {fornecedor.status || fornecedor.Status}
                     </Badge>
-                    <span className="text-sm text-muted-foreground">(Use as ações da lista para alterar)</span>
+                    <span className="text-sm text-muted-foreground">
+                      (Use as ações da lista para alterar)
+                    </span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="avaliacao">Avaliação</Label>
                   <Select
-                    value={formData.Avaliacao?.toString() || "0"}
-                    onValueChange={(value) => updateFormData("Avaliacao", value ? Number.parseFloat(value) : null)}
+                    value={formData.Avaliacao?.toString() || '0'}
+                    onValueChange={value =>
+                      updateFormData(
+                        'Avaliacao',
+                        value ? Number.parseFloat(value) : null
+                      )
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma avaliação" />
@@ -504,7 +555,7 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                   <Label>Adicionar Categoria</Label>
                   <div className="flex gap-2">
                     <Select
-                      onValueChange={(value) => {
+                      onValueChange={value => {
                         adicionarCategoria(value)
                       }}
                     >
@@ -513,8 +564,11 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                       </SelectTrigger>
                       <SelectContent>
                         {categorias
-                          .filter((categoria) => !categoriasSelecionadas.includes(categoria.ID))
-                          .map((categoria) => (
+                          .filter(
+                            categoria =>
+                              !categoriasSelecionadas.includes(categoria.ID)
+                          )
+                          .map(categoria => (
                             <SelectItem key={categoria.ID} value={categoria.ID}>
                               {categoria.Nome}
                             </SelectItem>
@@ -528,11 +582,17 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                   <div className="space-y-2">
                     <Label>Categorias Selecionadas</Label>
                     <div className="flex flex-wrap gap-2">
-                      {categoriasSelecionadas.map((categoriaId) => {
-                        const categoria = categorias.find((cat) => cat.ID === categoriaId)
+                      {categoriasSelecionadas.map(categoriaId => {
+                        const categoria = categorias.find(
+                          cat => cat.ID === categoriaId
+                        )
                         return (
-                          <Badge key={categoriaId} variant="secondary" className="flex items-center gap-1">
-                            {categoria?.Nome || "Categoria não encontrada"}
+                          <Badge
+                            key={categoriaId}
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            {categoria?.Nome || 'Categoria não encontrada'}
                             <button
                               type="button"
                               onClick={() => removerCategoria(categoriaId)}
@@ -548,7 +608,9 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                 )}
 
                 {categoriasSelecionadas.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Nenhuma categoria selecionada</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma categoria selecionada
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -569,7 +631,7 @@ export default function EditarFornecedorPage({ params }: { params: Promise<{ id:
                 Atualizando...
               </>
             ) : (
-              "Atualizar Fornecedor"
+              'Atualizar Fornecedor'
             )}
           </Button>
         </div>

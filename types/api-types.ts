@@ -319,16 +319,25 @@ export interface CriarCronogramaLoteRequest {
 export interface OrcamentoComparacao {
   id: string
   numero: string
-  fornecedorNome: string
   valorTotal: number
   status: string
   dataEmissao: string
-  itensCategoria: number
+  obraId: string
+  obraNome: string
+  fornecedorId: string
+  fornecedorNome: string
+  itensCount: number
+  categorias: {
+    ID: string
+    Nome: string
+  }[]
 }
 
 export interface ComparacaoOrcamentosResponse {
   categoria: string
+  descripcion: string
   orcamentos: OrcamentoComparacao[]
+  total: number
 }
 
 // Filtros (atualizado para usar pageSize em vez de limit)
@@ -339,4 +348,10 @@ export interface FilterOptions {
   order?: "asc" | "desc"
   search?: string
   [key: string]: any
+}
+
+
+export interface Categoria {
+  ID: number | string
+  Nome: string
 }

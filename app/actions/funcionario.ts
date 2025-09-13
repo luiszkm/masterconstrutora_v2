@@ -253,7 +253,9 @@ export async function getFuncionarios(): Promise<
       return { error: errorMessage };
     }
 
-    const data: FuncionarioBase[] = await response.json();
+    const result = await response.json();
+    // Handle paginated response structure
+    const data: FuncionarioBase[] = result.dados || result || [];
     return data;
   } catch (error) {
     console.error("Erro ao buscar funcionários:", error);

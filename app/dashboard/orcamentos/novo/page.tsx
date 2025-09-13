@@ -151,7 +151,7 @@ export default function NovoOrcamentoPage() {
         }
 
         if (!("error" in fornecedoresData)) {
-          setFornecedores(fornecedoresData)
+          setFornecedores(Array.isArray(fornecedoresData) ? fornecedoresData : [])
         } else {
           toast({
             title: "Erro ao carregar fornecedores",
@@ -161,13 +161,14 @@ export default function NovoOrcamentoPage() {
         }
 
         if (!("error" in categoriasData)) {
-          setCategorias(categoriasData)
+          setCategorias(Array.isArray(categoriasData) ? categoriasData : [])
         } else {
           toast({
             title: "Erro ao carregar categorias",
             description: categoriasData.error,
             variant: "destructive",
           })
+          setCategorias([])
         }
       } catch (error) {
         toast({
@@ -199,7 +200,7 @@ export default function NovoOrcamentoPage() {
         const etapasData = await getEtapasByObra(obraSelecionada)
 
         if (!("error" in etapasData)) {
-          setEtapas(etapasData)
+          setEtapas(Array.isArray(etapasData) ? etapasData : [])
         } else {
           toast({
             title: "Erro ao carregar etapas",
@@ -463,7 +464,7 @@ export default function NovoOrcamentoPage() {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {fornecedores.length === 0 ? (
+                    {!Array.isArray(fornecedores) || fornecedores.length === 0 ? (
                       <SelectItem value="" disabled>
                         {loadingFornecedores ? "Carregando..." : "Nenhum fornecedor encontrado"}
                       </SelectItem>
@@ -473,7 +474,7 @@ export default function NovoOrcamentoPage() {
                           <div className="flex flex-col">
                             <span className="font-medium">{fornecedor.nome}</span>
                             <span className="text-xs text-muted-foreground">
-                              {fornecedor.categorias.map((cat) => cat.Nome).join(", ")} • {fornecedor.status}
+                              {Array.isArray(fornecedor.categorias) && fornecedor.categorias.length > 0 ? fornecedor.categorias.map((cat) => cat?.Nome || "").filter(nome => nome).join(", ") : "N/A"} • {fornecedor.status}
                             </span>
                           </div>
                         </SelectItem>

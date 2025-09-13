@@ -1,100 +1,122 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Download, Package, Loader2 } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { toast } from "@/hooks/use-toast"
-import { compararOrcamentosPorCategoria, obterCategoriasDisponiveis } from "@/app/actions/orcamentos-comparacao"
-import { ComparacaoOrcamentosResponse, OrcamentoComparacao } from "@/types/api-types"
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
+import { ArrowLeft, Download, Package, Loader2 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { toast } from '@/hooks/use-toast'
+import {
+  compararOrcamentosPorCategoria,
+} from '@/app/actions/orcamentos-comparacao'
+import {
+  ComparacaoOrcamentosResponse,
+} from '@/types/api-types'
+import { getCategorias } from '@/app/actions/orcamento'
+import { CategoryBadges } from '@/components/categoryBadges'
 
-// Dados mockados para fallback (caso a API não esteja disponível)
-const categoriasMock = [
-  "Cimento",
-  "Areia", 
-  "Aço",
-  "Mármores",
-  "Porcelanatos",
-  "Cabos",
-  "Disjuntores",
-  "Madeira Maciça",
-  "Deck",
-  "Granitos"
-]
-
-// Dados mockados para fallback da comparação
-const comparacaoMock: ComparacaoOrcamentosResponse = {
-  categoria: "Cimento",
-  orcamentos: [
-    {
-      id: "uuid-1",
-      numero: "ORC-2025-AUG-001",
-      fornecedorNome: "Materiais Premium Ltda",
-      valorTotal: 1250.00,
-      status: "Aprovado",
-      dataEmissao: "2025-08-01T00:00:00Z",
-      itensCategoria: 3
-    },
-    {
-      id: "uuid-2", 
-      numero: "ORC-2025-AUG-002",
-      fornecedorNome: "Construção & Cia",
-      valorTotal: 1350.00,
-      status: "Pendente",
-      dataEmissao: "2025-08-02T00:00:00Z",
-      itensCategoria: 2
-    },
-    {
-      id: "uuid-3",
-      numero: "ORC-2025-AUG-003", 
-      fornecedorNome: "Materiais Baratos SA",
-      valorTotal: 980.00,
-      status: "Aprovado",
-      dataEmissao: "2025-08-03T00:00:00Z",
-      itensCategoria: 4
-    }
-  ]
+// Tipo para categorias da API
+type Categoria = {
+  ID: string
+  Nome: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export default function CompararOrcamentosPage() {
   // Estados
   const [categorias, setCategorias] = useState<string[]>([])
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>("")
-  const [comparacao, setComparacao] = useState<ComparacaoOrcamentosResponse | null>(null)
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('')
+  const [comparacao, setComparacao] =
+    useState<ComparacaoOrcamentosResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingCategorias, setLoadingCategorias] = useState(true)
+
+  // Validação de resposta do backend para comparação
+  const validateComparacaoResponse = (data: any): data is ComparacaoOrcamentosResponse => {
+    return (
+      data &&
+      typeof data === 'object' &&
+      typeof data.categoria === 'string' &&
+      typeof data.descripcion === 'string' &&
+      Array.isArray(data.orcamentos) &&
+      typeof data.total === 'number' &&
+      data.orcamentos.every((orc: any) =>
+        typeof orc.id === 'string' &&
+        typeof orc.numero === 'string' &&
+        typeof orc.valorTotal === 'number' &&
+        typeof orc.status === 'string' &&
+        typeof orc.dataEmissao === 'string' &&
+        typeof orc.obraId === 'string' &&
+        typeof orc.obraNome === 'string' &&
+        typeof orc.fornecedorId === 'string' &&
+        typeof orc.fornecedorNome === 'string' &&
+        typeof orc.itensCount === 'number' &&
+        Array.isArray(orc.categorias) &&
+        orc.categorias.every((cat: any) =>
+          typeof cat.ID === 'string' &&
+          typeof cat.Nome === 'string'
+        )
+      )
+    )
+  }
 
   // Carregar categorias disponíveis
   const carregarCategorias = async () => {
     setLoadingCategorias(true)
     try {
-      console.log('🔍 Carregando categorias disponíveis...')
-      const result = await obterCategoriasDisponiveis()
-      
-      if (result.success && result.data) {
-        console.log('✅ Categorias carregadas da API:', result.data)
-        setCategorias(result.data)
+      const result = await getCategorias()
+
+      if ('error' in result) {
+        throw new Error(result.error)
+      }
+
+      // Validar e extrair nomes das categorias
+      if (Array.isArray(result)) {
+        const nomesCategoria = result
+          .filter((cat): cat is Categoria => cat && typeof cat === 'object' && 'Nome' in cat)
+          .map(cat => cat.Nome)
+          .filter(nome => typeof nome === 'string' && nome.trim() !== '')
+
+        if (nomesCategoria.length === 0) {
+          throw new Error('Nenhuma categoria válida encontrada')
+        }
+
+        setCategorias(nomesCategoria)
       } else {
-        console.log('❌ Erro ao carregar categorias, usando mock:', result.error)
-        setCategorias(categoriasMock)
-        toast({
-          title: "Aviso",
-          description: "Usando categorias de demonstração. API não disponível.",
-          variant: "default",
-        })
+        throw new Error('Formato de resposta inválido para categorias')
       }
     } catch (error) {
       console.error('💥 Erro ao carregar categorias:', error)
-      setCategorias(categoriasMock)
+      // Fallback para categorias mock se necessário
+      setCategorias(['Cimento', 'Areia', 'Brita', 'Ferro', 'Madeira'])
       toast({
-        title: "Erro",
-        description: "Erro ao carregar categorias, usando dados de demonstração",
-        variant: "destructive",
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao carregar categorias',
+        variant: 'destructive'
       })
     } finally {
       setLoadingCategorias(false)
@@ -107,37 +129,65 @@ export default function CompararOrcamentosPage() {
 
     setLoading(true)
     try {
-      console.log('🔍 Comparando orçamentos para categoria:', categoriaSelecionada)
+      console.log(
+        '🔍 Comparando orçamentos para categoria:',
+        categoriaSelecionada
+      )
       const result = await compararOrcamentosPorCategoria(categoriaSelecionada)
-      
+
       if (result.success && result.data) {
-        console.log('✅ Comparação carregada da API:', result.data)
+        // Validar resposta do backend
+        if (!validateComparacaoResponse(result.data)) {
+          throw new Error('Formato de resposta inválido do servidor')
+        }
+
+        // Validar se a categoria retornada corresponde à solicitada
+        if (result.data.categoria !== categoriaSelecionada) {
+          console.warn(
+            `⚠️ Categoria retornada (${result.data.categoria}) diferente da solicitada (${categoriaSelecionada})`
+          )
+        }
+
+        // Validar se há orçamentos válidos
+        if (!result.data.orcamentos || result.data.orcamentos.length === 0) {
+          setComparacao(null)
+          toast({
+            title: 'Aviso',
+            description: 'Nenhum orçamento encontrado para esta categoria',
+            variant: 'default'
+          })
+          return
+        }
+
         // Ordenar por valor total (do menor para o maior)
         const comparacaoOrdenada = {
           ...result.data,
-          orcamentos: result.data.orcamentos.sort((a, b) => a.valorTotal - b.valorTotal)
+          orcamentos: result.data.orcamentos.sort(
+            (a, b) => a.valorTotal - b.valorTotal
+          )
         }
         setComparacao(comparacaoOrdenada)
-      } else {
-        console.log('❌ Erro ao comparar orçamentos, usando mock:', result.error)
-        // Usar dados mockados se a API falhar
-        const mockComCategoria = {
-          ...comparacaoMock,
-          categoria: categoriaSelecionada
-        }
-        setComparacao(mockComCategoria)
+
         toast({
-          title: "Aviso",
-          description: "Usando dados de demonstração. API não disponível: " + (result.error || "Erro desconhecido"),
-          variant: "default",
+          title: 'Sucesso',
+          description: `${result.data.orcamentos.length} orçamentos encontrados para ${result.data.categoria}`,
+          variant: 'default'
+        })
+      } else {
+        setComparacao(null)
+        toast({
+          title: 'Erro',
+          description: result.message || 'Erro ao comparar orçamentos',
+          variant: 'destructive'
         })
       }
     } catch (error) {
       console.error('💥 Erro ao comparar orçamentos:', error)
+      setComparacao(null)
       toast({
-        title: "Erro",
-        description: "Erro ao comparar orçamentos",
-        variant: "destructive",
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao comparar orçamentos',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -158,15 +208,15 @@ export default function CompararOrcamentosPage() {
   // Formatar status do orçamento
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case "aprovado":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-      case "pendente":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-      case "recusado":
-      case "cancelado":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+      case 'aprovado':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+      case 'pendente':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+      case 'recusado':
+      case 'cancelado':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
     }
   }
 
@@ -178,28 +228,38 @@ export default function CompararOrcamentosPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h2 className="text-3xl font-bold tracking-tight">Comparar Orçamentos por Material</h2>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Comparar Orçamentos por Material
+        </h2>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Selecione uma Categoria para Comparar</CardTitle>
-          <CardDescription>Compare os orçamentos por categoria de material</CardDescription>
+          <CardDescription>
+            Compare os orçamentos por categoria de material
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="categoria">Categoria</Label>
-              <Select 
-                value={categoriaSelecionada} 
+              <Select
+                value={categoriaSelecionada}
                 onValueChange={setCategoriaSelecionada}
                 disabled={loadingCategorias}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingCategorias ? "Carregando..." : "Selecione uma categoria"} />
+                  <SelectValue
+                    placeholder={
+                      loadingCategorias
+                        ? 'Carregando...'
+                        : 'Selecione uma categoria'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {categorias.map((categoria) => (
+                  {categorias.map(categoria => (
                     <SelectItem key={categoria} value={categoria}>
                       {categoria}
                     </SelectItem>
@@ -208,12 +268,12 @@ export default function CompararOrcamentosPage() {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button 
-                onClick={gerarComparacao} 
+              <Button
+                onClick={gerarComparacao}
                 disabled={!categoriaSelecionada || loading || loadingCategorias}
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {loading ? "Comparando..." : "Comparar"}
+                {loading ? 'Comparando...' : 'Comparar'}
               </Button>
             </div>
           </div>
@@ -227,7 +287,10 @@ export default function CompararOrcamentosPage() {
               <Package className="h-5 w-5" />
               Comparação de {comparacao.categoria}
             </CardTitle>
-            <CardDescription>{comparacao.orcamentos.length} orçamentos encontrados com esta categoria</CardDescription>
+            <CardDescription>
+              {comparacao.orcamentos.length} orçamentos encontrados com esta
+              categoria
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
@@ -246,12 +309,23 @@ export default function CompararOrcamentosPage() {
                 <TableBody>
                   {comparacao.orcamentos.map((item, index) => {
                     const menorValor = comparacao.orcamentos[0].valorTotal
-                    const diferencaPercentual = calcularDiferencaPercentual(item.valorTotal, menorValor)
+                    const diferencaPercentual = calcularDiferencaPercentual(
+                      item.valorTotal,
+                      menorValor
+                    )
 
                     return (
-                      <TableRow key={item.id} className={index === 0 ? "bg-green-50 dark:bg-green-950/20" : ""}>
+                      <TableRow
+                        key={item.id}
+                        className={
+                          index === 0 ? 'bg-green-50 dark:bg-green-950/20' : ''
+                        }
+                      >
                         <TableCell className="font-medium">
-                          <Link href={`/dashboard/orcamentos/${item.id}`} className="hover:underline">
+                          <Link
+                            href={`/dashboard/orcamentos/${item.id}`}
+                            className="hover:underline"
+                          >
                             {item.numero}
                           </Link>
                         </TableCell>
@@ -262,13 +336,18 @@ export default function CompararOrcamentosPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {new Date(item.dataEmissao).toLocaleDateString('pt-BR')}
+                          {new Date(item.dataEmissao).toLocaleDateString(
+                            'pt-BR'
+                          )}
                         </TableCell>
                         <TableCell>
-                          {item.itensCategoria} {item.itensCategoria === 1 ? 'item' : 'itens'}
+                          <CategoryBadges categorias={item.categorias.map(c => c.Nome)} /> 
                         </TableCell>
                         <TableCell className="font-medium">
-                          R$ {item.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          R${' '}
+                          {item.valorTotal.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2
+                          })}
                         </TableCell>
                         <TableCell>
                           {index === 0 ? (
@@ -279,7 +358,9 @@ export default function CompararOrcamentosPage() {
                               Melhor preço
                             </Badge>
                           ) : (
-                            <span className="text-red-600">+{diferencaPercentual.toFixed(2)}%</span>
+                            <span className="text-red-600">
+                              +{diferencaPercentual.toFixed(2)}%
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>

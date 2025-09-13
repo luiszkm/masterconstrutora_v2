@@ -62,39 +62,47 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
   { initialData?: ObraListResponse, funcionariosDisponiveis: FuncionarioBase[] }) {
   // Estados
   const [obras, setObras] = useState<ObraListItem[]>(initialData?.dados || [])
-  const [paginacao, setPaginacao] = useState(
-    initialData?.paginacao || {
-      totalItens: 0,
-      totalPages: 1,
-      currentPage: 1,
-      pageSize: 20,
-    },
+  const [data, setData] = useState<ObraListResponse>(
+    initialData || {
+      dados: [],
+      paginacao: {
+        totalItens: 0,
+        totalPages: 1,
+        currentPage: 1,
+        pageSize: 20,
+      },
+    }
   )
   const [loading, setLoading] = useState(!initialData)
+
+  // Estados para paginação (separados como em orçamentos)
+  const [currentPage, setCurrentPage] = useState(initialData?.paginacao?.currentPage || 1)
+  const [pageSize, setPageSize] = useState(initialData?.paginacao?.pageSize || 20)
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState<string[]>([])
   const [filtroEtapa, setFiltroEtapa] = useState<string[]>([])
 
-  const carregarObras = async (page = 1, pageSize?: number) => {
+  const loadObras = async (page: number = currentPage, size: number = pageSize) => {
     setLoading(true)
     try {
-      const result = await getObrasList(page, pageSize || paginacao.pageSize)
+      const result = await getObrasList(page, size)
 
       if (result.success && result.data) {
+        setData(result.data)
         setObras(result.data.dados)
-        setPaginacao(result.data.paginacao)
+        setCurrentPage(result.data.paginacao?.currentPage || page)
       } else {
         toast({
-          title: "Erro",
+          title: "Erro ao carregar obras",
           description: result.error || "Não foi possível carregar as obras",
           variant: "destructive",
         })
       }
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao carregar obras",
+        title: "Erro ao carregar obras",
+        description: "Tente novamente em alguns instantes",
         variant: "destructive",
       })
     } finally {
@@ -104,7 +112,7 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
 
   useEffect(() => {
     if (!initialData) {
-      carregarObras()
+      loadObras()
     }
   }, [])
 
@@ -131,7 +139,7 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
   const obrasFiltradas = filtrarObras()
 
   // Calcular estatísticas baseadas nos dados do backend
-  const totalObras = paginacao.totalItens
+  const totalObras = data.paginacao.totalItens
   const obrasEmAndamento = obras.filter((o) => o.status.toLowerCase().includes("andamento")).length
   const obrasConcluidas = obras.filter((o) => o.status.toLowerCase().includes("conclu")).length
 
@@ -163,20 +171,16 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
     setSearchTerm("")
   }
 
-  // Funções de paginação
-
-  const handlePageChange = (page: number) => {
-    setPaginacao(prev => ({ ...prev, currentPage: page }))
-    carregarObras(page)
+  // Funções de paginação (igual a orçamentos)
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= data.paginacao.totalPages) {
+      loadObras(newPage, pageSize)
+    }
   }
 
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPaginacao(prev => ({ 
-      ...prev, 
-      pageSize: newPageSize, 
-      currentPage: 1 
-    }))
-    carregarObras(1, newPageSize)
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
+    loadObras(1, newSize) // Volta para primeira página
   }
 
   // Ação: Concluir próxima etapa
@@ -198,7 +202,7 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
           description: `A próxima etapa da obra "${obra.nome}" foi concluída com sucesso!`,
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
-        carregarObras(paginacao.currentPage)
+        loadObras(currentPage, pageSize)
       } else {
         toast({
           title: "Erro",
@@ -228,7 +232,7 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
           description: `A obra "${obra.nome}" foi excluída com sucesso`,
           action: <ToastAction altText="Fechar">Fechar</ToastAction>,
         })
-        carregarObras(paginacao.currentPage)
+        loadObras(currentPage, pageSize)
       } else {
         toast({
           title: "Erro",
@@ -281,8 +285,8 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
   }
 
   const irParaPagina = (page: number) => {
-    if (page >= 1 && page <= paginacao.totalPages) {
-      carregarObras(page)
+    if (page >= 1 && page <= data.paginacao.totalPages) {
+      loadObras(page, pageSize)
     }
   }
 
@@ -556,10 +560,10 @@ export function ObrasPageClient({ initialData, funcionariosDisponiveis }:
 
       {/* Paginação */}
       <DataTablePagination
-        totalItems={paginacao.totalItens}
-        totalPages={paginacao.totalPages}
-        currentPage={paginacao.currentPage}
-        pageSize={paginacao.pageSize}
+        totalItems={data.paginacao?.totalItens || 0}
+        totalPages={data.paginacao?.totalPages || 1}
+        currentPage={currentPage}
+        pageSize={pageSize}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
       />

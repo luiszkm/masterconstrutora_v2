@@ -19,10 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from '@/hooks/use-toast'
 import { Plus, Trash2 } from 'lucide-react'
-import {
-  CriarCronogramaRequest,
-  CriarCronogramaLoteRequest
-} from '@/types/api-types'
+
 import {
   criarCronogramaAction,
   criarCronogramaLoteAction
@@ -74,12 +71,12 @@ export function CriarCronogramaIndividual({
   onOpenChange,
   obraId,
   onSuccess
-}: {
+}: Readonly<{
   open: boolean
   onOpenChange: (open: boolean) => void
   obraId: string
   onSuccess: () => void
-}) {
+}>) {
   const [loading, setLoading] = useState(false)
 
   const form = useForm<CronogramaIndividualForm>({
@@ -221,12 +218,12 @@ export function CriarCronogramaLote({
   onOpenChange,
   obraId,
   onSuccess
-}: {
+}: Readonly<{
   open: boolean
   onOpenChange: (open: boolean) => void
   obraId: string
   onSuccess: () => void
-}) {
+}>) {
   const [loading, setLoading] = useState(false)
 
   const form = useForm<CronogramaLoteForm>({

@@ -38,7 +38,9 @@ export async function getCategorias(): Promise<Categoria[] | { error: string }> 
       return { error: errorMessage }
     }
 
-    const data: Categoria[] = await response.json()
+    const result = await response.json()
+    // Handle paginated response structure
+    const data: Categoria[] = result.dados || result || []
     return data
   } catch (error) {
     console.error("Erro ao buscar categorias:", error)

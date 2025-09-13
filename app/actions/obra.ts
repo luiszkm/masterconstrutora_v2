@@ -5,7 +5,6 @@ import { Fornecedor } from "@/types/api-types";
 import { validateFormData } from "@/lib/validations/common";
 import { createObraSchema, updateObraSchema } from "@/lib/validations/obra";
 import { createSuccessResponse, createErrorResponse, type CreateActionResponse, type ActionResponse } from "@/types/action-responses";
-const url = new URL(`${API_URL}/obras`);
 
 // Tipos
 export interface ObraData {
@@ -85,10 +84,7 @@ export async function getObrasList(
   pageSize = 20
 ): Promise<ActionResponse<ObraListResponse>> {
   try {
-    url.searchParams.append("page", page.toString());
-    url.searchParams.append("pageSize", pageSize.toString());
-
-    const response = await makeAuthenticatedRequest(url.toString(), {
+    const response = await makeAuthenticatedRequest(`${API_URL}/obras?page=${page}&pageSize=${pageSize}`, {
       method: "GET",
       next: { tags: ["obras-list"] }, // Tag para revalidação de cache
     });

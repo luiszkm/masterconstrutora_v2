@@ -1,11 +1,18 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useTransition } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { DataTablePagination } from "@/components/ui/data-table-pagination"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect, useTransition } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { DataTablePagination } from '@/components/ui/data-table-pagination'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
 import {
   Plus,
   Search,
@@ -28,40 +35,55 @@ import {
   XCircle,
   Clock,
   Ban,
-  User,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react"
+  User
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { toast } from "@/components/ui/use-toast"
-import { ToastAction } from "@/components/ui/toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { deleteOrcamento, updateOrcamentoStatus, getOrcamentos } from "@/app/actions/orcamento"
-import type { Orcamento, OrcamentosResponse } from "@/types/orcamento"
+  DialogDescription
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { toast } from '@/components/ui/use-toast'
+import { ToastAction } from '@/components/ui/toast'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import {
+  deleteOrcamento,
+  updateOrcamentoStatus,
+  getOrcamentos
+} from '@/app/actions/orcamento'
+import type { Orcamento, OrcamentosResponse } from '@/types/orcamento'
+import { formatarData, formatarValor } from '@/app/utils/mask'
+import { CategoryBadges } from '@/components/categoryBadges'
+import { Categoria } from '@/types/api-types'
 
 // Tipo para ordenação
 type SortConfig = {
-  key: keyof Orcamento | ""
-  direction: "asc" | "desc"
+  key: keyof Orcamento | ''
+  direction: 'asc' | 'desc'
 }
 
 // Tipo para filtros
@@ -73,76 +95,108 @@ type Filters = {
   valorMax: string
   dataInicio: string
   dataFim: string
-  categoria: string
+  categoria: Categoria
 }
 
 interface OrcamentosPageClientProps {
-  initialData: OrcamentosResponse
+  readonly initialData: OrcamentosResponse
 }
 
-export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps) {
+export function OrcamentosPageClient({
+  initialData
+}: OrcamentosPageClientProps) {
+  const safeInitialData = {
+    dados: initialData?.dados || [],
+    paginacao: initialData?.paginacao || {
+      totalItens: initialData?.dados?.length || 0,
+      totalPages: 1,
+      currentPage: 1,
+      pageSize: initialData?.dados?.length || 20
+    }
+  }
   // Estados principais - garantir que sempre sejam arrays
   const [data, setData] = useState<OrcamentosResponse>(initialData)
-  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(initialData.dados || [])
-  const [filteredOrcamentos, setFilteredOrcamentos] = useState<Orcamento[]>(initialData.dados || [])
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(
+    initialData.dados || []
+  )
+  const [filteredOrcamentos, setFilteredOrcamentos] = useState<Orcamento[]>(
+    initialData.dados || []
+  )
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Estados para paginação
-  const [currentPage, setCurrentPage] = useState(initialData.paginacao?.currentPage || 1)
-  const [pageSize, setPageSize] = useState(initialData.paginacao?.pageSize || 20)
-
   // Estados para ordenação e filtros
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "", direction: "asc" })
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: '',
+    direction: 'asc'
+  })
   const [filters, setFilters] = useState<Filters>({
-    status: "",
-    fornecedor: "",
-    obra: "",
-    valorMin: "",
-    valorMax: "",
-    dataInicio: "",
-    dataFim: "",
-    categoria: "",
+    status: '',
+    fornecedor: '',
+    obra: '',
+    valorMin: '',
+    valorMax: '',
+    dataInicio: '',
+    dataFim: '',
+    categoria: ''
   })
 
   // Estados para pesquisa
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('')
 
   // Estados para diálogos
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [orcamentoToDelete, setOrcamentoToDelete] = useState<Orcamento | null>(null)
+  const [orcamentoToDelete, setOrcamentoToDelete] = useState<Orcamento | null>(
+    null
+  )
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
-  const [orcamentoToUpdate, setOrcamentoToUpdate] = useState<Orcamento | null>(null)
-  const [newStatus, setNewStatus] = useState<"Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado">("Em Aberto")
+  const [orcamentoToUpdate, setOrcamentoToUpdate] = useState<Orcamento | null>(
+    null
+  )
+  const [newStatus, setNewStatus] = useState<
+    'Em Aberto' | 'Aprovado' | 'Rejeitado' | 'Cancelado'
+  >('Em Aberto')
   const [categoriasDialogOpen, setCategoriasDialogOpen] = useState(false)
-  const [selectedOrcamentoCategorias, setSelectedOrcamentoCategorias] = useState<string[]>([])
+  const [selectedOrcamentoCategorias, setSelectedOrcamentoCategorias] =
+    useState<string[]>([])
 
   // Estados para popovers
   const [filtersOpen, setFiltersOpen] = useState(false)
 
+  // Estados para paginação (separados como em obras)
+  const [currentPage, setCurrentPage] = useState(
+    initialData?.paginacao?.currentPage || 1
+  )
+  const [pageSize, setPageSize] = useState(
+    initialData?.paginacao?.pageSize || 20
+  )
+
   // Função para carregar dados da API
-  const loadOrcamentos = async (page: number = currentPage, size: number = pageSize) => {
+  const loadOrcamentos = async (
+    page: number = currentPage,
+    size: number = pageSize
+  ) => {
     setLoading(true)
     try {
       const result = await getOrcamentos(page, size)
-      if ("error" in result) {
+      if ('error' in result) {
         toast({
-          title: "Erro ao carregar orçamentos",
+          title: 'Erro ao carregar orçamentos',
           description: result.error,
-          variant: "destructive",
+          variant: 'destructive'
         })
       } else {
         setData(result)
         const novosOrcamentos = result.dados || []
         setOrcamentos(novosOrcamentos)
         setFilteredOrcamentos(novosOrcamentos)
-        setCurrentPage(result.paginacao?.currentPage || 1)
+        setCurrentPage(result.paginacao?.currentPage || page)
       }
     } catch (error) {
       toast({
-        title: "Erro ao carregar orçamentos",
-        description: "Tente novamente em alguns instantes",
-        variant: "destructive",
+        title: 'Erro ao carregar orçamentos',
+        description: 'Tente novamente em alguns instantes',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -161,49 +215,63 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
     // Filtro por pesquisa geral
     if (searchTerm) {
       result = result.filter(
-        (orcamento) =>
+        orcamento =>
           orcamento.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          orcamento.fornecedorNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          orcamento.obraNome.toLowerCase().includes(searchTerm.toLowerCase()),
+          orcamento.fornecedorNome
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          orcamento.obraNome.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
     // Filtros específicos
     if (filters.status) {
-      result = result.filter((orcamento) => orcamento.status === filters.status)
+      result = result.filter(orcamento => orcamento.status === filters.status)
     }
 
     if (filters.fornecedor) {
-      result = result.filter((orcamento) =>
-        orcamento.fornecedorNome.toLowerCase().includes(filters.fornecedor.toLowerCase()),
+      result = result.filter(orcamento =>
+        orcamento.fornecedorNome
+          .toLowerCase()
+          .includes(filters.fornecedor.toLowerCase())
       )
     }
 
     if (filters.obra) {
-      result = result.filter((orcamento) => orcamento.obraNome.toLowerCase().includes(filters.obra.toLowerCase()))
+      result = result.filter(orcamento =>
+        orcamento.obraNome.toLowerCase().includes(filters.obra.toLowerCase())
+      )
     }
 
     if (filters.valorMin) {
       const valorMin = Number.parseFloat(filters.valorMin)
-      result = result.filter((orcamento) => orcamento.valorTotal >= valorMin)
+      result = result.filter(orcamento => orcamento.valorTotal >= valorMin)
     }
 
     if (filters.valorMax) {
       const valorMax = Number.parseFloat(filters.valorMax)
-      result = result.filter((orcamento) => orcamento.valorTotal <= valorMax)
+      result = result.filter(orcamento => orcamento.valorTotal <= valorMax)
     }
 
     if (filters.dataInicio) {
-      result = result.filter((orcamento) => new Date(orcamento.dataEmissao) >= new Date(filters.dataInicio))
+      result = result.filter(
+        orcamento =>
+          new Date(orcamento.dataEmissao) >= new Date(filters.dataInicio)
+      )
     }
 
     if (filters.dataFim) {
-      result = result.filter((orcamento) => new Date(orcamento.dataEmissao) <= new Date(filters.dataFim))
+      result = result.filter(
+        orcamento =>
+          new Date(orcamento.dataEmissao) <= new Date(filters.dataFim)
+      )
     }
 
     if (filters.categoria) {
-      result = result.filter((orcamento) =>
-        orcamento.categorias?.some((cat) => cat.toLowerCase().includes(filters.categoria.toLowerCase())),
+      result = result.filter(orcamento =>
+        orcamento.categorias?.some(cat =>
+          cat.toLowerCase().includes(filters.categoria.toLowerCase())
+        )
       )
     }
 
@@ -213,13 +281,31 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
   // Função para renderizar badge de status
   const renderStatusBadge = (status: string) => {
     const statusConfig = {
-      "Em Aberto": { variant: "outline" as const, icon: Clock, color: "text-yellow-600" },
-      Aprovado: { variant: "default" as const, icon: CheckCircle, color: "text-green-600" },
-      Rejeitado: { variant: "destructive" as const, icon: XCircle, color: "text-red-600" },
-      Cancelado: { variant: "secondary" as const, icon: Ban, color: "text-gray-600" },
+      'Em Aberto': {
+        variant: 'outline' as const,
+        icon: Clock,
+        color: 'text-yellow-600'
+      },
+      Aprovado: {
+        variant: 'default' as const,
+        icon: CheckCircle,
+        color: 'text-green-600'
+      },
+      Rejeitado: {
+        variant: 'destructive' as const,
+        icon: XCircle,
+        color: 'text-red-600'
+      },
+      Cancelado: {
+        variant: 'secondary' as const,
+        icon: Ban,
+        color: 'text-gray-600'
+      }
     }
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig["Em Aberto"]
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig['Em Aberto']
     const Icon = config.icon
 
     return (
@@ -230,29 +316,11 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
     )
   }
 
-  // Função para formatar data
-  const formatarData = (dataString: string) => {
-    const data = new Date(dataString)
-    return data.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-  }
-
-  // Função para formatar valor
-  const formatarValor = (valor: number) => {
-    return valor.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    })
-  }
-
   // Função para ordenar
   const requestSort = (key: keyof Orcamento) => {
-    let direction: "asc" | "desc" = "asc"
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc"
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
     }
     setSortConfig({ key, direction })
 
@@ -261,14 +329,14 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
       const bValue = b[key]
 
       if (aValue === null && bValue === null) return 0
-      if (aValue === null) return direction === "asc" ? 1 : -1
-      if (bValue === null) return direction === "asc" ? -1 : 1
+      if (aValue === null) return direction === 'asc' ? 1 : -1
+      if (bValue === null) return direction === 'asc' ? -1 : 1
 
       if (aValue < bValue) {
-        return direction === "asc" ? -1 : 1
+        return direction === 'asc' ? -1 : 1
       }
       if (aValue > bValue) {
-        return direction === "asc" ? 1 : -1
+        return direction === 'asc' ? 1 : -1
       }
       return 0
     })
@@ -279,32 +347,30 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
   // Função para limpar filtros
   const clearFilters = () => {
     setFilters({
-      status: "",
-      fornecedor: "",
-      obra: "",
-      valorMin: "",
-      valorMax: "",
-      dataInicio: "",
-      dataFim: "",
-      categoria: "",
+      status: '',
+      fornecedor: '',
+      obra: '',
+      valorMin: '',
+      valorMax: '',
+      dataInicio: '',
+      dataFim: '',
+      categoria: ''
     })
-    setSearchTerm("")
+    setSearchTerm('')
     setFiltersOpen(false)
   }
 
-  // Função para navegar entre páginas
+  // Funções de paginação (igual a obras)
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= data.paginacao.totalPages) {
       loadOrcamentos(newPage, pageSize)
     }
   }
 
-  // Função para alterar tamanho da página
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize)
     loadOrcamentos(1, newSize) // Volta para primeira página
   }
-
   // Função para excluir orçamento
   const handleDelete = async () => {
     if (!orcamentoToDelete) return
@@ -314,18 +380,18 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
 
       if (result.success) {
         toast({
-          title: "Orçamento excluído",
+          title: 'Orçamento excluído',
           description: result.message,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>
         })
 
         // Recarregar dados da página atual
         await loadOrcamentos(currentPage, pageSize)
       } else {
         toast({
-          title: "Erro ao excluir orçamento",
+          title: 'Erro ao excluir orçamento',
           description: result.message,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
 
@@ -339,25 +405,28 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
     if (!orcamentoToUpdate) return
 
     startTransition(async () => {
-      const result = await updateOrcamentoStatus(orcamentoToUpdate.id, newStatus)
+      const result = await updateOrcamentoStatus(
+        orcamentoToUpdate.id,
+        newStatus
+      )
 
       if (result.success) {
         toast({
-          title: "Status atualizado",
+          title: 'Status atualizado',
           description: result.message,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>
         })
 
         // Atualizar lista local
-        const updatedOrcamentos = orcamentos.map((o) =>
-          o.id === orcamentoToUpdate.id ? { ...o, status: newStatus } : o,
+        const updatedOrcamentos = orcamentos.map(o =>
+          o.id === orcamentoToUpdate.id ? { ...o, status: newStatus } : o
         )
         setOrcamentos(updatedOrcamentos)
       } else {
         toast({
-          title: "Erro ao atualizar status",
+          title: 'Erro ao atualizar status',
           description: result.message,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
 
@@ -367,51 +436,70 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
   }
 
   // Renderizar cabeçalho da tabela com ordenação
-  const renderSortableHeader = (key: keyof Orcamento, label: string) => (
-    <TableHead className="cursor-pointer select-none">
-      <button
-        className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
-        onClick={() => requestSort(key)}
-      >
-        {label}
-        {sortConfig.key === key ? (
-          sortConfig.direction === "asc" ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )
+  const renderSortableHeader = (key: keyof Orcamento, label: string) => {
+    let sortIcon
+    if (sortConfig.key === key) {
+      sortIcon =
+        sortConfig.direction === 'asc' ? (
+          <ChevronUp className="h-4 w-4" />
         ) : (
-          <div className="w-4" />
-        )}
-      </button>
-    </TableHead>
-  )
+          <ChevronDown className="h-4 w-4" />
+        )
+    } else {
+      sortIcon = <div className="w-4" />
+    }
+
+    return (
+      <TableHead className="cursor-pointer select-none">
+        <button
+          className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
+          onClick={() => requestSort(key)}
+        >
+          {label}
+          {sortIcon}
+        </button>
+      </TableHead>
+    )
+  }
 
   // Calcular estatísticas baseadas nos dados da API
   const stats = {
     total: data.paginacao?.totalItens || 0,
-    emAberto: Array.isArray(orcamentos) ? orcamentos.filter((o) => o.status === "Em Aberto").length : 0,
-    aprovados: Array.isArray(orcamentos) ? orcamentos.filter((o) => o.status === "Aprovado").length : 0,
+    emAberto: Array.isArray(orcamentos)
+      ? orcamentos.filter(o => o.status === 'Em Aberto').length
+      : 0,
+    aprovados: Array.isArray(orcamentos)
+      ? orcamentos.filter(o => o.status === 'Aprovado').length
+      : 0,
     // somar apenas os valores dos com status "Aprovado"
     valorTotal: Array.isArray(orcamentos)
-      ? orcamentos.reduce((total, o) => (o.status === "Aprovado" ? total + o.valorTotal : total), 0)
-      : 0,
+      ? orcamentos.reduce(
+          (total, o) =>
+            o.status === 'Aprovado' ? total + o.valorTotal : total,
+          0
+        )
+      : 0
   }
 
   // Obter listas únicas para filtros (baseado nos dados atuais)
   const uniqueFornecedores = Array.isArray(orcamentos)
-    ? Array.from(new Set(orcamentos.map((o) => o.fornecedorNome))).sort()
+    ? Array.from(new Set(orcamentos.map(o => o.fornecedorNome))).sort()
     : []
-  const uniqueObras = Array.isArray(orcamentos) ? Array.from(new Set(orcamentos.map((o) => o.obraNome))).sort() : []
+  const uniqueObras = Array.isArray(orcamentos)
+    ? Array.from(new Set(orcamentos.map(o => o.obraNome))).sort()
+    : []
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Orçamentos</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Orçamentos
+          </h2>
           <p className="text-muted-foreground">
-            Gerencie todos os orçamentos do sistema • {data.paginacao.totalItens} orçamentos encontrados
+            Gerencie todos os orçamentos do sistema •{' '}
+            {data.paginacao.totalItens} orçamentos encontrados
           </p>
         </div>
         <Button asChild className="w-full sm:w-auto">
@@ -442,7 +530,9 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
             <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.emAberto}</div>
+            <div className="text-2xl font-bold text-yellow-600">
+              {stats.emAberto}
+            </div>
             <p className="text-xs text-muted-foreground">Nesta página</p>
           </CardContent>
         </Card>
@@ -452,7 +542,9 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.aprovados}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {stats.aprovados}
+            </div>
             <p className="text-xs text-muted-foreground">Nesta página</p>
           </CardContent>
         </Card>
@@ -462,7 +554,9 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatarValor(stats.valorTotal)}</div>
+            <div className="text-2xl font-bold">
+              {formatarValor(stats.valorTotal)}
+            </div>
             <p className="text-xs text-muted-foreground">Nesta página</p>
           </CardContent>
         </Card>
@@ -479,18 +573,24 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
               placeholder="Buscar por número, fornecedor ou obra..."
               className="pl-8"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
 
           {/* Filtros Avançados */}
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto bg-transparent">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto bg-transparent"
+              >
                 <Filter className="mr-2 h-4 w-4" />
                 Filtros
                 {Object.values(filters).filter(Boolean).length > 0 && (
-                  <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
+                  <Badge
+                    variant="secondary"
+                    className="ml-2 h-5 w-5 rounded-full p-0 text-xs"
+                  >
                     {Object.values(filters).filter(Boolean).length}
                   </Badge>
                 )}
@@ -512,7 +612,12 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                   <Label className="text-sm font-medium">Status</Label>
                   <Select
                     value={filters.status}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value === "all" ? "" : value }))}
+                    onValueChange={value =>
+                      setFilters(prev => ({
+                        ...prev,
+                        status: value === 'all' ? '' : value
+                      }))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Todos os status" />
@@ -532,8 +637,11 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                   <Label className="text-sm font-medium">Fornecedor</Label>
                   <Select
                     value={filters.fornecedor}
-                    onValueChange={(value) =>
-                      setFilters((prev) => ({ ...prev, fornecedor: value === "all" ? "" : value }))
+                    onValueChange={value =>
+                      setFilters(prev => ({
+                        ...prev,
+                        fornecedor: value === 'all' ? '' : value
+                      }))
                     }
                   >
                     <SelectTrigger>
@@ -541,7 +649,7 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os fornecedores</SelectItem>
-                      {uniqueFornecedores.map((fornecedor) => (
+                      {uniqueFornecedores.map(fornecedor => (
                         <SelectItem key={fornecedor} value={fornecedor}>
                           {fornecedor}
                         </SelectItem>
@@ -555,14 +663,19 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                   <Label className="text-sm font-medium">Obra</Label>
                   <Select
                     value={filters.obra}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, obra: value === "all" ? "" : value }))}
+                    onValueChange={value =>
+                      setFilters(prev => ({
+                        ...prev,
+                        obra: value === 'all' ? '' : value
+                      }))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Todas as obras" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas as obras</SelectItem>
-                      {uniqueObras.map((obra) => (
+                      {uniqueObras.map(obra => (
                         <SelectItem key={obra} value={obra}>
                           {obra}
                         </SelectItem>
@@ -577,7 +690,12 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                   <Input
                     placeholder="Buscar por categoria..."
                     value={filters.categoria}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, categoria: e.target.value }))}
+                    onChange={e =>
+                      setFilters(prev => ({
+                        ...prev,
+                        categoria: e.target.value
+                      }))
+                    }
                   />
                 </div>
 
@@ -589,13 +707,23 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                       type="number"
                       placeholder="Valor mín."
                       value={filters.valorMin}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, valorMin: e.target.value }))}
+                      onChange={e =>
+                        setFilters(prev => ({
+                          ...prev,
+                          valorMin: e.target.value
+                        }))
+                      }
                     />
                     <Input
                       type="number"
                       placeholder="Valor máx."
                       value={filters.valorMax}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, valorMax: e.target.value }))}
+                      onChange={e =>
+                        setFilters(prev => ({
+                          ...prev,
+                          valorMax: e.target.value
+                        }))
+                      }
                     />
                   </div>
                 </div>
@@ -607,12 +735,22 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                     <Input
                       type="date"
                       value={filters.dataInicio}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, dataInicio: e.target.value }))}
+                      onChange={e =>
+                        setFilters(prev => ({
+                          ...prev,
+                          dataInicio: e.target.value
+                        }))
+                      }
                     />
                     <Input
                       type="date"
                       value={filters.dataFim}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, dataFim: e.target.value }))}
+                      onChange={e =>
+                        setFilters(prev => ({
+                          ...prev,
+                          dataFim: e.target.value
+                        }))
+                      }
                     />
                   </div>
                 </div>
@@ -626,7 +764,8 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
       {(searchTerm || Object.values(filters).some(Boolean)) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
-            Mostrando {filteredOrcamentos.length} de {orcamentos.length} orçamentos desta página
+            Mostrando {filteredOrcamentos.length} de {orcamentos.length}{' '}
+            orçamentos desta página
           </span>
           {filteredOrcamentos.length !== orcamentos.length && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -642,149 +781,169 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
           <Table>
             <TableHeader>
               <TableRow>
-                {renderSortableHeader("numero", "Número")}
-                {renderSortableHeader("fornecedorNome", "Fornecedor")}
-                {renderSortableHeader("obraNome", "Obra")}
+                {renderSortableHeader('numero', 'Número')}
+                {renderSortableHeader('fornecedorNome', 'Fornecedor')}
+                {renderSortableHeader('obraNome', 'Obra')}
                 <TableHead className="hidden md:table-cell">Itens</TableHead>
-                {renderSortableHeader("valorTotal", "Valor Total")}
-                {renderSortableHeader("dataEmissao", "Data")}
-                {renderSortableHeader("status", "Status")}
+                {renderSortableHeader('valorTotal', 'Valor Total')}
+                {renderSortableHeader('dataEmissao', 'Data')}
+                {renderSortableHeader('status', 'Status')}
                 <TableHead className="text-right w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Carregando orçamentos...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : filteredOrcamentos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                      <p>Nenhum orçamento encontrado</p>
-                      {(searchTerm || Object.values(filters).some(Boolean)) && (
-                        <Button variant="outline" size="sm" onClick={clearFilters}>
-                          Limpar filtros
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredOrcamentos.map((orcamento) => (
-                  <TableRow key={orcamento.id}>
-                    <TableCell className="font-medium min-w-[150px]">
-                      <div>
-                        <div className="font-medium">{orcamento.numero}</div>
-                        <div className="text-xs text-muted-foreground">ID: {orcamento.id.slice(0, 8)}...</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="min-w-[180px]">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
+            {/* Extracted table body content into a variable */}
+            {(() => {
+              if (loading) {
+                return (
+                  <TableBody>
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Carregando orçamentos...</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                )
+              }
+              if (filteredOrcamentos.length === 0) {
+                return (
+                  <TableBody>
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                          <p>Nenhum orçamento encontrado</p>
+                          {(searchTerm ||
+                            Object.values(filters).some(Boolean)) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={clearFilters}
+                            >
+                              Limpar filtros
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                )
+              }
+              return (
+                <TableBody>
+                  {filteredOrcamentos.map(orcamento => (
+                    <TableRow key={orcamento.id}>
+                      <TableCell className="font-medium min-w-[150px]">
                         <div>
-                          <div className="font-medium">{orcamento.fornecedorNome}</div>
-                          <div className="text-xs text-muted-foreground">
-                            ID: {orcamento.fornecedorId.slice(0, 8)}...
+                          <div className="font-medium">{orcamento.numero}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="min-w-[180px]">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">
+                              {orcamento.fornecedorNome}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="min-w-[180px]">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <div className="font-medium">{orcamento.obraNome}</div>
-                          <div className="text-xs text-muted-foreground">ID: {orcamento.obraId.slice(0, 8)}...</div>
+                      </TableCell>
+                      <TableCell className="min-w-[180px]">
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">
+                              {orcamento.obraNome}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell min-w-[80px]">
-                      <button
-                        className="w-full"
-                        onClick={() => {
-                          setSelectedOrcamentoCategorias(orcamento.categorias || [])
-                          setCategoriasDialogOpen(true)
-                        }}
-                      >
-                        <Badge variant="outline" className="flex items-center gap-1 cursor-pointer hover:bg-secondary">
-                          <Package className="h-3 w-3" />
-                          {orcamento.itensCount}
-                        </Badge>
-                      </button>
-                    </TableCell>
-                    <TableCell className="font-medium min-w-[120px]">{formatarValor(orcamento.valorTotal)}</TableCell>
-                    <TableCell className="min-w-[100px]">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatarData(orcamento.dataEmissao)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="min-w-[120px]">{renderStatusBadge(orcamento.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={isPending}>
-                            {isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <MoreHorizontal className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">Abrir menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/orcamentos/${orcamento.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Visualizar
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/orcamentos/${orcamento.id}/editar`}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setOrcamentoToUpdate(orcamento)
-                              setNewStatus(orcamento.status)
-                              setStatusDialogOpen(true)
-                            }}
-                          >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Alterar Status
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Download className="mr-2 h-4 w-4" />
-                            Exportar PDF
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setOrcamentoToDelete(orcamento)
-                              setDeleteDialogOpen(true)
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell min-w-[80px]">
+                        <CategoryBadges
+                          categorias={orcamento.categorias || []}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium min-w-[120px]">
+                        {formatarValor(orcamento.valorTotal)}
+                      </TableCell>
+                      <TableCell className="min-w-[100px]">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {formatarData(orcamento.dataEmissao)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="min-w-[120px]">
+                        {renderStatusBadge(orcamento.status)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={isPending}
+                            >
+                              {isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreHorizontal className="h-4 w-4" />
+                              )}
+                              <span className="sr-only">Abrir menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/dashboard/orcamentos/${orcamento.id}`}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Visualizar
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/dashboard/orcamentos/${orcamento.id}/editar`}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setOrcamentoToUpdate(orcamento)
+                                setNewStatus(orcamento.status)
+                                setStatusDialogOpen(true)
+                              }}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Alterar Status
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <Download className="mr-2 h-4 w-4" />
+                              Exportar PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                setOrcamentoToDelete(orcamento)
+                                setDeleteDialogOpen(true)
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              )
+            })()}
           </Table>
         </div>
       </div>
@@ -805,7 +964,8 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir o orçamento "{orcamentoToDelete?.numero}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir o orçamento "
+              {orcamentoToDelete?.numero}"? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -818,14 +978,18 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
             >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isPending}
+            >
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Excluindo...
                 </>
               ) : (
-                "Excluir"
+                'Excluir'
               )}
             </Button>
           </DialogFooter>
@@ -837,14 +1001,24 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Alterar Status do Orçamento</DialogTitle>
-            <DialogDescription>Altere o status do orçamento "{orcamentoToUpdate?.numero}".</DialogDescription>
+            <DialogDescription>
+              Altere o status do orçamento "{orcamentoToUpdate?.numero}".
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="status">Novo Status</Label>
               <Select
                 value={newStatus}
-                onValueChange={(value) => setNewStatus(value as "Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado")}
+                onValueChange={value =>
+                  setNewStatus(
+                    value as
+                      | 'Em Aberto'
+                      | 'Aprovado'
+                      | 'Rejeitado'
+                      | 'Cancelado'
+                  )
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -875,7 +1049,7 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                   Atualizando...
                 </>
               ) : (
-                "Atualizar Status"
+                'Atualizar Status'
               )}
             </Button>
           </DialogFooter>
@@ -883,7 +1057,10 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
       </Dialog>
 
       {/* Categorias Dialog */}
-      <Dialog open={categoriasDialogOpen} onOpenChange={setCategoriasDialogOpen}>
+      <Dialog
+        open={categoriasDialogOpen}
+        onOpenChange={setCategoriasDialogOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Categorias do Orçamento</DialogTitle>
@@ -901,11 +1078,16 @@ export function OrcamentosPageClient({ initialData }: OrcamentosPageClientProps)
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma categoria informada.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhuma categoria informada.
+              </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCategoriasDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setCategoriasDialogOpen(false)}
+            >
               Fechar
             </Button>
           </DialogFooter>

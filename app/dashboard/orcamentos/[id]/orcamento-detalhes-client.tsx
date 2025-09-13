@@ -1,10 +1,17 @@
-"use client"
+'use client'
 
-import { useState, useTransition } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
 import {
   ArrowLeft,
   Edit,
@@ -24,50 +31,80 @@ import {
   Loader2,
   AlertCircle,
   Copy,
-  ExternalLink,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+  ExternalLink
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { toast } from "@/components/ui/use-toast"
-import { ToastAction } from "@/components/ui/toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { deleteOrcamento, updateOrcamentoStatus } from "@/app/actions/orcamento"
-import type { OrcamentoDetalhado } from "@/types/orcamento"
+  DialogDescription
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { toast } from '@/components/ui/use-toast'
+import { ToastAction } from '@/components/ui/toast'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { deleteOrcamento, updateOrcamentoStatus } from '@/app/actions/orcamento'
+import type { OrcamentoDetalhado } from '@/types/orcamento'
+import { formatarData, formatarValor } from '@/app/utils/mask'
 
 interface OrcamentoDetalhesClientProps {
   orcamento: OrcamentoDetalhado
 }
 
-export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: OrcamentoDetalhesClientProps) {
+export function OrcamentoDetalhesClient({
+  orcamento: initialOrcamento
+}: OrcamentoDetalhesClientProps) {
   const router = useRouter()
-  const [orcamento, setOrcamento] = useState<OrcamentoDetalhado>(initialOrcamento)
+  const [orcamento, setOrcamento] =
+    useState<OrcamentoDetalhado>(initialOrcamento)
   const [isPending, startTransition] = useTransition()
 
   // Estados para diálogos
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
-  const [newStatus, setNewStatus] = useState<"Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado">(orcamento.status)
+  const [newStatus, setNewStatus] = useState<
+    'Em Aberto' | 'Aprovado' | 'Rejeitado' | 'Cancelado'
+  >(orcamento.status)
 
   // Função para renderizar badge de status
   const renderStatusBadge = (status: string) => {
     const statusConfig = {
-      "Em Aberto": { variant: "outline" as const, icon: Clock, color: "text-yellow-600" },
-      Aprovado: { variant: "default" as const, icon: CheckCircle, color: "text-green-600" },
-      Rejeitado: { variant: "destructive" as const, icon: XCircle, color: "text-red-600" },
-      Cancelado: { variant: "secondary" as const, icon: Ban, color: "text-gray-600" },
+      'Em Aberto': {
+        variant: 'outline' as const,
+        icon: Clock,
+        color: 'text-yellow-600'
+      },
+      Aprovado: {
+        variant: 'default' as const,
+        icon: CheckCircle,
+        color: 'text-green-600'
+      },
+      Rejeitado: {
+        variant: 'destructive' as const,
+        icon: XCircle,
+        color: 'text-red-600'
+      },
+      Cancelado: {
+        variant: 'secondary' as const,
+        icon: Ban,
+        color: 'text-gray-600'
+      }
     }
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig["Em Aberto"]
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig['Em Aberto']
     const Icon = config.icon
 
     return (
@@ -78,32 +115,12 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
     )
   }
 
-  // Função para formatar data
-  const formatarData = (dataString: string) => {
-    const data = new Date(dataString)
-    return data.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
-  // Função para formatar valor
-  const formatarValor = (valor: number) => {
-    return valor.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    })
-  }
-
   // Função para copiar ID
   const copiarId = (id: string, tipo: string) => {
     navigator.clipboard.writeText(id)
     toast({
-      title: "ID copiado",
-      description: `${tipo} copiado para a área de transferência`,
+      title: 'ID copiado',
+      description: `${tipo} copiado para a área de transferência`
     })
   }
 
@@ -114,16 +131,16 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
 
       if (result.success) {
         toast({
-          title: "Orçamento excluído",
+          title: 'Orçamento excluído',
           description: result.message,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>
         })
-        router.push("/dashboard/orcamentos")
+        router.push('/dashboard/orcamentos')
       } else {
         toast({
-          title: "Erro ao excluir orçamento",
+          title: 'Erro ao excluir orçamento',
           description: result.message,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
 
@@ -138,18 +155,18 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
 
       if (result.success) {
         toast({
-          title: "Status atualizado",
+          title: 'Status atualizado',
           description: result.message,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>
         })
 
         // Atualizar estado local
-        setOrcamento((prev) => ({ ...prev, status: newStatus }))
+        setOrcamento(prev => ({ ...prev, status: newStatus }))
       } else {
         toast({
-          title: "Erro ao atualizar status",
+          title: 'Erro ao atualizar status',
           description: result.message,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
 
@@ -160,12 +177,18 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
   // Calcular estatísticas dos itens
   const stats = {
     totalItens: orcamento.itens.length,
-    quantidadeTotal: orcamento.itens.reduce((total, item) => total + item.Quantidade, 0),
-    valorMedio: orcamento.itens.length > 0 ? orcamento.valorTotal / orcamento.itens.length : 0,
+    quantidadeTotal: orcamento.itens.reduce(
+      (total, item) => total + item.Quantidade,
+      0
+    ),
+    valorMedio:
+      orcamento.itens.length > 0
+        ? orcamento.valorTotal / orcamento.itens.length
+        : 0,
     itemMaisCaro: orcamento.itens.reduce(
       (max, item) => (item.ValorUnitario > max.ValorUnitario ? item : max),
-      orcamento.itens[0] || { ValorUnitario: 0 },
-    ),
+      orcamento.itens[0] || { ValorUnitario: 0 }
+    )
   }
 
   return (
@@ -180,7 +203,9 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{orcamento.numero}</h2>
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+                {orcamento.numero}
+              </h2>
               {renderStatusBadge(orcamento.status)}
             </div>
             <p className="text-muted-foreground">Detalhes do orçamento</p>
@@ -208,8 +233,17 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
               Editar
             </Link>
           </Button>
-          <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)} disabled={isPending}>
-            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
             Excluir
           </Button>
         </div>
@@ -225,22 +259,23 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
               Informações do Orçamento
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Número</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Número
+                </Label>
                 <div className="flex items-center gap-2">
-                  <code className="text-sm bg-muted px-2 py-1 rounded font-mono">{orcamento.numero}</code>
-                  <Button variant="ghost" size="sm" onClick={() => copiarId(orcamento.numero, "Número do orçamento")}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">ID</Label>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{orcamento.id}</code>
-                  <Button variant="ghost" size="sm" onClick={() => copiarId(orcamento.id, "ID do orçamento")}>
+                  <code className="text-sm bg-muted px-2 py-1 rounded font-mono">
+                    {orcamento.numero}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      copiarId(orcamento.numero, 'Número do orçamento')
+                    }
+                  >
                     <Copy className="h-3 w-3" />
                   </Button>
                 </div>
@@ -249,17 +284,23 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Data de Emissão</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Data de Emissão
+                </Label>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>{formatarData(orcamento.dataEmissao)}</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Valor Total</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Valor Total
+                </Label>
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-lg font-bold text-green-600">{formatarValor(orcamento.valorTotal)}</span>
+                  <span className="text-lg font-bold text-green-600">
+                    {formatarValor(orcamento.valorTotal)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -277,17 +318,25 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
           <CardContent className="space-y-4">
             <div className="text-center">
               <div className="text-2xl font-bold">{stats.totalItens}</div>
-              <div className="text-sm text-muted-foreground">Total de Itens</div>
+              <div className="text-sm text-muted-foreground">
+                Total de Itens
+              </div>
             </div>
             <Separator />
             <div className="text-center">
               <div className="text-2xl font-bold">{stats.quantidadeTotal}</div>
-              <div className="text-sm text-muted-foreground">Quantidade Total</div>
+              <div className="text-sm text-muted-foreground">
+                Quantidade Total
+              </div>
             </div>
             <Separator />
             <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">{formatarValor(stats.valorMedio)}</div>
-              <div className="text-sm text-muted-foreground">Valor Médio por Item</div>
+              <div className="text-lg font-bold text-blue-600">
+                {formatarValor(stats.valorMedio)}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Valor Médio por Item
+              </div>
             </div>
             {stats.itemMaisCaro.ValorUnitario > 0 && (
               <>
@@ -296,7 +345,9 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
                   <div className="text-lg font-bold text-orange-600">
                     {formatarValor(stats.itemMaisCaro.ValorUnitario)}
                   </div>
-                  <div className="text-sm text-muted-foreground">Item Mais Caro</div>
+                  <div className="text-sm text-muted-foreground">
+                    Item Mais Caro
+                  </div>
                 </div>
               </>
             )}
@@ -316,19 +367,18 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Nome</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Nome
+              </Label>
               <p className="font-medium">{orcamento.obra.nome}</p>
             </div>
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground">ID</Label>
-              <div className="flex items-center gap-2">
-                <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{orcamento.obra.id}</code>
-                <Button variant="ghost" size="sm" onClick={() => copiarId(orcamento.obra.id, "ID da obra")}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full bg-transparent"
+              asChild
+            >
               <Link href={`/dashboard/obras/${orcamento.obra.id}`}>
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Ver Obra
@@ -347,19 +397,18 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Nome</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Nome
+              </Label>
               <p className="font-medium">{orcamento.etapa.nome}</p>
             </div>
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground">ID</Label>
-              <div className="flex items-center gap-2">
-                <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{orcamento.etapa.id}</code>
-                <Button variant="ghost" size="sm" onClick={() => copiarId(orcamento.etapa.id, "ID da etapa")}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full bg-transparent"
+              asChild
+            >
               <Link href={`/dashboard/etapas/${orcamento.etapa.id}`}>
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Ver Etapa
@@ -378,19 +427,18 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Nome</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Nome
+              </Label>
               <p className="font-medium">{orcamento.fornecedor.nome}</p>
             </div>
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground">ID</Label>
-              <div className="flex items-center gap-2">
-                <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{orcamento.fornecedor.id}</code>
-                <Button variant="ghost" size="sm" onClick={() => copiarId(orcamento.fornecedor.id, "ID do fornecedor")}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full bg-transparent"
+              asChild
+            >
               <Link href={`/dashboard/fornecedores/${orcamento.fornecedor.id}`}>
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Ver Fornecedor
@@ -413,7 +461,9 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-lg font-medium">Nenhum item encontrado</p>
-              <p className="text-muted-foreground">Este orçamento não possui itens cadastrados.</p>
+              <p className="text-muted-foreground">
+                Este orçamento não possui itens cadastrados.
+              </p>
             </div>
           ) : (
             <div className="rounded-md border overflow-hidden">
@@ -425,19 +475,31 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
                       <TableHead className="min-w-[200px]">Produto</TableHead>
                       <TableHead className="min-w-[120px]">Categoria</TableHead>
                       <TableHead className="min-w-[100px]">Unidade</TableHead>
-                      <TableHead className="text-center min-w-[100px]">Quantidade</TableHead>
-                      <TableHead className="text-right min-w-[120px]">Valor Unitário</TableHead>
-                      <TableHead className="text-right min-w-[120px]">Valor Total</TableHead>
+                      <TableHead className="text-center min-w-[100px]">
+                        Quantidade
+                      </TableHead>
+                      <TableHead className="text-right min-w-[120px]">
+                        Valor Unitário
+                      </TableHead>
+                      <TableHead className="text-right min-w-[120px]">
+                        Valor Total
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {orcamento.itens.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">{index + 1}</TableCell>
+                        <TableCell className="font-medium">
+                          {index + 1}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {item.ProdutoNome || <span className="text-muted-foreground italic">Sem nome</span>}
+                              {item.ProdutoNome || (
+                                <span className="text-muted-foreground italic">
+                                  Sem nome
+                                </span>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -445,14 +507,20 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
                           {item.Categoria ? (
                             <Badge variant="outline">{item.Categoria}</Badge>
                           ) : (
-                            <span className="text-muted-foreground italic">Sem categoria</span>
+                            <span className="text-muted-foreground italic">
+                              Sem categoria
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
                           {item.UnidadeDeMedida ? (
-                            <Badge variant="secondary">{item.UnidadeDeMedida}</Badge>
+                            <Badge variant="secondary">
+                              {item.UnidadeDeMedida}
+                            </Badge>
                           ) : (
-                            <span className="text-muted-foreground italic">Sem unidade</span>
+                            <span className="text-muted-foreground italic">
+                              Sem unidade
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
@@ -460,7 +528,9 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
                             {item.Quantidade}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-mono">{formatarValor(item.ValorUnitario)}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatarValor(item.ValorUnitario)}
+                        </TableCell>
                         <TableCell className="text-right font-mono font-bold">
                           {formatarValor(item.Quantidade * item.ValorUnitario)}
                         </TableCell>
@@ -477,8 +547,12 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
             <div className="mt-4 flex justify-end">
               <div className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-center gap-4">
-                  <span className="text-lg font-medium">Total do Orçamento:</span>
-                  <span className="text-2xl font-bold text-green-600">{formatarValor(orcamento.valorTotal)}</span>
+                  <span className="text-lg font-medium">
+                    Total do Orçamento:
+                  </span>
+                  <span className="text-2xl font-bold text-green-600">
+                    {formatarValor(orcamento.valorTotal)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -492,21 +566,29 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir o orçamento "{orcamento.numero}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir o orçamento "{orcamento.numero}"?
+              Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isPending}
+            >
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Excluindo...
                 </>
               ) : (
-                "Excluir"
+                'Excluir'
               )}
             </Button>
           </DialogFooter>
@@ -518,14 +600,24 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Alterar Status do Orçamento</DialogTitle>
-            <DialogDescription>Altere o status do orçamento "{orcamento.numero}".</DialogDescription>
+            <DialogDescription>
+              Altere o status do orçamento "{orcamento.numero}".
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="status">Novo Status</Label>
               <Select
                 value={newStatus}
-                onValueChange={(value) => setNewStatus(value as "Em Aberto" | "Aprovado" | "Rejeitado" | "Cancelado")}
+                onValueChange={value =>
+                  setNewStatus(
+                    value as
+                      | 'Em Aberto'
+                      | 'Aprovado'
+                      | 'Rejeitado'
+                      | 'Cancelado'
+                  )
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -540,7 +632,10 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setStatusDialogOpen(false)}
+            >
               Cancelar
             </Button>
             <Button onClick={handleUpdateStatus} disabled={isPending}>
@@ -550,7 +645,7 @@ export function OrcamentoDetalhesClient({ orcamento: initialOrcamento }: Orcamen
                   Atualizando...
                 </>
               ) : (
-                "Atualizar Status"
+                'Atualizar Status'
               )}
             </Button>
           </DialogFooter>

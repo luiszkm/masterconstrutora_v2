@@ -1,3 +1,5 @@
+import { Categoria } from "./api-types"
+
 // Tipo baseado no retorno real da API atualizada
 export type Fornecedor = {
   // Estrutura nova (minúscula)
@@ -25,21 +27,8 @@ export type Fornecedor = {
   NomeAtendente?: string | null
   Avaliacao?: number | null
   Observacoes?: string | null
-
-  // Categorias (ambas as estruturas)
-  categorias?: {
-    ID: string
-    Nome: string
-    createdAt: string
-    updatedAt: string
-  }[]
-  Categorias?: {
-    ID: string
-    Nome: string
-    createdAt: string
-    updatedAt: string
-  }[]
-
+  
+  categorias?: Categoria[]
   orcamentosCount: number
 }
 

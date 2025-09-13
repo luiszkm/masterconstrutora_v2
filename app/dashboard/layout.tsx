@@ -73,6 +73,10 @@ const navItems: NavItem[] = [
         title: "Novo Orçamento",
         href: "/dashboard/orcamentos/novo",
       },
+         {
+        title: "Comparar",
+        href: "/dashboard/orcamentos/comparar",
+      },
     ],
   },
   {
