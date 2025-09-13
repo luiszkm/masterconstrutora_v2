@@ -7,9 +7,10 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
+import { Categoria } from '@/types/api-types'
 
 interface CategoriaBadgesProps {
-  categorias?: string[]
+  categorias?: Categoria[]
   limit?: number
 }
 
@@ -28,11 +29,11 @@ export function CategoryBadges({
     <div className="flex flex-wrap gap-1">
       {visible.map((categoria, index) => (
         <Badge
-          key={`${categoria}-${index}`}
+          key={`${categoria.ID}-${index}`}
           variant="outline"
           className="text-xs"
         >
-          {categoria}
+          {categoria.Nome}
         </Badge>
       ))}
 
@@ -50,11 +51,11 @@ export function CategoryBadges({
             <div className="flex flex-wrap gap-2">
               {categorias.map((categoria, index) => (
                 <Badge
-                  key={`${categoria}-${index}`}
+                  key={`${categoria.ID}-${index}`}
                   variant="outline"
                   className="text-xs"
                 >
-                  {categoria}
+                  {categoria.Nome}
                 </Badge>
               ))}
             </div>

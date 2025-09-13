@@ -29,12 +29,8 @@ import {
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
-import {
-  compararOrcamentosPorCategoria,
-} from '@/app/actions/orcamentos-comparacao'
-import {
-  ComparacaoOrcamentosResponse,
-} from '@/types/api-types'
+import { compararOrcamentosPorCategoria } from '@/app/actions/orcamentos-comparacao'
+import { ComparacaoOrcamentosResponse } from '@/types/api-types'
 import { getCategorias } from '@/app/actions/orcamento'
 import { CategoryBadges } from '@/components/categoryBadges'
 
@@ -56,7 +52,9 @@ export default function CompararOrcamentosPage() {
   const [loadingCategorias, setLoadingCategorias] = useState(true)
 
   // Validação de resposta do backend para comparação
-  const validateComparacaoResponse = (data: any): data is ComparacaoOrcamentosResponse => {
+  const validateComparacaoResponse = (
+    data: any
+  ): data is ComparacaoOrcamentosResponse => {
     return (
       data &&
       typeof data === 'object' &&
@@ -64,22 +62,23 @@ export default function CompararOrcamentosPage() {
       typeof data.descripcion === 'string' &&
       Array.isArray(data.orcamentos) &&
       typeof data.total === 'number' &&
-      data.orcamentos.every((orc: any) =>
-        typeof orc.id === 'string' &&
-        typeof orc.numero === 'string' &&
-        typeof orc.valorTotal === 'number' &&
-        typeof orc.status === 'string' &&
-        typeof orc.dataEmissao === 'string' &&
-        typeof orc.obraId === 'string' &&
-        typeof orc.obraNome === 'string' &&
-        typeof orc.fornecedorId === 'string' &&
-        typeof orc.fornecedorNome === 'string' &&
-        typeof orc.itensCount === 'number' &&
-        Array.isArray(orc.categorias) &&
-        orc.categorias.every((cat: any) =>
-          typeof cat.ID === 'string' &&
-          typeof cat.Nome === 'string'
-        )
+      data.orcamentos.every(
+        (orc: any) =>
+          typeof orc.id === 'string' &&
+          typeof orc.numero === 'string' &&
+          typeof orc.valorTotal === 'number' &&
+          typeof orc.status === 'string' &&
+          typeof orc.dataEmissao === 'string' &&
+          typeof orc.obraId === 'string' &&
+          typeof orc.obraNome === 'string' &&
+          typeof orc.fornecedorId === 'string' &&
+          typeof orc.fornecedorNome === 'string' &&
+          typeof orc.itensCount === 'number' &&
+          Array.isArray(orc.categorias) &&
+          orc.categorias.every(
+            (cat: any) =>
+              typeof cat.ID === 'string' && typeof cat.Nome === 'string'
+          )
       )
     )
   }
@@ -97,7 +96,10 @@ export default function CompararOrcamentosPage() {
       // Validar e extrair nomes das categorias
       if (Array.isArray(result)) {
         const nomesCategoria = result
-          .filter((cat): cat is Categoria => cat && typeof cat === 'object' && 'Nome' in cat)
+          .filter(
+            (cat): cat is Categoria =>
+              cat && typeof cat === 'object' && 'Nome' in cat
+          )
           .map(cat => cat.Nome)
           .filter(nome => typeof nome === 'string' && nome.trim() !== '')
 
@@ -115,7 +117,10 @@ export default function CompararOrcamentosPage() {
       setCategorias(['Cimento', 'Areia', 'Brita', 'Ferro', 'Madeira'])
       toast({
         title: 'Erro',
-        description: error instanceof Error ? error.message : 'Erro ao carregar categorias',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Erro ao carregar categorias',
         variant: 'destructive'
       })
     } finally {
@@ -186,7 +191,10 @@ export default function CompararOrcamentosPage() {
       setComparacao(null)
       toast({
         title: 'Erro',
-        description: error instanceof Error ? error.message : 'Erro ao comparar orçamentos',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Erro ao comparar orçamentos',
         variant: 'destructive'
       })
     } finally {
@@ -341,7 +349,7 @@ export default function CompararOrcamentosPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <CategoryBadges categorias={item.categorias.map(c => c.Nome)} /> 
+                          <CategoryBadges categorias={item.categorias} />
                         </TableCell>
                         <TableCell className="font-medium">
                           R${' '}
