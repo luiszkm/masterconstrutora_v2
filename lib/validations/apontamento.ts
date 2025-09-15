@@ -13,41 +13,52 @@ import {
 const statusApontamentoSchema = z.enum(["EM_ABERTO", "APROVADO_PARA_PAGAMENTO", "PAGO", "CANCELADO"])
 
 /**
- * Schema para criação de apontamento - Payload CriarApontamentoRequest
- * Conforme documentação oficial da API Pessoal
+ * Schema para criação de apontamento - validates frontend camelCase input
+ * and transforms to API PascalCase format
  */
 export const criarApontamentoSchema = createFormDataSchema({
-  FuncionarioID: idSchema,
-  ObraID: idSchema,
-  PeriodoInicio: dateSchema.transform(date => {
+  funcionarioId: idSchema,
+  obraId: idSchema,
+  periodoInicio: dateSchema.transform(date => {
     // Converte para formato "YYYY-MM-DD" conforme documentação
     return new Date(date).toISOString().split('T')[0]
   }),
-  PeriodoFim: dateSchema.transform(date => {
+  periodoFim: dateSchema.transform(date => {
     // Converte para formato "YYYY-MM-DD" conforme documentação
     return new Date(date).toISOString().split('T')[0]
   }),
-  Diaria: z.union([
+  diaria: z.union([
     z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
     z.number()
   ]).pipe(z.number().min(0.01, "Diária deve ser maior que 0")),
-  DiasTrabalhados: z.union([
+  diasTrabalhados: z.union([
     z.string().transform(val => parseInt(val)),
     z.number()
   ]).pipe(z.number().min(1, "Dias trabalhados deve ser maior que 0").max(31, "Dias trabalhados não pode ser maior que 31")),
-  ValorAdicional: z.union([
+  valorAdicional: z.union([
     z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
     z.number()
   ]).pipe(valorMonetarioSchema),
-  Descontos: z.union([
+  descontos: z.union([
     z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
     z.number()
   ]).pipe(valorMonetarioSchema),
-  Adiantamento: z.union([
+  adiantamento: z.union([
     z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
     z.number()
   ]).pipe(valorMonetarioSchema)
-})
+}).transform(data => ({
+  // Transform camelCase frontend data to PascalCase API format
+  FuncionarioID: data.funcionarioId,
+  ObraID: data.obraId,
+  PeriodoInicio: data.periodoInicio,
+  PeriodoFim: data.periodoFim,
+  Diaria: data.diaria,
+  DiasTrabalhados: data.diasTrabalhados,
+  ValorAdicional: data.valorAdicional,
+  Descontos: data.descontos,
+  Adiantamento: data.adiantamento
+}))
 
 /**
  * Schema para atualização de apontamento - Payload AtualizarApontamentoRequest
@@ -81,7 +92,7 @@ export const atualizarApontamentoSchema = createFormDataSchema({
     z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
     z.number()
   ]).pipe(valorMonetarioSchema),
-  status: statusApontamentoSchema
+  status: statusApontamentoSchema.optional()
 })
 
 /**

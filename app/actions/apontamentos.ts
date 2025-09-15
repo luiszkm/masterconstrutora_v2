@@ -116,10 +116,22 @@ export async function atualizarApontamentoAction(
   prevState: any,
   formData: FormData
 ): Promise<ActionResponse> {
+  console.log("=== atualizarApontamentoAction DEBUG ===")
+  console.log("apontamentoId:", apontamentoId)
+
+  // Debug: log formData contents
+  console.log("FormData for validation:")
+  for (const [key, value] of formData.entries()) {
+    console.log(`${key}: ${value}`)
+  }
+
   // Validar dados do formulário
   const validation = validateFormData(formData, atualizarApontamentoSchema)
-  
+
+  console.log("Validation result:", validation)
+
   if (!validation.success) {
+    console.error("Validation failed:", validation.errors)
     const firstError = Object.values(validation.errors)[0]?.[0]
     return createErrorResponse(firstError || "Dados inválidos")
   }
@@ -441,10 +453,16 @@ export async function handleFuncionarioApontamentoSubmit(
 ): Promise<ActionResponse> {
   const apontamentoId = formData.get("apontamentoId") as string | null
 
+  console.log("=== handleFuncionarioApontamentoSubmit DEBUG ===")
+  console.log("apontamentoId from formData:", apontamentoId)
+  console.log("Will use UPDATE path:", !!(apontamentoId && apontamentoId.trim() !== ""))
+
   if (apontamentoId && apontamentoId.trim() !== "") {
+    console.log("Calling atualizarApontamentoAction with ID:", apontamentoId)
     // Se tem ID, atualizar
     return atualizarApontamentoAction(apontamentoId, prevState, formData)
   } else {
+    console.log("Calling criarApontamentoAction (no ID)")
     // Se não tem ID, criar novo
     return criarApontamentoAction(prevState, formData)
   }

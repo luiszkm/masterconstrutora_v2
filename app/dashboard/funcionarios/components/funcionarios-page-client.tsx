@@ -62,12 +62,9 @@ import type { DateRange } from "react-day-picker"
 import { LogoutButton } from "@/components/logout-button"
 import { NumericFormat } from "react-number-format"
 import { useActionState } from "react"
-import {
-  handleFuncionarioApontamentoSubmit,
-  type FuncionarioApontamento,
-} from "@/app/actions/funcionario"
+import { type FuncionarioApontamento } from "@/app/actions/funcionario"
 import { aplicarMascaraMonetaria } from "@/app/lib/masks"
-import { getContasBancarias, pagarApontamentosQuinzena, aprovarApontamentoAction, cancelarApontamentoAction } from "@/app/actions/apontamentos"
+import { getContasBancarias, pagarApontamentosQuinzena, aprovarApontamentoAction, cancelarApontamentoAction, handleFuncionarioApontamentoSubmit, obterApontamentoAction } from "@/app/actions/apontamentos"
 import { getObrasList, ObraListItem } from "@/app/actions/obra"
 
 // Histórico de pagamentos (mantidos para demonstração, pois o novo endpoint não cobre todos os detalhes)
@@ -368,25 +365,31 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
 
   // Novo estado para controlar a submissão do formulário
   const [isSubmittingForm, setIsSubmittingForm] = useState(false)
+  // Estado para rastrear se houve uma submissão recente
+  const [hasRecentSubmission, setHasRecentSubmission] = useState(false)
 
   useEffect(() => {
-    if (paymentState.success) {
-      toast({
-        title: "Sucesso!",
-        description: paymentState.message,
-        action: <ToastAction altText="Fechar">Fechar</ToastAction>,
-      })
-      setDialogApontamentoAberto(false)
-    } else if (paymentState.message) {
-      toast({
-        title: "Erro",
-        description: paymentState.message,
-        variant: "destructive",
-        action: <ToastAction altText="Fechar">Fechar</ToastAction>,
-      })
+    // Só processa o paymentState se houve uma submissão recente
+    if (hasRecentSubmission) {
+      if (paymentState.success) {
+        toast({
+          title: "Sucesso!",
+          description: paymentState.message,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+        setDialogApontamentoAberto(false)
+      } else if (paymentState.message) {
+        toast({
+          title: "Erro",
+          description: paymentState.message,
+          variant: "destructive",
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+        })
+      }
+      setIsSubmittingForm(false) // Resetar o flag de submissão após a ação
+      setHasRecentSubmission(false) // Resetar o flag de submissão recente
     }
-    setIsSubmittingForm(false) // Resetar o flag de submissão após a ação
-  }, [paymentState])
+  }, [paymentState, hasRecentSubmission])
 
   // Carregar obras ao abrir o diálogo de apontamento
   useEffect(() => {
@@ -676,30 +679,101 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
   }
 
   // Funções para o novo diálogo de apontamento
-  const abrirDialogoApontamento = (funcionario: FuncionarioApontamento) => {
+  const abrirDialogoApontamento = async (funcionario: FuncionarioApontamento) => {
     setApontamentoFuncionario(funcionario)
-    // Preencher com valores do apontamento existente ou valores padrão
-    setApontamentoFormData({
-      funcionarioId: funcionario.id,
-      apontamentoId: funcionario.apontamentoId || "", // Passa o ID do apontamento se existir
-      diaria: funcionario.valorDiaria,
+
+    // Debug log to check what data is available
+    console.log("Funcionario data:", {
+      id: funcionario.id,
+      nome: funcionario.nome,
+      apontamentoId: funcionario.apontamentoId,
+      periodoInicio: funcionario.periodoInicio,
+      periodoFim: funcionario.periodoFim,
+      obraId: funcionario.obraId,
+      valorDiaria: funcionario.valorDiaria,
       diasTrabalhados: funcionario.diasTrabalhados,
       valorAdicional: funcionario.valorAdicional,
       descontos: funcionario.descontos,
-      adiantamento: funcionario.adiantamento,
-      // Use o período existente se o apontamentoId existir, caso contrário, use o mês atual
-      periodoInicio:
-        funcionario.apontamentoId && funcionario.periodoInicio
-          ? funcionario.periodoInicio
-          : format(startOfMonth(new Date()), "yyyy-MM-dd"),
-      periodoFim:
-        funcionario.apontamentoId && funcionario.periodoFim
-          ? funcionario.periodoFim
-          : format(endOfMonth(new Date()), "yyyy-MM-dd"),
-      obraId: funcionario.apontamentoId && funcionario.obraId ? funcionario.obraId : "", // Use a obra existente ou limpe
+      adiantamento: funcionario.adiantamento
     })
 
-    console.log("Abrindo diálogo de apontamento para:", funcionario)
+    let formData
+
+    // Se há apontamentoId, é uma edição - buscar dados completos via GET
+    if (funcionario.apontamentoId) {
+      console.log("Fetching appointment data for editing:", funcionario.apontamentoId)
+
+      try {
+        const apontamentoResult = await obterApontamentoAction(funcionario.apontamentoId)
+        console.log("Raw appointment result:", apontamentoResult)
+
+        if (!apontamentoResult) {
+          console.error("No result returned from obterApontamentoAction")
+          toast({
+            title: "Erro",
+            description: "Nenhum resultado retornado ao buscar apontamento",
+            variant: "destructive"
+          })
+          return
+        }
+
+        if ("error" in apontamentoResult) {
+          console.error("Error in appointment result:", apontamentoResult.error)
+          toast({
+            title: "Erro ao carregar apontamento",
+            description: `${apontamentoResult.error}`,
+            variant: "destructive"
+          })
+          return
+        }
+
+        console.log("Appointment data fetched successfully:", apontamentoResult)
+
+        // Preencher formulário com dados do apontamento completo
+        formData = {
+          funcionarioId: funcionario.id,
+          apontamentoId: funcionario.apontamentoId,
+          diaria: apontamentoResult.diaria || 0,
+          diasTrabalhados: apontamentoResult.diasTrabalhados || 0,
+          valorAdicional: apontamentoResult.adicionais || 0, // Note: API retorna "adicionais"
+          descontos: apontamentoResult.descontos || 0,
+          adiantamento: apontamentoResult.adiantamentos || 0, // Note: API retorna "adiantamentos"
+          periodoInicio: apontamentoResult.periodoInicio ? apontamentoResult.periodoInicio.split('T')[0] : format(startOfMonth(new Date()), "yyyy-MM-dd"),
+          periodoFim: apontamentoResult.periodoFim ? apontamentoResult.periodoFim.split('T')[0] : format(endOfMonth(new Date()), "yyyy-MM-dd"),
+          obraId: apontamentoResult.obraId || "",
+        }
+      } catch (error) {
+        console.error("Error fetching appointment:", error)
+        console.error("Error details:", {
+          message: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : undefined
+        })
+        toast({
+          title: "Erro na conexão",
+          description: `${error instanceof Error ? error.message : "Erro desconhecido"}`,
+          variant: "destructive"
+        })
+        return
+      }
+    } else {
+      // Criar novo apontamento - usar valores padrão
+      formData = {
+        funcionarioId: funcionario.id,
+        apontamentoId: "",
+        diaria: funcionario.valorDiaria || 0,
+        diasTrabalhados: 0,
+        valorAdicional: 0,
+        descontos: 0,
+        adiantamento: 0,
+        periodoInicio: format(startOfMonth(new Date()), "yyyy-MM-dd"),
+        periodoFim: format(endOfMonth(new Date()), "yyyy-MM-dd"),
+        obraId: "",
+      }
+    }
+
+    console.log("Form data being set:", formData)
+    setApontamentoFormData(formData)
     setDialogApontamentoAberto(true)
   }
 
@@ -728,12 +802,23 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
   const handleSubmitApontamento = (formData: FormData) => {
     if (!apontamentoFuncionario || isSubmittingForm) return // Prevenir múltiplas submissões
 
+    console.log("=== FORM SUBMISSION DEBUG ===")
+    console.log("apontamentoFuncionario:", apontamentoFuncionario)
+    console.log("Is editing (has apontamentoId):", !!apontamentoFuncionario.apontamentoId)
+
     setIsSubmittingForm(true) // Definir o flag de submissão
+    setHasRecentSubmission(true) // Marcar que há uma submissão recente
 
     // Adicionar o ID do funcionário e o ID do apontamento (se existir) ao FormData
     formData.append("funcionarioId", apontamentoFuncionario.id)
     if (apontamentoFuncionario.apontamentoId) {
       formData.append("apontamentoId", apontamentoFuncionario.apontamentoId)
+    }
+
+    // Debug: Log all form data before submission
+    console.log("FormData contents before submission:")
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`)
     }
 
     // Calcular valor total antes de enviar (se necessário para o backend)
@@ -745,6 +830,16 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
     const valorTotalCalculado = diaria * diasTrabalhados + valorAdicional - descontos - adiantamento
     formData.append("valorTotal", valorTotalCalculado.toString())
 
+    console.log("Calculated values:", {
+      diaria, diasTrabalhados, valorAdicional, descontos, adiantamento, valorTotalCalculado
+    })
+
+    console.log("Final FormData contents:")
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`)
+    }
+
+    console.log("Calling paymentAction with formData")
     paymentAction(formData)
   }
 
@@ -1589,20 +1684,9 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
         onOpenChange={(open) => {
           setDialogApontamentoAberto(open)
           if (!open) {
-            // Resetar o funcionário selecionado e os dados do formulário ao fechar o diálogo
+            // Resetar apenas o funcionário selecionado ao fechar o diálogo
+            // Os dados do formulário serão resetados apenas no próximo abrirDialogoApontamento
             setApontamentoFuncionario(null)
-            setApontamentoFormData({
-              funcionarioId: "",
-              apontamentoId: "",
-              diaria: 0,
-              diasTrabalhados: 0,
-              valorAdicional: 0,
-              descontos: 0,
-              adiantamento: 0,
-              periodoInicio: format(startOfMonth(new Date()), "yyyy-MM-dd"),
-              periodoFim: format(endOfMonth(new Date()), "yyyy-MM-dd"),
-              obraId: "",
-            })
           }
         }}
       >
