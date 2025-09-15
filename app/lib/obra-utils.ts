@@ -4,19 +4,19 @@ import type { EtapaObra } from "@/app/actions/obra"
 export function calcularEvolucao(etapas: EtapaObra[]): number {
   if (etapas.length === 0) return 0
 
-  const etapasConcluidas = etapas.filter((etapa) => etapa.concluida).length
+  const etapasConcluidas = etapas.filter((etapa) => etapa.status === "Completa").length
   return Math.round((etapasConcluidas / etapas.length) * 100)
 }
 
 // Obter etapa atual (primeira não concluída ou última se todas concluídas)
 export function obterEtapaAtual(etapas: EtapaObra[]): string {
-  const etapaAtual = etapas.find((etapa) => !etapa.concluida)
+  const etapaAtual = etapas.find((etapa) => etapa.status !== "Completa")
   return etapaAtual ? etapaAtual.nome : etapas[etapas.length - 1]?.nome || "N/A"
 }
 
 // Obter próxima etapa a ser concluída
 export function obterProximaEtapa(etapas: EtapaObra[]): EtapaObra | null {
-  return etapas.find((etapa) => !etapa.concluida) || null
+  return etapas.find((etapa) => etapa.status !== "Completa") || null
 }
 
 // Verificar se pode concluir uma etapa (etapas anteriores devem estar concluídas)
@@ -26,7 +26,7 @@ export function podeConclurEtapa(etapas: EtapaObra[], etapaId: string): boolean 
 
   // Verificar se todas as etapas anteriores estão concluídas
   for (let i = 0; i < etapaIndex; i++) {
-    if (!etapas[i].concluida) {
+    if (etapas[i].status !== "Completa") {
       return false
     }
   }
@@ -86,9 +86,35 @@ export function obraAtrasada(etapas: EtapaObra[]): boolean {
   const hoje = new Date().toISOString().split("T")[0]
 
   return etapas.some((etapa) => {
-    if (!etapa.concluida && etapa.dataFimPrevista) {
+    if (etapa.status !== "Completa" && etapa.dataFimPrevista) {
       return etapa.dataFimPrevista < hoje
     }
     return false
   })
+}
+
+// Obter cor do status da etapa para exibição
+export function getEtapaStatusColor(status: "Completa" | "Em Andamento" | "Pendente"): string {
+  switch (status) {
+    case "Completa":
+      return "bg-green-500 text-white"
+    case "Em Andamento":
+      return "bg-blue-500 text-white"
+    case "Pendente":
+      return "bg-gray-300 text-gray-700"
+    default:
+      return "bg-gray-300 text-gray-700"
+  }
+}
+
+// Verificar se etapa pode ser iniciada (etapas anteriores completas)
+export function podeIniciarEtapa(etapas: EtapaObra[], etapaId: string): boolean {
+  const etapaIndex = etapas.findIndex((e) => e.id === etapaId)
+  if (etapaIndex === -1) return false
+
+  // Primeira etapa sempre pode ser iniciada
+  if (etapaIndex === 0) return true
+
+  // Verificar se etapa anterior está completa
+  return etapas[etapaIndex - 1].status === "Completa"
 }

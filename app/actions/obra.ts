@@ -35,7 +35,7 @@ export interface Obra extends ObraDetails {
 export type EtapaObra = {
   id: string;
   nome: string;
-  concluida: boolean;
+  status: "Completa" | "Em Andamento" | "Pendente";
   dataInicioPrevista?: string;
   dataFimPrevista?: string;
   dataInicioReal?: string;
@@ -426,39 +426,12 @@ export async function excluirObra(id: string): Promise<ActionResponse> {
   }
 }
 
+/**
+ * @deprecated Use atualizarStatusEtapaAction from etapa.ts instead
+ * Esta função será removida em uma versão futura
+ */
 export async function concluirProximaEtapa(obraId: string): Promise<ActionResponse> {
-  try {
-    const response = await makeAuthenticatedRequest(`${API_URL}/obras/${obraId}/proxima-etapa`, {
-      method: "POST",
-    });
-
-    if (!response.ok) {
-      let errorMessage = "Erro ao concluir próxima etapa.";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        if (response.status === 401) {
-          errorMessage = "Não autorizado. Faça login novamente.";
-        }
-      }
-      return createErrorResponse(errorMessage);
-    }
-
-    revalidateTag(`obra-${obraId}`);
-    revalidateTag("obras-list");
-    revalidatePath("/dashboard/obras");
-
-    return createSuccessResponse("Próxima etapa concluída com sucesso!");
-  } catch (error) {
-    console.error("Erro ao concluir próxima etapa:", error);
-    if (
-      error instanceof Error &&
-      error.message === "Token de autenticação não encontrado"
-    ) {
-      return createErrorResponse("Não autorizado. Faça login novamente.");
-    }
-    return createErrorResponse("Erro de conexão com o servidor ao concluir etapa. Tente novamente.");
-  }
+  console.warn("concluirProximaEtapa is deprecated. Use atualizarStatusEtapaAction instead.")
+  return createErrorResponse("Esta função foi descontinuada. Use o novo sistema de gerenciamento de etapas.")
 }
 

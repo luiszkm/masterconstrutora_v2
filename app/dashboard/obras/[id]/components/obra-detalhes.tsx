@@ -48,11 +48,14 @@ import {
   MoreHorizontal
 } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
-import { concluirProximaEtapa } from '@/app/actions/obra'
+import { atualizarStatusEtapaAction, obterEtapasObraAction } from '@/app/actions/etapa'
 import {
   calcularEvolucao,
   obterEtapaAtual,
-  obterProximaEtapa
+  obterProximaEtapa,
+  getEtapaStatusColor,
+  podeIniciarEtapa,
+  podeConclurEtapa
 } from '@/app/lib/obra-utils'
 import { CronogramaTable } from '@/components/cronograma-table'
 import { CriarCronogramaIndividual } from '@/components/cronograma-forms'
@@ -87,6 +90,11 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const [cronogramaIndividualOpen, setCronogramaIndividualOpen] =
     useState(false)
 
+  // Estado das etapas
+  const [etapas, setEtapas] = useState(obra.etapas)
+  const [loadingEtapas, setLoadingEtapas] = useState(false)
+  const [etapaBeingUpdated, setEtapaBeingUpdated] = useState<string | null>(null)
+
   // Estados para modal de adicionar funcionário
   const [adicionarFuncionarioOpen, setAdicionarFuncionarioOpen] =
     useState(false)
@@ -99,12 +107,40 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   const [loadingFuncionarios, setLoadingFuncionarios] = useState(false)
   const [salvandoAlocacao, setSalvandoAlocacao] = useState(false)
 
-  const evolucao = calcularEvolucao(obra.etapas)
-  const etapaAtual = obterEtapaAtual(obra.etapas)
-  const proximaEtapa = obterProximaEtapa(obra.etapas)
+  const evolucao = calcularEvolucao(etapas)
+  const etapaAtual = obterEtapaAtual(etapas)
+  const proximaEtapa = obterProximaEtapa(etapas)
 
   // Obter dados relacionados
   const funcionariosObra = obra.funcionarios
+
+  // Carregar etapas atualizadas da API
+  const carregarEtapas = async () => {
+    setLoadingEtapas(true)
+    try {
+      const result = await obterEtapasObraAction(obra.id)
+
+      if (result.success) {
+        setEtapas(result.data)
+      } else {
+        console.error('Erro ao carregar etapas:', result.error)
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar as etapas atualizadas',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao carregar etapas:', error)
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar etapas',
+        variant: 'destructive'
+      })
+    } finally {
+      setLoadingEtapas(false)
+    }
+  }
 
   // Carregar cronogramas
   const carregarCronogramas = async () => {
@@ -227,23 +263,40 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
   useEffect(() => {
     console.log('🔄 useEffect executado para obra.id:', obra.id)
     carregarCronogramas()
+    carregarEtapas()
   }, [obra.id])
 
-  const handleConcluirEtapa = (etapaId: string) => {
+  // Atualizar status de uma etapa
+  const handleAtualizarStatusEtapa = (etapaId: string, novoStatus: "Completa" | "Em Andamento" | "Pendente") => {
     startTransition(async () => {
-      const result = await concluirProximaEtapa(obra.id)
+      setEtapaBeingUpdated(etapaId)
+      try {
+        const dataInicioReal = novoStatus === "Em Andamento" ? new Date().toISOString().split('T')[0] : undefined
+        const result = await atualizarStatusEtapaAction(etapaId, novoStatus, dataInicioReal)
 
-      if (result.success) {
-        toast({
-          title: 'Etapa concluída',
-          description: 'A etapa foi marcada como concluída com sucesso.'
-        })
-      } else {
+        if (result.success) {
+          toast({
+            title: 'Status atualizado',
+            description: `Etapa marcada como ${novoStatus.toLowerCase()} com sucesso.`
+          })
+          // Recarregar etapas para mostrar estado atualizado
+          await carregarEtapas()
+        } else {
+          toast({
+            title: 'Erro',
+            description: result.error,
+            variant: 'destructive'
+          })
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar status da etapa:', error)
         toast({
           title: 'Erro',
-          description: result.error,
+          description: 'Erro inesperado ao atualizar status da etapa',
           variant: 'destructive'
         })
+      } finally {
+        setEtapaBeingUpdated(null)
       }
     })
   }
@@ -300,12 +353,20 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
           </Button>
           {proximaEtapa && (
             <Button
-              onClick={() => handleConcluirEtapa(proximaEtapa.id)}
-              disabled={isPending}
+              onClick={() => {
+                const novoStatus = proximaEtapa.status === "Pendente" ? "Em Andamento" : "Completa"
+                handleAtualizarStatusEtapa(proximaEtapa.id, novoStatus)
+              }}
+              disabled={isPending || etapaBeingUpdated === proximaEtapa.id}
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="mr-2 h-4 w-4" />
-              {isPending ? 'Concluindo...' : `Concluir ${proximaEtapa.nome}`}
+              {etapaBeingUpdated === proximaEtapa.id
+                ? 'Atualizando...'
+                : proximaEtapa.status === "Pendente"
+                  ? `Iniciar ${proximaEtapa.nome}`
+                  : `Concluir ${proximaEtapa.nome}`
+              }
             </Button>
           )}
         </div>
@@ -418,54 +479,89 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {obra.etapas.map((etapa, index) => (
-                  <div
-                    key={etapa.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                          etapa.concluida
-                            ? 'bg-green-500 text-white'
-                            : index === 0 || obra.etapas[index - 1]?.concluida
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-200 text-gray-500'
-                        }`}
-                      >
-                        {etapa.concluida ? (
-                          <CheckCircle className="h-4 w-4" />
-                        ) : (
-                          index + 1
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{etapa.nome}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {etapa.concluida ? 'Concluída' : 'Pendente'} • 20% da
-                          obra
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {etapa.concluida ? (
-                        <Badge className="bg-green-500">Concluída</Badge>
-                      ) : index === 0 || obra.etapas[index - 1]?.concluida ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleConcluirEtapa(etapa.id)}
-                          disabled={isPending}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Concluir
-                        </Button>
-                      ) : (
-                        <Badge variant="secondary">Aguardando</Badge>
-                      )}
+                {loadingEtapas ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-muted-foreground">Carregando etapas...</p>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  etapas.map((etapa, index) => {
+                    const podeIniciar = podeIniciarEtapa(etapas, etapa.id)
+                    const podeConcluir = podeConclurEtapa(etapas, etapa.id)
+
+                    return (
+                      <div
+                        key={etapa.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                              etapa.status === "Completa"
+                                ? 'bg-green-500 text-white'
+                                : etapa.status === "Em Andamento"
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 text-gray-500'
+                            }`}
+                          >
+                            {etapa.status === "Completa" ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : etapa.status === "Em Andamento" ? (
+                              <Clock className="h-4 w-4" />
+                            ) : (
+                              index + 1
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-medium">{etapa.nome}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {etapa.status === "Completa" ? 'Concluída' :
+                               etapa.status === "Em Andamento" ? 'Em andamento' :
+                               'Pendente'} • {Math.round(100 / etapas.length)}% da obra
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {etapa.status === "Completa" ? (
+                            <Badge className="bg-green-500">Concluída</Badge>
+                          ) : etapa.status === "Em Andamento" ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAtualizarStatusEtapa(etapa.id, "Completa")}
+                              disabled={isPending || etapaBeingUpdated === etapa.id || !podeConcluir}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              {etapaBeingUpdated === etapa.id ? (
+                                <div className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                              )}
+                              Concluir
+                            </Button>
+                          ) : podeIniciar ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAtualizarStatusEtapa(etapa.id, "Em Andamento")}
+                              disabled={isPending || etapaBeingUpdated === etapa.id}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              {etapaBeingUpdated === etapa.id ? (
+                                <div className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Clock className="mr-2 h-4 w-4" />
+                              )}
+                              Iniciar
+                            </Button>
+                          ) : (
+                            <Badge variant="secondary">Aguardando</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </CardContent>
           </Card>

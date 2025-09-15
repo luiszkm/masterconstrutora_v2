@@ -6,6 +6,7 @@ export * from "./apontamentos-service"
 export * from "./materiais-service"
 export * from "./obras-service"
 export * from "./orcamentos-service"
+export * from "./etapas-service"
 
 // Exporta todos os serviços em um único objeto
 import { authService } from "./auth-service"
@@ -16,6 +17,7 @@ import { apontamentosService } from "./apontamentos-service"
 import { materiaisService } from "./materiais-service"
 import { obrasService } from "./obras-service"
 import { orcamentosService } from "./orcamentos-service"
+import { etapasService } from "./etapas-service"
 
 export const api = {
   auth: authService,
@@ -26,4 +28,5 @@ export const api = {
   materiais: materiaisService,
   obras: obrasService,
   orcamentos: orcamentosService,
+  etapas: etapasService,
 }

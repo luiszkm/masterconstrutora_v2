@@ -385,3 +385,30 @@ export interface Categoria {
   ID: number | string
   Nome: string
 }
+
+// Etapas da Obra - Conforme API real
+export interface EtapaAPI {
+  ID: string
+  ObraID: string
+  Nome: string
+  data_inicio_prevista: string
+  data_fim_prevista: string
+  Status: "Completa" | "Em Andamento" | "Pendente"
+}
+
+export interface EtapasResponse {
+  dados: EtapaAPI[]
+  paginacao: {
+    totalItens: number
+    totalPages: number
+    currentPage: number
+    pageSize: number
+  }
+}
+
+// Payload para atualizar status da etapa
+export interface AtualizarEtapaRequest {
+  status: "Completa" | "Em Andamento" | "Pendente"
+  dataInicioReal?: string
+  dataFimReal?: string
+}

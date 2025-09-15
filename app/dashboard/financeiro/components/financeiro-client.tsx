@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -15,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/app/lib/utils"
 import { BanknoteIcon as BankIcon, Calendar, CheckCircle2, ChevronDown, CircleDollarSign, CreditCard, DollarSign, Filter, MoreHorizontal, RefreshCcw, Search, X } from 'lucide-react'
-import { getFluxoDeCaixa, registrarPagamento, registrarRecebimento } from "@/app/actions/financeiro"
+import { getFluxoDeCaixa, registrarPagamento, registrarRecebimento, getContasReceber, getContasPagar } from "@/app/actions/financeiro"
 import type { ContaPagar, ContaReceber, FluxoCaixaResponse } from "@/types/financeiro"
 
 const statusColors: Record<string, string> = {
@@ -61,11 +62,23 @@ export function FinanceiroClient({
   const [tab, setTab] = useState("visao-geral")
 
   // Estados locais com dados iniciais vindos do servidor
-  const [contasReceber] = useState<ContaReceber[]>(Array.isArray(initialReceber) ? initialReceber : [])
-  const [contasPagar] = useState<ContaPagar[]>(Array.isArray(initialPagar) ? initialPagar : [])
+  const [contasReceber, setContasReceber] = useState<ContaReceber[]>(Array.isArray(initialReceber) ? initialReceber : [])
+  const [contasPagar, setContasPagar] = useState<ContaPagar[]>(Array.isArray(initialPagar) ? initialPagar : [])
   const [vencidasReceber] = useState<ContaReceber[]>(Array.isArray(initialVencidasReceber) ? initialVencidasReceber : [])
   const [vencidasPagar] = useState<ContaPagar[]>(Array.isArray(initialVencidasPagar) ? initialVencidasPagar : [])
   const [fluxo, setFluxo] = useState<FluxoCaixaResponse | null>(initialFluxo)
+
+  // Estados de paginação para Contas a Receber
+  const [pageReceber, setPageReceber] = useState(1)
+  const [pageSizeReceber, setPageSizeReceber] = useState(20)
+  const [totalItemsReceber, setTotalItemsReceber] = useState(contasReceber.length)
+  const [loadingReceber, setLoadingReceber] = useState(false)
+
+  // Estados de paginação para Contas a Pagar
+  const [pagePagar, setPagePagar] = useState(1)
+  const [pageSizePagar, setPageSizePagar] = useState(20)
+  const [totalItemsPagar, setTotalItemsPagar] = useState(contasPagar.length)
+  const [loadingPagar, setLoadingPagar] = useState(false)
 
   // Filtros
   const [buscaReceber, setBuscaReceber] = useState("")
@@ -206,6 +219,63 @@ export function FinanceiroClient({
         setFluxo(res as FluxoCaixaResponse)
       }
     })
+  }
+
+  // Função para carregar contas a receber
+  async function loadContasReceber(page: number = pageReceber, pageSize: number = pageSizeReceber) {
+    setLoadingReceber(true)
+    try {
+      const result = await getContasReceber(page, pageSize)
+      if ('error' in result) {
+        toast({ title: "Erro", description: result.error, variant: "destructive" })
+      } else {
+        setContasReceber(result)
+        setTotalItemsReceber(result.length) // API should provide total count
+        setPageReceber(page)
+      }
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao carregar contas a receber", variant: "destructive" })
+    } finally {
+      setLoadingReceber(false)
+    }
+  }
+
+  // Função para carregar contas a pagar
+  async function loadContasPagar(page: number = pagePagar, pageSize: number = pageSizePagar) {
+    setLoadingPagar(true)
+    try {
+      const result = await getContasPagar(page, pageSize)
+      if ('error' in result) {
+        toast({ title: "Erro", description: result.error, variant: "destructive" })
+      } else {
+        setContasPagar(result)
+        setTotalItemsPagar(result.length) // API should provide total count
+        setPagePagar(page)
+      }
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao carregar contas a pagar", variant: "destructive" })
+    } finally {
+      setLoadingPagar(false)
+    }
+  }
+
+  // Handlers de paginação
+  const handlePageChangeReceber = (page: number) => {
+    loadContasReceber(page, pageSizeReceber)
+  }
+
+  const handlePageSizeChangeReceber = (pageSize: number) => {
+    setPageSizeReceber(pageSize)
+    loadContasReceber(1, pageSize)
+  }
+
+  const handlePageChangePagar = (page: number) => {
+    loadContasPagar(page, pageSizePagar)
+  }
+
+  const handlePageSizeChangePagar = (pageSize: number) => {
+    setPageSizePagar(pageSize)
+    loadContasPagar(1, pageSize)
   }
 
   return (
@@ -443,6 +513,17 @@ export function FinanceiroClient({
               </Table>
             </div>
           </div>
+
+          <DataTablePagination
+            totalItems={totalItemsReceber}
+            totalPages={Math.ceil(totalItemsReceber / pageSizeReceber)}
+            currentPage={pageReceber}
+            pageSize={pageSizeReceber}
+            onPageChange={handlePageChangeReceber}
+            onPageSizeChange={handlePageSizeChangeReceber}
+            showPageSizeSelector={true}
+            pageSizeOptions={[10, 20, 50, 100]}
+          />
         </TabsContent>
 
         <TabsContent value="pagar" className="space-y-4">
@@ -565,6 +646,17 @@ export function FinanceiroClient({
               </Table>
             </div>
           </div>
+
+          <DataTablePagination
+            totalItems={totalItemsPagar}
+            totalPages={Math.ceil(totalItemsPagar / pageSizePagar)}
+            currentPage={pagePagar}
+            pageSize={pageSizePagar}
+            onPageChange={handlePageChangePagar}
+            onPageSizeChange={handlePageSizeChangePagar}
+            showPageSizeSelector={true}
+            pageSizeOptions={[10, 20, 50, 100]}
+          />
         </TabsContent>
 
         <TabsContent value="vencidas" className="space-y-8">
