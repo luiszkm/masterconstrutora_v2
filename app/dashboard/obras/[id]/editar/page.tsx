@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast"
 import { atualizarObra, type Obra, getObraById } from "@/app/actions/obra"
 
-const responsaveisMock = ["Maria Oliveira", "Carlos Santos", "Ana Pereira", "Pedro Souza", "João Silva"]
+
 
 export default function EditarObraPage() {
   const router = useRouter()

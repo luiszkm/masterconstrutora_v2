@@ -1,27 +1,66 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { useState, useEffect, useTransition } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { InputMonetario } from "@/components/ui/input-monetario"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Plus, Trash2, Loader2, Building, Layers, User, Save } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { toast } from "@/components/ui/use-toast"
-import { ToastAction } from "@/components/ui/toast"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/app/lib/utils"
-import { updateOrcamento, getFornecedores, getCategorias, getObras, getEtapasByObra } from "@/app/actions/orcamento"
-import type { OrcamentoDetalhado } from "@/types/orcamento"
-import type { FornecedorOrcamento } from "@/types/fornecedor"
+import type React from 'react'
+import { useState, useEffect, useTransition } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { InputMonetario } from '@/components/ui/input-monetario'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Loader2,
+  Building,
+  Layers,
+  User,
+  Save
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command'
+import { toast } from '@/components/ui/use-toast'
+import { ToastAction } from '@/components/ui/toast'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/app/lib/utils'
+import {
+  updateOrcamento,
+  getFornecedores,
+  getCategorias,
+  getObras,
+  getEtapasByObra
+} from '@/app/actions/orcamento'
+import type { OrcamentoDetalhado } from '@/types/orcamento'
+import type { FornecedorOrcamento } from '@/types/fornecedor'
 
 // Tipo para categoria da API
 type Categoria = {
@@ -60,41 +99,43 @@ type ItemOrcamento = {
 
 // Unidades de medida disponíveis
 const unidadesMedida = [
-  "saco",
-  "barra",
-  "m³",
-  "m²",
-  "m",
-  "kg",
-  "un",
-  "L",
-  "rolo",
-  "pacote",
-  "caixa",
-  "peça",
-  "conjunto",
-  "lata",
+  'saco',
+  'barra',
+  'm³',
+  'm²',
+  'm',
+  'kg',
+  'un',
+  'L',
+  'rolo',
+  'pacote',
+  'caixa',
+  'peça',
+  'conjunto',
+  'lata'
 ]
 
 // Condições de pagamento
 const condicoesPagamento = [
-  "À vista",
-  "15 dias",
-  "30 dias",
-  "45 dias",
-  "60 dias",
-  "90 dias",
-  "Parcelado em 2x",
-  "Parcelado em 3x",
-  "45 dias após a entrega",
-  "Personalizado",
+  'À vista',
+  '15 dias',
+  '30 dias',
+  '45 dias',
+  '60 dias',
+  '90 dias',
+  'Parcelado em 2x',
+  'Parcelado em 3x',
+  '45 dias após a entrega',
+  'Personalizado'
 ]
 
 interface EditarOrcamentoClientProps {
   orcamento: OrcamentoDetalhado
 }
 
-export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps) {
+export function EditarOrcamentoClient({
+  orcamento
+}: EditarOrcamentoClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -109,82 +150,85 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
   const [loadingFornecedores, setLoadingFornecedores] = useState(true)
 
   // Estados para seleção de obra e etapa
-  const [obraSelecionada, setObraSelecionada] = useState("")
+  const [obraSelecionada, setObraSelecionada] = useState('')
   const [etapaSelecionada, setEtapaSelecionada] = useState(orcamento.etapa.id)
 
   // Estados para formulário
-  const [fornecedorSelecionado, setFornecedorSelecionado] = useState(orcamento.fornecedor.id)
-  const [condicoesPagamentoSelecionada, setCondicoesPagamentoSelecionada] = useState(orcamento.condicoesPagamento || "")
-  const [observacoes, setObservacoes] = useState(orcamento.observacoes || "")
+  const [fornecedorSelecionado, setFornecedorSelecionado] = useState(
+    orcamento.fornecedor.id
+  )
+  const [condicoesPagamentoSelecionada, setCondicoesPagamentoSelecionada] =
+    useState(orcamento.condicoesPagamento || '')
+  const [observacoes, setObservacoes] = useState(orcamento.observacoes || '')
 
   // Estados para itens - converter da estrutura da API para estrutura local
   const [itens, setItens] = useState<ItemOrcamento[]>(
     orcamento.itens.map((item, index) => ({
       id: `item-${index}`,
-      nomeProduto: item.ProdutoNome || "",
-      unidadeDeMedida: item.UnidadeDeMedida || "",
-      categoria: item.Categoria || "",
+      nomeProduto: item.ProdutoNome || '',
+      unidadeDeMedida: item.UnidadeDeMedida || '',
+      categoria: item.Categoria || '',
       quantidade: item.Quantidade,
       valorUnitario: item.ValorUnitario,
-      valorTotal: item.Quantidade * item.ValorUnitario,
-    })),
+      valorTotal: item.Quantidade * item.ValorUnitario
+    }))
   )
 
   // Estados para popovers
   const [categoriaAberta, setCategoriaAberta] = useState<string | null>(null)
-  const [categoriaPesquisa, setCategoriaPesquisa] = useState("")
+  const [categoriaPesquisa, setCategoriaPesquisa] = useState('')
   const [unidadeAberta, setUnidadeAberta] = useState<string | null>(null)
-  const [unidadePesquisa, setUnidadePesquisa] = useState("")
+  const [unidadePesquisa, setUnidadePesquisa] = useState('')
 
   // Carregar obras e dados iniciais
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [obrasData, fornecedoresData, categoriasData] = await Promise.all([
-          getObras(),
-          getFornecedores(),
-          getCategorias(),
-        ])
+        const [obrasData, fornecedoresData, categoriasData] = await Promise.all(
+          [getObras(), getFornecedores(), getCategorias()]
+        )
 
-        if (!("error" in obrasData)) {
+        if (!('error' in obrasData)) {
           setObras(obrasData)
           // Encontrar a obra atual baseada na etapa
-          const obraAtual = obrasData.find((obra) => obra.id === orcamento.obra?.id)
+          const obraAtual = obrasData.find(
+            obra => obra.id === orcamento.obra?.id
+          )
           if (obraAtual) {
             setObraSelecionada(obraAtual.id)
           }
         } else {
           toast({
-            title: "Erro ao carregar obras",
+            title: 'Erro ao carregar obras',
             description: obrasData.error,
-            variant: "destructive",
+            variant: 'destructive'
           })
         }
 
-        if (!("error" in fornecedoresData)) {
+        if (!('error' in fornecedoresData)) {
           setFornecedores(fornecedoresData)
         } else {
           toast({
-            title: "Erro ao carregar fornecedores",
+            title: 'Erro ao carregar fornecedores',
             description: fornecedoresData.error,
-            variant: "destructive",
+            variant: 'destructive'
           })
         }
 
-        if (!("error" in categoriasData)) {
+        if (!('error' in categoriasData)) {
           setCategorias(categoriasData)
         } else {
           toast({
-            title: "Erro ao carregar categorias",
+            title: 'Erro ao carregar categorias',
             description: categoriasData.error,
-            variant: "destructive",
+            variant: 'destructive'
           })
         }
       } catch (error) {
         toast({
-          title: "Erro ao carregar dados",
-          description: "Tente novamente em alguns instantes",
-          variant: "destructive",
+          title: 'Erro ao carregar dados',
+          description: 'Tente novamente em alguns instantes',
+          variant: 'destructive'
         })
       } finally {
         setLoadingObras(false)
@@ -208,21 +252,21 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
       try {
         const etapasData = await getEtapasByObra(obraSelecionada)
 
-        if (!("error" in etapasData)) {
+        if (!('error' in etapasData)) {
           setEtapas(etapasData)
         } else {
           toast({
-            title: "Erro ao carregar etapas",
+            title: 'Erro ao carregar etapas',
             description: etapasData.error,
-            variant: "destructive",
+            variant: 'destructive'
           })
           setEtapas([])
         }
       } catch (error) {
         toast({
-          title: "Erro ao carregar etapas",
-          description: "Tente novamente em alguns instantes",
-          variant: "destructive",
+          title: 'Erro ao carregar etapas',
+          description: 'Tente novamente em alguns instantes',
+          variant: 'destructive'
         })
         setEtapas([])
       } finally {
@@ -237,40 +281,46 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
   const adicionarItem = () => {
     const novoItem: ItemOrcamento = {
       id: Date.now().toString(),
-      nomeProduto: "",
-      unidadeDeMedida: "",
-      categoria: "",
+      nomeProduto: '',
+      unidadeDeMedida: '',
+      categoria: '',
       quantidade: 1,
       valorUnitario: 0,
-      valorTotal: 0,
+      valorTotal: 0
     }
     setItens([...itens, novoItem])
   }
 
   // Função para remover um item
   const removerItem = (id: string) => {
-    setItens(itens.filter((item) => item.id !== id))
+    setItens(itens.filter(item => item.id !== id))
   }
 
   // Função para atualizar um item
-  const atualizarItem = (id: string, campo: keyof ItemOrcamento, valor: any) => {
+  const atualizarItem = (
+    id: string,
+    campo: keyof ItemOrcamento,
+    valor: any
+  ) => {
     setItens(
-      itens.map((item) => {
+      itens.map(item => {
         if (item.id === id) {
           const itemAtualizado = { ...item, [campo]: valor }
           // Recalcular valor total se quantidade ou valor unitário mudar
-          if (campo === "quantidade" || campo === "valorUnitario") {
-            itemAtualizado.valorTotal = itemAtualizado.quantidade * itemAtualizado.valorUnitario
+          if (campo === 'quantidade' || campo === 'valorUnitario') {
+            itemAtualizado.valorTotal =
+              itemAtualizado.quantidade * itemAtualizado.valorUnitario
           }
           return itemAtualizado
         }
         return item
-      }),
+      })
     )
   }
 
   // Cálculos
-  const calcularSubtotal = () => itens.reduce((total, item) => total + item.valorTotal, 0)
+  const calcularSubtotal = () =>
+    itens.reduce((total, item) => total + item.valorTotal, 0)
   const calcularTotal = () => calcularSubtotal()
 
   // Função para submeter o formulário
@@ -279,42 +329,46 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
 
     if (!etapaSelecionada) {
       toast({
-        title: "Erro de validação",
-        description: "Selecione uma obra e etapa",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Selecione uma obra e etapa',
+        variant: 'destructive'
       })
       return
     }
 
     if (!fornecedorSelecionado) {
       toast({
-        title: "Erro de validação",
-        description: "Selecione um fornecedor",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Selecione um fornecedor',
+        variant: 'destructive'
       })
       return
     }
 
     if (!condicoesPagamentoSelecionada) {
       toast({
-        title: "Erro de validação",
-        description: "Selecione as condições de pagamento",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Selecione as condições de pagamento',
+        variant: 'destructive'
       })
       return
     }
 
     // Validar itens
     const itensValidos = itens.filter(
-      (item) =>
-        item.nomeProduto && item.unidadeDeMedida && item.categoria && item.quantidade > 0 && item.valorUnitario > 0,
+      item =>
+        item.nomeProduto &&
+        item.unidadeDeMedida &&
+        item.categoria &&
+        item.quantidade > 0 &&
+        item.valorUnitario > 0
     )
 
     if (itensValidos.length === 0) {
       toast({
-        title: "Erro de validação",
-        description: "Adicione pelo menos um item válido",
-        variant: "destructive",
+        title: 'Erro de validação',
+        description: 'Adicione pelo menos um item válido',
+        variant: 'destructive'
       })
       return
     }
@@ -326,29 +380,29 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
         etapaId: etapaSelecionada,
         observacoes: observacoes || undefined,
         condicoesPagamento: condicoesPagamentoSelecionada,
-        itens: itensValidos.map((item) => ({
+        itens: itensValidos.map(item => ({
           nomeProduto: item.nomeProduto,
           unidadeDeMedida: item.unidadeDeMedida,
           categoria: item.categoria,
           quantidade: item.quantidade,
-          valorUnitario: item.valorUnitario,
-        })),
+          valorUnitario: item.valorUnitario
+        }))
       }
 
       const result = await updateOrcamento(orcamento.id, updateData)
 
       if (result.success) {
         toast({
-          title: "Orçamento atualizado",
+          title: 'Orçamento atualizado',
           description: result.message,
-          action: <ToastAction altText="Fechar">Fechar</ToastAction>,
+          action: <ToastAction altText="Fechar">Fechar</ToastAction>
         })
         router.push(`/dashboard/orcamentos/${orcamento.id}`)
       } else {
         toast({
-          title: "Erro ao atualizar orçamento",
+          title: 'Erro ao atualizar orçamento',
           description: result.message,
-          variant: "destructive",
+          variant: 'destructive'
         })
       }
     })
@@ -374,10 +428,15 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
           </Link>
         </Button>
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Editar Orçamento</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Editar Orçamento
+          </h2>
           <p className="text-muted-foreground">
-            Editando orçamento {orcamento.numero} • Valor atual:{" "}
-            {orcamento.valorTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            Editando orçamento {orcamento.numero} • Valor atual:{' '}
+            {orcamento.valorTotal.toLocaleString('pt-BR', {
+              style: 'currency',
+              currency: 'BRL'
+            })}
           </p>
         </div>
       </div>
@@ -391,7 +450,9 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Número</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Número
+                </Label>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="font-mono">
                     {orcamento.numero}
@@ -399,18 +460,28 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Status
+                </Label>
                 <div className="flex items-center gap-2">
-                  <Badge variant={orcamento.status === "Em Aberto" ? "outline" : "default"}>{orcamento.status}</Badge>
+                  <Badge
+                    variant={
+                      orcamento.status === 'Em Aberto' ? 'outline' : 'default'
+                    }
+                  >
+                    {orcamento.status}
+                  </Badge>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Data de Emissão</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Data de Emissão
+                </Label>
                 <p className="text-sm">
-                  {new Date(orcamento.dataEmissao).toLocaleDateString("pt-BR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
+                  {new Date(orcamento.dataEmissao).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
                   })}
                 </p>
               </div>
@@ -429,25 +500,37 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                 <Label htmlFor="obra">Obra *</Label>
                 <div className="relative">
                   <Building className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Select value={obraSelecionada} onValueChange={setObraSelecionada} required disabled={loadingObras}>
+                  <Select
+                    value={obraSelecionada}
+                    onValueChange={setObraSelecionada}
+                    required
+                    disabled={loadingObras}
+                  >
                     <SelectTrigger id="obra" className="pl-8">
-                      <SelectValue placeholder={loadingObras ? "Carregando obras..." : "Selecione a obra"} />
+                      <SelectValue
+                        placeholder={
+                          loadingObras
+                            ? 'Carregando obras...'
+                            : 'Selecione a obra'
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {obras.map((obra) => (
+                      {obras.map(obra => (
                         <SelectItem key={obra.id} value={obra.id}>
                           <div className="flex flex-col">
                             <span className="font-medium">{obra.nome}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {obra.cliente} • {obra.status} • {obra.evolucao}
-                            </span>
                           </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                {orcamento.obra && <p className="text-xs text-muted-foreground">Obra atual: {orcamento.obra.nome}</p>}
+                {orcamento.obra && (
+                  <p className="text-xs text-muted-foreground">
+                    Obra atual: {orcamento.obra.nome}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="etapa">Etapa *</Label>
@@ -463,15 +546,15 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                       <SelectValue
                         placeholder={
                           !obraSelecionada
-                            ? "Selecione uma obra primeiro"
+                            ? 'Selecione uma obra primeiro'
                             : loadingEtapas
-                              ? "Carregando etapas..."
-                              : "Selecione a etapa"
+                            ? 'Carregando etapas...'
+                            : 'Selecione a etapa'
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {etapas.map((etapa) => (
+                      {etapas.map(etapa => (
                         <SelectItem key={etapa.ID} value={etapa.ID}>
                           {etapa.Nome}
                         </SelectItem>
@@ -479,11 +562,15 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-xs text-muted-foreground">Etapa atual: {orcamento.etapa.nome}</p>
+                <p className="text-xs text-muted-foreground">
+                  Etapa atual: {orcamento.etapa.nome}
+                </p>
               </div>
             </div>
             {obraSelecionada && etapas.length === 0 && !loadingEtapas && (
-              <p className="text-sm text-muted-foreground">Nenhuma etapa encontrada para esta obra.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhuma etapa encontrada para esta obra.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -507,21 +594,26 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                   >
                     <SelectTrigger id="fornecedor" className="pl-8">
                       <SelectValue
-                        placeholder={loadingFornecedores ? "Carregando fornecedores..." : "Selecione o fornecedor"}
+                        placeholder={
+                          loadingFornecedores
+                            ? 'Carregando fornecedores...'
+                            : 'Selecione o fornecedor'
+                        }
                       />
                     </SelectTrigger>
                     <SelectContent>
                       {fornecedores.length === 0 ? (
                         <SelectItem value="" disabled>
-                          {loadingFornecedores ? "Carregando..." : "Nenhum fornecedor encontrado"}
+                          {loadingFornecedores
+                            ? 'Carregando...'
+                            : 'Nenhum fornecedor encontrado'}
                         </SelectItem>
                       ) : (
-                        fornecedores.map((fornecedor) => (
+                        fornecedores.map(fornecedor => (
                           <SelectItem key={fornecedor.id} value={fornecedor.id}>
                             <div className="flex flex-col">
-                              <span className="font-medium">{fornecedor.nome}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {fornecedor.categorias.map((cat) => cat.Nome).join(", ")} • {fornecedor.status}
+                              <span className="font-medium">
+                                {fornecedor.nome}
                               </span>
                             </div>
                           </SelectItem>
@@ -530,16 +622,24 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-xs text-muted-foreground">Fornecedor atual: {orcamento.fornecedor.nome}</p>
+                <p className="text-xs text-muted-foreground">
+                  Fornecedor atual: {orcamento.fornecedor.nome}
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="condicoesPagamento">Condições de Pagamento *</Label>
-                <Select value={condicoesPagamentoSelecionada} onValueChange={setCondicoesPagamentoSelecionada} required>
+                <Label htmlFor="condicoesPagamento">
+                  Condições de Pagamento *
+                </Label>
+                <Select
+                  value={condicoesPagamentoSelecionada}
+                  onValueChange={setCondicoesPagamentoSelecionada}
+                  required
+                >
                   <SelectTrigger id="condicoesPagamento">
                     <SelectValue placeholder="Selecione a condição" />
                   </SelectTrigger>
                   <SelectContent>
-                    {condicoesPagamento.map((condicao) => (
+                    {condicoesPagamento.map(condicao => (
                       <SelectItem key={condicao} value={condicao}>
                         {condicao}
                       </SelectItem>
@@ -562,22 +662,36 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[200px]">Nome do Produto</TableHead>
+                      <TableHead className="min-w-[200px]">
+                        Nome do Produto
+                      </TableHead>
                       <TableHead className="min-w-[150px]">Categoria</TableHead>
                       <TableHead className="min-w-[120px]">Unidade</TableHead>
-                      <TableHead className="min-w-[100px]">Quantidade</TableHead>
-                      <TableHead className="min-w-[140px]">Valor Unitário</TableHead>
-                      <TableHead className="min-w-[120px]">Valor Total</TableHead>
+                      <TableHead className="min-w-[100px]">
+                        Quantidade
+                      </TableHead>
+                      <TableHead className="min-w-[140px]">
+                        Valor Unitário
+                      </TableHead>
+                      <TableHead className="min-w-[120px]">
+                        Valor Total
+                      </TableHead>
                       <TableHead className="w-[80px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {itens.map((item) => (
+                    {itens.map(item => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <Input
                             value={item.nomeProduto}
-                            onChange={(e) => atualizarItem(item.id, "nomeProduto", e.target.value)}
+                            onChange={e =>
+                              atualizarItem(
+                                item.id,
+                                'nomeProduto',
+                                e.target.value
+                              )
+                            }
                             placeholder="Ex: Cimento CPII 50kg"
                             className="min-w-[200px]"
                           />
@@ -585,9 +699,9 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                         <TableCell>
                           <Popover
                             open={categoriaAberta === item.id}
-                            onOpenChange={(open) => {
+                            onOpenChange={open => {
                               setCategoriaAberta(open ? item.id : null)
-                              if (!open) setCategoriaPesquisa("")
+                              if (!open) setCategoriaPesquisa('')
                             }}
                           >
                             <PopoverTrigger asChild>
@@ -597,7 +711,7 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                                 aria-expanded={categoriaAberta === item.id}
                                 className="w-full justify-between min-w-[150px] bg-transparent"
                               >
-                                {item.categoria || "Selecione categoria"}
+                                {item.categoria || 'Selecione categoria'}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[200px] p-0">
@@ -609,20 +723,28 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                                   className="h-9"
                                 />
                                 <CommandList>
-                                  <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                                  <CommandEmpty>
+                                    Nenhuma categoria encontrada.
+                                  </CommandEmpty>
                                   <CommandGroup className="max-h-[200px] overflow-auto">
                                     {categorias
-                                      .filter((categoria) =>
-                                        categoria.Nome.toLowerCase().includes(categoriaPesquisa.toLowerCase()),
+                                      .filter(categoria =>
+                                        categoria.Nome.toLowerCase().includes(
+                                          categoriaPesquisa.toLowerCase()
+                                        )
                                       )
-                                      .map((categoria) => (
+                                      .map(categoria => (
                                         <CommandItem
                                           key={categoria.ID}
                                           value={categoria.Nome}
                                           onSelect={() => {
-                                            atualizarItem(item.id, "categoria", categoria.Nome)
+                                            atualizarItem(
+                                              item.id,
+                                              'categoria',
+                                              categoria.Nome
+                                            )
                                             setCategoriaAberta(null)
-                                            setCategoriaPesquisa("")
+                                            setCategoriaPesquisa('')
                                           }}
                                         >
                                           {categoria.Nome}
@@ -637,9 +759,9 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                         <TableCell>
                           <Popover
                             open={unidadeAberta === item.id}
-                            onOpenChange={(open) => {
+                            onOpenChange={open => {
                               setUnidadeAberta(open ? item.id : null)
-                              if (!open) setUnidadePesquisa("")
+                              if (!open) setUnidadePesquisa('')
                             }}
                           >
                             <PopoverTrigger asChild>
@@ -649,7 +771,7 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                                 aria-expanded={unidadeAberta === item.id}
                                 className="w-full justify-between min-w-[120px] bg-transparent"
                               >
-                                {item.unidadeDeMedida || "Selecione"}
+                                {item.unidadeDeMedida || 'Selecione'}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[200px] p-0">
@@ -661,20 +783,30 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                                   className="h-9"
                                 />
                                 <CommandList>
-                                  <CommandEmpty>Nenhuma unidade encontrada.</CommandEmpty>
+                                  <CommandEmpty>
+                                    Nenhuma unidade encontrada.
+                                  </CommandEmpty>
                                   <CommandGroup className="max-h-[200px] overflow-auto">
                                     {unidadesMedida
-                                      .filter((unidade) =>
-                                        unidade.toLowerCase().includes(unidadePesquisa.toLowerCase()),
+                                      .filter(unidade =>
+                                        unidade
+                                          .toLowerCase()
+                                          .includes(
+                                            unidadePesquisa.toLowerCase()
+                                          )
                                       )
-                                      .map((unidade) => (
+                                      .map(unidade => (
                                         <CommandItem
                                           key={unidade}
                                           value={unidade}
                                           onSelect={() => {
-                                            atualizarItem(item.id, "unidadeDeMedida", unidade)
+                                            atualizarItem(
+                                              item.id,
+                                              'unidadeDeMedida',
+                                              unidade
+                                            )
                                             setUnidadeAberta(null)
-                                            setUnidadePesquisa("")
+                                            setUnidadePesquisa('')
                                           }}
                                         >
                                           {unidade}
@@ -691,19 +823,30 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                             type="number"
                             min="1"
                             value={item.quantidade}
-                            onChange={(e) => atualizarItem(item.id, "quantidade", Number(e.target.value))}
+                            onChange={e =>
+                              atualizarItem(
+                                item.id,
+                                'quantidade',
+                                Number(e.target.value)
+                              )
+                            }
                             className="w-20"
                           />
                         </TableCell>
                         <TableCell>
                           <InputMonetario
                             value={item.valorUnitario}
-                            onChange={(valor) => atualizarItem(item.id, "valorUnitario", valor)}
+                            onChange={valor =>
+                              atualizarItem(item.id, 'valorUnitario', valor)
+                            }
                             className="min-w-[140px]"
                           />
                         </TableCell>
                         <TableCell className="font-medium">
-                          R$ {item.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          R${' '}
+                          {item.valorTotal.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2
+                          })}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -712,8 +855,8 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
                             onClick={() => removerItem(item.id)}
                             disabled={itens.length === 1}
                             className={cn(
-                              "text-destructive hover:text-destructive",
-                              itens.length === 1 && "opacity-50",
+                              'text-destructive hover:text-destructive',
+                              itens.length === 1 && 'opacity-50'
                             )}
                             type="button"
                           >
@@ -743,22 +886,44 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
               <div className="w-full sm:w-1/3 space-y-2 bg-muted/50 p-4 rounded-lg">
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Valor Original:</span>
-                  <span>R$ {orcamento.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  <span>
+                    R${' '}
+                    {orcamento.valorTotal.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2
+                    })}
+                  </span>
                 </div>
                 <div className="flex justify-between font-bold text-lg">
                   <span>Novo Total:</span>
-                  <span className={calcularTotal() !== orcamento.valorTotal ? "text-orange-600" : "text-green-600"}>
-                    R$ {calcularTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  <span
+                    className={
+                      calcularTotal() !== orcamento.valorTotal
+                        ? 'text-orange-600'
+                        : 'text-green-600'
+                    }
+                  >
+                    R${' '}
+                    {calcularTotal().toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2
+                    })}
                   </span>
                 </div>
                 {calcularTotal() !== orcamento.valorTotal && (
                   <div className="flex justify-between text-sm">
                     <span>Diferença:</span>
-                    <span className={calcularTotal() > orcamento.valorTotal ? "text-red-600" : "text-green-600"}>
-                      {calcularTotal() > orcamento.valorTotal ? "+" : ""}
-                      R${" "}
-                      {Math.abs(calcularTotal() - orcamento.valorTotal).toLocaleString("pt-BR", {
-                        minimumFractionDigits: 2,
+                    <span
+                      className={
+                        calcularTotal() > orcamento.valorTotal
+                          ? 'text-red-600'
+                          : 'text-green-600'
+                      }
+                    >
+                      {calcularTotal() > orcamento.valorTotal ? '+' : ''}
+                      R${' '}
+                      {Math.abs(
+                        calcularTotal() - orcamento.valorTotal
+                      ).toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2
                       })}
                     </span>
                   </div>
@@ -779,7 +944,7 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
               <Textarea
                 id="observacoes"
                 value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
+                onChange={e => setObservacoes(e.target.value)}
                 placeholder="Ex: Orçamento revisado em 20/07/2025. Valores e quantidades atualizados."
                 rows={3}
               />
@@ -789,10 +954,18 @@ export function EditarOrcamentoClient({ orcamento }: EditarOrcamentoClientProps)
 
         {/* Botões de ação */}
         <div className="flex flex-col sm:flex-row gap-2 justify-end">
-          <Button variant="outline" asChild className="w-full sm:w-auto bg-transparent">
+          <Button
+            variant="outline"
+            asChild
+            className="w-full sm:w-auto bg-transparent"
+          >
             <Link href={`/dashboard/orcamentos/${orcamento.id}`}>Cancelar</Link>
           </Button>
-          <Button type="submit" disabled={isPending || !etapaSelecionada} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            disabled={isPending || !etapaSelecionada}
+            className="w-full sm:w-auto"
+          >
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -253,14 +253,16 @@ export async function removerFuncionarioAction(funcionarioId: string): Promise<A
  * 7. Listar Funcionários com Último Apontamento
  */
 export async function listarFuncionariosComUltimoApontamentoAction(
-  searchParams?: { page?: string; pageSize?: string; status?: string }
+  searchParams?: { page?: string; pageSize?: string; status?: string; dataInicio?: string; dataFim?: string }
 ): Promise<FuncionariosResponse | { error: string }> {
   try {
     // Validar parâmetros de query
     const params = searchParams ? {
       page: searchParams.page,
       pageSize: searchParams.pageSize,
-      status: searchParams.status
+      status: searchParams.status,
+      dataInicio: searchParams.dataInicio,
+      dataFim: searchParams.dataFim
     } : undefined
     
     const validation = funcionariosQuerySchema.safeParse(params || {})
@@ -268,8 +270,74 @@ export async function listarFuncionariosComUltimoApontamentoAction(
       return { error: "Parâmetros de consulta inválidos" }
     }
     
-    const funcionarios = await funcionariosService.listarFuncionariosComUltimoApontamento(validation.data)
-    return funcionarios
+    const response = await funcionariosService.listarFuncionariosComUltimoApontamento(validation.data)
+
+    // Log the response structure for debugging
+    console.log('API Response structure:', {
+      hasResponse: !!response,
+      hasDados: !!(response?.dados),
+      responseKeys: response ? Object.keys(response) : [],
+      responseType: typeof response,
+      isArray: Array.isArray(response)
+    })
+
+    // Handle different response structures
+    let funcionarios = []
+    let paginacao = {
+      totalItens: 0,
+      totalPages: 1,
+      currentPage: 1,
+      pageSize: 20
+    }
+
+    if (response) {
+      if (response.dados && Array.isArray(response.dados)) {
+        // Standard paginated response
+        funcionarios = response.dados
+        paginacao = response.paginacao || paginacao
+      } else if (Array.isArray(response)) {
+        // Direct array response
+        funcionarios = response
+        paginacao = {
+          totalItens: response.length,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: response.length || 20
+        }
+      } else {
+        // Single object response - wrap in array
+        funcionarios = [response]
+        paginacao = {
+          totalItens: 1,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: 1
+        }
+      }
+    }
+
+    // Transform data to ensure all required fields are present
+    const transformedData = {
+      dados: funcionarios.map(funcionario => ({
+        ...funcionario,
+        // Ensure basic employee fields are present
+        departamento: funcionario.departamento || "Não informado",
+        // Ensure apontamento fields have default values if not present
+        valorDiaria: funcionario.valorDiaria || 0,
+        diasTrabalhados: funcionario.diasTrabalhados || 0,
+        valorAdicional: funcionario.valorAdicional || 0,
+        descontos: funcionario.descontos || 0,
+        adiantamento: funcionario.adiantamento || 0,
+        apontamentoId: funcionario.apontamentoId || null,
+        statusApontamento: funcionario.statusApontamento || undefined,
+        periodoInicio: funcionario.periodoInicio || undefined,
+        periodoFim: funcionario.periodoFim || undefined,
+        obraId: funcionario.obraId || undefined,
+      })),
+      paginacao
+    }
+
+    return transformedData
   } catch (error) {
     console.error("Erro ao listar funcionários com apontamentos:", error)
     

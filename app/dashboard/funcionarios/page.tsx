@@ -4,15 +4,19 @@ import { FuncionariosPageClient } from "./components/funcionarios-page-client"
 import { getJWTToken } from "@/app/actions/common"
 
 // Server Component - handles data fetching and authentication
-export default async function FuncionariosPage() {
+export default async function FuncionariosPage({
+  searchParams
+}: {
+  searchParams?: { page?: string; pageSize?: string; status?: string; dataInicio?: string; dataFim?: string }
+}) {
   // 1. Verificar autenticação no Server Component antes de qualquer outra coisa
   const jwtToken = await getJWTToken()
   if (!jwtToken) {
     redirect("/auth/login") // Redireciona para a página de login se não houver token
   }
 
-  // Fetch data on the server side
-  const funcionariosApontamentosResult = await listarFuncionariosComUltimoApontamentoAction()
+  // Fetch data on the server side with search params
+  const funcionariosApontamentosResult = await listarFuncionariosComUltimoApontamentoAction(searchParams)
 
 
   // Handle error if fetching fails

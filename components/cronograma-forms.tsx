@@ -251,7 +251,11 @@ export function CriarCronogramaLote({
     try {
       const result = await criarCronogramaLoteAction({
         ...data,
-        obraId
+        obraId,
+        cronogramas: data.cronogramas.map(cronograma => ({
+          ...cronograma,
+          dataVencimento: new Date(cronograma.dataVencimento).toISOString()
+        }))
       })
 
       if (result.success) {
@@ -406,10 +410,7 @@ export function CriarCronogramaLote({
                   <Label>Data de Vencimento</Label>
                   <Input
                     type="date"
-                    {...form.register(`cronogramas.${index}.dataVencimento`, {
-                      setValueAs: value =>
-                        value ? new Date(value).toISOString() : null
-                    })}
+                    {...form.register(`cronogramas.${index}.dataVencimento`)}
                   />
                   {form.formState.errors.cronogramas?.[index]
                     ?.dataVencimento && (

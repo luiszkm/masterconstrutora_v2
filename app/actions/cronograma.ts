@@ -23,7 +23,8 @@ export async function listarCronogramasAction(obraId: string): Promise<ActionRes
     console.log('📦 Dados recebidos da API:', data)
     console.log('📊 Tipo dos dados:', typeof data, 'É array?', Array.isArray(data))
 
-    return createSuccessResponse("Cronogramas listados com sucesso", data)
+    // A API retorna { dados: [...], paginacao: {...} }
+    return createSuccessResponse("Cronogramas listados com sucesso", data.dados || [])
   } catch (error) {
     console.error("💥 Erro ao buscar cronogramas:", error)
     return createErrorResponse(

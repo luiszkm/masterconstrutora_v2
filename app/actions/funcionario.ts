@@ -326,7 +326,8 @@ export async function updateFuncionario(
   formData: FormData
 ) {
   try {
-    const funcionarioData: Partial<FuncionarioBase> = {
+    // Extract form data with null handling
+    const rawData = {
       nome: formData.get("nome") as string,
       cpf: formData.get("cpf") as string,
       email: formData.get("email") as string,
@@ -336,7 +337,35 @@ export async function updateFuncionario(
       dataContratacao: formData.get("dataContratacao") as string,
       chavePix: formData.get("chavePix") as string,
       observacoes: formData.get("observacoes") as string,
+      status: formData.get("status") as string,
+      avaliacaoDesempenho: formData.get("avaliacaoDesempenho") as string,
+      motivoDesligamento: formData.get("motivoDesligamento") as string,
+      desligamentoData: formData.get("desligamentoData") as string,
     };
+
+    // Filter out empty strings and null values, but keep empty strings for optional fields
+    const funcionarioData: Partial<FuncionarioBase> = {};
+
+    Object.entries(rawData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        // For desligamentoData and motivoDesligamento, only include if not empty
+        if ((key === 'desligamentoData' || key === 'motivoDesligamento') && value === '') {
+          return; // Skip empty desligamento fields
+        }
+        funcionarioData[key as keyof FuncionarioBase] = value as any;
+      }
+    });
+
+    // Debug log to verify payload data
+    console.log('Update Funcionario Payload:', {
+      id,
+      status: funcionarioData.status,
+      motivoDesligamento: funcionarioData.motivoDesligamento,
+      desligamentoData: funcionarioData.desligamentoData,
+      hasMotivo: !!funcionarioData.motivoDesligamento,
+      hasData: !!funcionarioData.desligamentoData,
+      fullPayload: funcionarioData
+    });
 
     if (!id) {
       return {
@@ -671,12 +700,29 @@ export async function getFuncionariosApontamentosById(
   }
 }
 
-export async function getApontamentos(): Promise<
-  Apontamento[] | { error: string }
+export async function getApontamentos(params?: {
+  page?: string;
+  pageSize?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  status?: string;
+}): Promise<
+  { dados: Apontamento[]; paginacao?: any } | { error: string }
 > {
   try {
+    // Build query string
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, value);
+        }
+      });
+    }
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
+
     const response = await makeAuthenticatedRequest(
-      `${API_URL}/apontamentos`,
+      `${API_URL}/apontamentos${query}`,
       {
         method: "GET",
         next: { tags: ["funcionarios-apontamentos"] }, // Tag para revalidação de cache
@@ -696,8 +742,42 @@ export async function getApontamentos(): Promise<
       return { error: errorMessage };
     }
     const json = await response.json();
-    const data: Apontamento[] = json.dados ?? [];
-    return data;
+
+    // Handle different response structures
+    if (json.dados && Array.isArray(json.dados)) {
+      // Paginated response
+      return {
+        dados: json.dados,
+        paginacao: json.paginacao || {
+          totalItens: json.dados.length,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: json.dados.length || 20
+        }
+      };
+    } else if (Array.isArray(json)) {
+      // Direct array response
+      return {
+        dados: json,
+        paginacao: {
+          totalItens: json.length,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: json.length || 20
+        }
+      };
+    } else {
+      // Single object or unknown structure
+      return {
+        dados: json ? [json] : [],
+        paginacao: {
+          totalItens: json ? 1 : 0,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: 1
+        }
+      };
+    }
   } catch (error) {
     console.error("Erro ao buscar apontamentos de funcionários:", error);
     if (

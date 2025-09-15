@@ -40,10 +40,70 @@ export default function EditarFuncionarioClient({ funcionario, funcionarioId }: 
   // Usar useActionState para gerenciar a atualização
   const [formState, formAction, isPending] = useActionState(updateFuncionario.bind(null, funcionarioId), null)
 
+  // Departamentos disponíveis
+  const departamentosDisponiveis = [
+    "Projetos",
+    "Design",
+    "Construção",
+    "Construção Civil",
+    "Administração",
+    "Segurança",
+    "Engenharia",
+    "Arquitetura",
+    "Financeiro",
+    "Recursos Humanos",
+    "Obras",
+    "Planejamento"
+  ]
+
   // Estados locais para os campos do formulário
-  const [departamento, setDepartamento] = useState(funcionario.departamento || "")
+  const [departamento, setDepartamento] = useState(() => {
+    const dept = funcionario.departamento || ""
+
+    // Se o departamento já existe na lista, usa ele diretamente
+    if (departamentosDisponiveis.includes(dept)) {
+      return dept
+    }
+
+    // Se não existe, mas contém "Construção", mapeia para "Construção Civil"
+    if (dept.includes("Construção")) {
+      return "Construção Civil"
+    }
+
+    // Para outros casos, retorna o valor original (será adicionado dinamicamente ao select)
+    return dept
+  })
   const [status, setStatus] = useState(funcionario.status || "Ativo")
-  const [avaliacao, setAvaliacao] = useState(funcionario.avaliacaoDesempenho || 0)
+  const [avaliacao, setAvaliacao] = useState(Number(funcionario.avaliacaoDesempenho) || 0)
+  const [motivoDesligamento, setMotivoDesligamento] = useState(funcionario.motivoDesligamento || "")
+  const [desligamentoData, setDesligamentoData] = useState(
+    funcionario.desligamentoData ? formatDateToInput(funcionario.desligamentoData) : ""
+  )
+
+  // Effect to clear desligamento fields when status changes to active
+  const handleStatusChange = (newStatus: string) => {
+    setStatus(newStatus)
+
+    // If changing to an active status, clear desligamento fields
+    if (newStatus === "Ativo" || newStatus === "ATIVO" || newStatus === "Ferias" || newStatus === "Licenca") {
+      setMotivoDesligamento("")
+      setDesligamentoData("")
+    }
+  }
+
+  // Debug log para verificar dados recebidos
+  console.log('Dados do funcionario recebidos:', {
+    id: funcionarioId,
+    departamento: funcionario.departamento,
+    departamentoMapeado: departamento,
+    status: funcionario.status,
+    statusAtual: status,
+    avaliacaoDesempenho: funcionario.avaliacaoDesempenho,
+    motivoDesligamento: funcionario.motivoDesligamento,
+    motivoDesligamentoState: motivoDesligamento,
+    desligamentoData: funcionario.desligamentoData,
+    desligamentoDataState: desligamentoData
+  })
 
   
 
@@ -137,11 +197,17 @@ export default function EditarFuncionarioClient({ funcionario, funcionarioId }: 
                       <SelectValue placeholder="Selecione um departamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Projetos">Projetos</SelectItem>
-                      <SelectItem value="Design">Design</SelectItem>
-                      <SelectItem value="Construção">Construção</SelectItem>
-                      <SelectItem value="Administração">Administração</SelectItem>
-                      <SelectItem value="Segurança">Segurança</SelectItem>
+                      {/* Adicionar departamento atual se não estiver na lista padrão */}
+                      {funcionario.departamento && !departamentosDisponiveis.includes(funcionario.departamento) && (
+                        <SelectItem value={funcionario.departamento}>
+                          {funcionario.departamento} (Atual)
+                        </SelectItem>
+                      )}
+                      {departamentosDisponiveis.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <input type="hidden" name="departamento" value={departamento} />
@@ -173,14 +239,19 @@ export default function EditarFuncionarioClient({ funcionario, funcionarioId }: 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
-                  <Select value={status} onValueChange={setStatus}>
+                  <Select value={status} onValueChange={handleStatusChange}>
                     <SelectTrigger id="status">
                       <SelectValue placeholder="Selecione um status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Ativo">Ativo</SelectItem>
+                      <SelectItem value="ATIVO">Ativo (Legacy)</SelectItem>
+                      <SelectItem value="Inativo">Inativo</SelectItem>
+                      <SelectItem value="INATIVO">Inativo (Legacy)</SelectItem>
                       <SelectItem value="Ferias">Férias</SelectItem>
                       <SelectItem value="Licenca">Licença</SelectItem>
+                      <SelectItem value="Desligado">Desligado</SelectItem>
+                      <SelectItem value="DESLIGADO">Desligado (Legacy)</SelectItem>
                     </SelectContent>
                   </Select>
                   <input type="hidden" name="status" value={status} />
@@ -191,6 +262,39 @@ export default function EditarFuncionarioClient({ funcionario, funcionarioId }: 
                   <input type="hidden" name="avaliacaoDesempenho" value={Number(avaliacao)} />
                 </div>
               </div>
+
+              {/* Campos de Desligamento - aparecem apenas para funcionários desligados */}
+              {(status === "Desligado" || status === "DESLIGADO" || status === "Inativo" || status === "INATIVO") && (
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                    <strong>Informações de Desligamento:</strong> Preencha os campos abaixo com os detalhes do desligamento ou inativação.
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="desligamentoData">Data do Desligamento</Label>
+                      <Input
+                        id="desligamentoData"
+                        name="desligamentoData"
+                        type="date"
+                        value={desligamentoData}
+                        onChange={(e) => setDesligamentoData(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="motivoDesligamento">Motivo do Desligamento</Label>
+                      <Textarea
+                        id="motivoDesligamento"
+                        name="motivoDesligamento"
+                        placeholder="Descreva o motivo do desligamento ou inativação"
+                        value={motivoDesligamento}
+                        onChange={(e) => setMotivoDesligamento(e.target.value)}
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="observacoes">Observações</Label>
                 <Textarea

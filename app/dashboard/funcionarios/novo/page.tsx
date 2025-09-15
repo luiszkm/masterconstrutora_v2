@@ -99,16 +99,7 @@ export default function NovoFuncionarioPage() {
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  required
-                />
-              </div>
+             
               <div>
                 <Label htmlFor="telefone">Telefone</Label>
                 <Input
@@ -117,26 +108,28 @@ export default function NovoFuncionarioPage() {
                   placeholder="(00) 00000-0000"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="cargo">Cargo</Label>
                 <Input
                   id="cargo"
                   name="cargo"
                   placeholder="Cargo do funcionário"
+                  required
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+       
               <div>
                 <Label htmlFor="dataContratacao">Data de Contratação</Label>
                 <Input
                   id="dataContratacao"
                   name="dataContratacao"
                   type="date"
+                  required
                 />
               </div>
-            </div>
-            <div>
+              <div>
               <Label htmlFor="departamento">Departamento</Label>
               <Select onValueChange={setDepartamento} value={departamento}>
                 <SelectTrigger id="departamento">
@@ -152,6 +145,8 @@ export default function NovoFuncionarioPage() {
               </Select>
               <input type="hidden" name="departamento" value={departamento} />
             </div>
+            </div>
+          
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="chavePix">Chave Pix</Label>
@@ -159,22 +154,6 @@ export default function NovoFuncionarioPage() {
                   id="chavePix"
                   name="chavePix"
                   placeholder="CPF, email, telefone ou chave aleatória"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="diaria">Diária (R$)</Label>
-                <NumericFormat
-                  thousandSeparator="."
-                  decimalSeparator=","
-                  prefix="R$ "
-                  decimalScale={2}
-                  fixedDecimalScale={true}
-                  allowNegative={false}
-                  customInput={Input}
-                  id="diaria"
-                  name="diaria"
-                  placeholder="R$ 0,00"
                   required
                 />
               </div>

@@ -55,10 +55,7 @@ import {
   obterProximaEtapa
 } from '@/app/lib/obra-utils'
 import { CronogramaTable } from '@/components/cronograma-table'
-import {
-  CriarCronogramaIndividual,
-  CriarCronogramaLote
-} from '@/components/cronograma-forms'
+import { CriarCronogramaIndividual } from '@/components/cronograma-forms'
 import { listarCronogramasAction } from '@/app/actions/cronograma'
 import { CronogramaRecebimento } from '@/types/api-types'
 import {
@@ -116,9 +113,15 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
       const result = await listarCronogramasAction(obra.id)
 
       if (result.success) {
+        console.log('✅ Cronogramas carregados com sucesso:', result.data)
         if (Array.isArray(result.data)) {
           setCronogramas(result.data)
+        } else {
+          console.log('⚠️ Dados não são array:', result.data)
+          setCronogramas([])
         }
+      } else {
+        console.log('❌ Erro ao carregar cronogramas:', result.error)
       }
     } catch (error) {
       console.error('💥 Erro ao carregar cronogramas:', error)
@@ -174,9 +177,7 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
 
     setSalvandoAlocacao(true)
     try {
-      console.log('🔄 Alocando funcionários:', funcionariosSelecionados)
       const result = await alocarFuncionario(obra.id, funcionariosSelecionados)
-
       if (result?.success) {
         toast({
           title: 'Sucesso',
@@ -540,9 +541,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                     Nenhum funcionário alocado nesta obra.
                   </p>
                 ) : (
-                  funcionariosObra.map(funcionario => (
+                  funcionariosObra.map((funcionario, index) => (
                     <div
-                      key={funcionario.funcionarioId}
+                      key={`${funcionario.funcionarioId}-${index}`}
                       className="flex items-center justify-between p-4 border rounded-lg"
                     >
                       <div className="flex items-center gap-4">
@@ -626,8 +627,8 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      obra.orcamentos.map(orcamento => (
-                        <TableRow key={orcamento.id}>
+                      obra.orcamentos.map((orcamento, index) => (
+                        <TableRow key={`${orcamento.id}-${index}`}>
                           <TableCell className="font-medium">
                             {orcamento.numero}
                           </TableCell>
@@ -685,9 +686,9 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {obra.fornecedores.map(fornecedor => (
+                {obra.fornecedores.map((fornecedor, index) => (
                   <div
-                    key={fornecedor.id}
+                    key={`${fornecedor.id}-${index}`}
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
                     <div className="flex items-center gap-4">
@@ -745,8 +746,8 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {obra.produtos.map(material => (
-                      <TableRow key={material.id}>
+                    {obra.produtos.map((material, index) => (
+                      <TableRow key={`${material.id}-${index}`}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Package className="h-4 w-4 text-muted-foreground" />
@@ -776,85 +777,95 @@ export function ObraDetalhes({ obra }: ObraDetalhesProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {loadingFuncionarios ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-center">
-                  <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    Carregando funcionários...
-                  </p>
-                </div>
-              </div>
-            ) : funcionariosDisponiveis.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                <h3 className="mt-4 text-lg font-medium">
-                  Nenhum funcionário disponível
-                </h3>
-                <p className="mt-2 text-muted-foreground">
-                  Todos os funcionários já estão alocados nesta obra ou não há
-                  funcionários cadastrados.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Funcionários Disponíveis</Label>
-                <ScrollArea className="h-64 border rounded-md p-4">
-                  <div className="space-y-3">
-                    {funcionariosDisponiveis.map(funcionario => (
-                      <div
-                        key={funcionario.id}
-                        className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted cursor-pointer border"
-                        onClick={() =>
-                          funcionario.id &&
-                          toggleFuncionarioSelecionado(funcionario.id)
-                        }
-                      >
-                        <Checkbox
-                          checked={
-                            funcionario.id
-                              ? funcionariosSelecionados.includes(
-                                  funcionario.id
-                                )
-                              : false
-                          }
-                          onCheckedChange={() =>
-                            funcionario.id &&
-                            toggleFuncionarioSelecionado(funcionario.id)
-                          }
-                        />
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>
-                            {funcionario.nome
-                              .split(' ')
-                              .map(n => n[0])
-                              .join('')
-                              .substring(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="font-medium">{funcionario.nome}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {funcionario.cargo || 'Cargo não informado'}
-                          </div>
-                          {funcionario.telefone && (
-                            <div className="text-xs text-muted-foreground">
-                              📞 {funcionario.telefone}
+            {(() => {
+              if (loadingFuncionarios) {
+                return (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-muted-foreground">
+                        Carregando funcionários...
+                      </p>
+                    </div>
+                  </div>
+                )
+              } else if (funcionariosDisponiveis.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                    <h3 className="mt-4 text-lg font-medium">
+                      Nenhum funcionário disponível
+                    </h3>
+                    <p className="mt-2 text-muted-foreground">
+                      Todos os funcionários já estão alocados nesta obra ou não
+                      há funcionários cadastrados.
+                    </p>
+                  </div>
+                )
+              } else {
+                return (
+                  <div className="space-y-2">
+                    <Label>Funcionários Disponíveis</Label>
+                    <ScrollArea className="h-64 border rounded-md p-4">
+                      <div className="space-y-3">
+                        {funcionariosDisponiveis.map((funcionario, index) => (
+                          <div
+                            key={`${funcionario.id}-disponivel-${index}`}
+                            className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted cursor-pointer border"
+                            onClick={() =>
+                              funcionario.id &&
+                              toggleFuncionarioSelecionado(funcionario.id)
+                            }
+                          >
+                            <Checkbox
+                              checked={
+                                funcionario.id
+                                  ? funcionariosSelecionados.includes(
+                                      funcionario.id
+                                    )
+                                  : false
+                              }
+                              onCheckedChange={() =>
+                                funcionario.id &&
+                                toggleFuncionarioSelecionado(funcionario.id)
+                              }
+                            />
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback>
+                                {funcionario.nome
+                                  .split(' ')
+                                  .map(n => n[0])
+                                  .join('')
+                                  .substring(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {funcionario.nome}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {funcionario.cargo || 'Cargo não informado'}
+                              </div>
+                              {funcionario.telefone && (
+                                <div className="text-xs text-muted-foreground">
+                                  📞 {funcionario.telefone}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </ScrollArea>
+                    {funcionariosSelecionados.length > 0 && (
+                      <div className="text-sm text-muted-foreground mt-2">
+                        {funcionariosSelecionados.length} funcionário(s)
+                        selecionado(s)
+                      </div>
+                    )}
                   </div>
-                </ScrollArea>
-                {funcionariosSelecionados.length > 0 && (
-                  <div className="text-sm text-muted-foreground mt-2">
-                    {funcionariosSelecionados.length} funcionário(s)
-                    selecionado(s)
-                  </div>
-                )}
-              </div>
-            )}
+                )
+              }
+            })()}
           </div>
           <DialogFooter>
             <Button

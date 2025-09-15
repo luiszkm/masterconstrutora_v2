@@ -434,7 +434,22 @@ export async function pagarApontamentosQuinzena(
   }
 }
 
+// Função wrapper que decide entre criar ou atualizar baseado no apontamentoId
+export async function handleFuncionarioApontamentoSubmit(
+  prevState: any,
+  formData: FormData
+): Promise<ActionResponse> {
+  const apontamentoId = formData.get("apontamentoId") as string | null
+
+  if (apontamentoId && apontamentoId.trim() !== "") {
+    // Se tem ID, atualizar
+    return atualizarApontamentoAction(apontamentoId, prevState, formData)
+  } else {
+    // Se não tem ID, criar novo
+    return criarApontamentoAction(prevState, formData)
+  }
+}
+
 // Funções auxiliares para compatibilidade com código existente (deprecated)
 export const createFuncionarioPayment = criarApontamentoAction
-export const handleFuncionarioApontamentoSubmit = atualizarApontamentoAction
 export const replicarFuncionariosQuinzena = replicarApontamentosAction

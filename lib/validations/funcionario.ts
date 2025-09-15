@@ -35,10 +35,12 @@ const baseFuncionarioFields = {
  */
 export const criarFuncionarioSchema = createFormDataSchema({
   ...baseFuncionarioFields,
+  email: emailSchema,
+  dataContratacao: dateSchema,
   diaria: z.union([
     z.string().transform(val => Number(val.replace(/[^\d,]/g, '').replace(',', '.'))),
     z.number()
-  ]).pipe(z.number().min(0.01, "Diária deve ser maior que 0"))
+  ]).pipe(z.number().min(0.01, "Diária deve ser maior que 0")).optional().default(0)
 })
 
 /**
@@ -77,7 +79,9 @@ export const funcionarioIdSchema = z.object({
 export const funcionariosQuerySchema = z.object({
   page: z.string().optional().transform(val => val ? parseInt(val) : 1),
   pageSize: z.string().optional().transform(val => val ? parseInt(val) : 10),
-  status: z.string().optional()
+  status: z.string().optional(),
+  dataInicio: z.string().optional(),
+  dataFim: z.string().optional()
 })
 
 // Tipos TypeScript inferidos dos schemas

@@ -93,6 +93,8 @@ export const funcionariosService = {
     page?: number
     pageSize?: number
     status?: string
+    dataInicio?: string
+    dataFim?: string
   }): Promise<BackendPaginatedResponse<FuncionarioComUltimoApontamento>> {
     // Constrói a query string a partir dos parâmetros
     const queryParams = new URLSearchParams()
@@ -106,12 +108,60 @@ export const funcionariosService = {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : ""
 
-    return apiClient.get<BackendPaginatedResponse<FuncionarioComUltimoApontamento>>(`/funcionarios/apontamentos${query}`, {
-      next: {
-        revalidate: DEFAULT_CACHE_TIME,
-        tags: ["funcionarios-apontamentos"],
-      },
-    })
+    try {
+      const result = await apiClient.get<BackendPaginatedResponse<FuncionarioComUltimoApontamento>>(`/funcionarios/apontamentos${query}`, {
+        next: {
+          revalidate: DEFAULT_CACHE_TIME,
+          tags: ["funcionarios-apontamentos"],
+        },
+      })
+
+      // Ensure result has proper structure
+      if (!result || typeof result !== 'object') {
+        console.error('Invalid response from /funcionarios/apontamentos:', result)
+        return {
+          dados: [],
+          paginacao: {
+            totalItens: 0,
+            totalPages: 1,
+            currentPage: 1,
+            pageSize: 20
+          }
+        }
+      }
+
+      // If result is an array, wrap it in the expected structure
+      if (Array.isArray(result)) {
+        return {
+          dados: result,
+          paginacao: {
+            totalItens: result.length,
+            totalPages: 1,
+            currentPage: 1,
+            pageSize: result.length || 20
+          }
+        }
+      }
+
+      // If result has dados property, return as is
+      if (result.dados && Array.isArray(result.dados)) {
+        return result
+      }
+
+      // If result is a single object, wrap it as a single item array
+      return {
+        dados: [result as any],
+        paginacao: {
+          totalItens: 1,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize: 1
+        }
+      }
+    } catch (error) {
+      console.error('Error in listarFuncionariosComUltimoApontamento:', error)
+      throw error
+    }
   },
 
   /**

@@ -25,14 +25,14 @@ export interface Funcionario {
   email?: string
   departamento: string
   dataContratacao: string
-  valorDiaria: number
+  valorDiaria?: number // Optional since backend doesn't always return this
   chavePix: string
-  status: "ATIVO" | "INATIVO" | "DESLIGADO"
+  status: "Ativo" | "Inativo" | "Desligado" | "ATIVO" | "INATIVO" | "DESLIGADO" // Support both formats
   desligamentoData?: string
   motivoDesligamento?: string
   created_at: string
   updated_at: string
-  diaria: number // Alias para valorDiaria para compatibilidade
+  diaria?: number // Optional since backend doesn't always return this
   avaliacaoDesempenho?: string
   observacoes?: string
 }
@@ -69,8 +69,38 @@ export interface AtualizarFuncionarioRequest {
 
 // Funcionário com último apontamento
 export interface FuncionarioComUltimoApontamento {
-  funcionarioId: string
-  funcionarioNome: string
+  // Employee basic info
+  id: string
+  nome: string
+  cpf: string
+  telefone: string
+  cargo: string
+  email?: string
+  departamento: string
+  dataContratacao: string
+  chavePix: string
+  status: "Ativo" | "Inativo" | "Desligado" | "ATIVO" | "INATIVO" | "DESLIGADO"
+  motivoDesligamento?: string
+  created_at: string
+  updated_at: string
+  avaliacaoDesempenho?: string
+  observacoes?: string
+
+  // Apontamento data (when available)
+  apontamentoId?: string | null
+  valorDiaria: number
+  diasTrabalhados: number
+  valorAdicional: number
+  descontos: number
+  adiantamento: number
+  periodoInicio?: string
+  periodoFim?: string
+  obraId?: string
+  statusApontamento?: "EM_ABERTO" | "APROVADO_PARA_PAGAMENTO" | "PAGO" | "CANCELADO"
+
+  // Legacy support
+  funcionarioId?: string
+  funcionarioNome?: string
   ultimoApontamento?: ApontamentoQuinzenal
 }
 

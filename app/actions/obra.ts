@@ -47,7 +47,7 @@ type ItemProduto = {
   nome: string;
 };
 
-type orcamentoObra={
+type orcamentoObra = {
   funcionarioId: number;
   nomeFuncionario: string;
   dataInicioAlocacao: string;
@@ -56,7 +56,8 @@ type orcamentoObra={
 type Funcionario = {
   funcionarioId: number;
   nomeFuncionario: string;
-  dataInicioAlocacao: string;}
+  dataInicioAlocacao: string;
+}
 
 
 // Tipo para a listagem simplificada de obras
@@ -132,12 +133,12 @@ export async function getObrasList(
 export async function criarObra(formData: FormData): Promise<CreateActionResponse> {
   // Validar dados do formulário
   const validation = validateFormData(formData, createObraSchema)
-  
+
   if (!validation.success) {
     const firstError = Object.values(validation.errors)[0]?.[0]
     return createErrorResponse(firstError || "Dados inválidos")
   }
-  
+
   const novaObra = validation.data
 
   // Obter funcionários selecionados
@@ -288,7 +289,7 @@ export async function atualizarObra(id: string, formData: FormData): Promise<Act
     revalidatePath("/dashboard/obras");
 
     return createSuccessResponse("Obra atualizada com sucesso!");
-    
+
   } catch (error) {
     console.error("Erro ao atualizar obra:", error);
     if (
@@ -325,10 +326,9 @@ export async function getObraById(
     }
 
     const result = await response.json();
-    console.log("Dados da obra:", result);
     // Validação da estrutura da resposta
-      return createSuccessResponse("Obra encontrada com sucesso", result as Obra);
-   
+    return createSuccessResponse("Obra encontrada com sucesso", result as Obra);
+
   } catch (error) {
     console.error("Erro ao buscar obra:", error);
     if (
@@ -341,20 +341,23 @@ export async function getObraById(
   }
 }
 export async function alocarFuncionario(obraId: string, funcionarioIds: string[]) {
+  try {
     const funcionariosSelecionados = {
-    funcionarioIds: funcionarioIds,
-    dataInicioAlocacao: new Date().toISOString().split("T")[0], // Data atual no formato YYYY-MM-DD
-  };
+      funcionarioIds: funcionarioIds,
+      dataInicioAlocacao: new Date().toISOString().split("T")[0],
+    };
 
-  const response = await makeAuthenticatedRequest(
-        `${API_URL}/obras/${obraId}/alocacoes`,
-        {
-          method: "POST",
-          body: JSON.stringify(funcionariosSelecionados),
-        }
-      );
-      if (!response.ok) {
-        let errorMessage = "Erro ao associar funcionários à obra.";
+    const response = await makeAuthenticatedRequest(
+      `${API_URL}/obras/${obraId}/alocacoes`,
+      {
+        method: "POST",
+        body: JSON.stringify(funcionariosSelecionados),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Erro na resposta da alocação:', response);
+      let errorMessage = "Erro ao associar funcionários à obra.";
       try {
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
@@ -363,12 +366,30 @@ export async function alocarFuncionario(obraId: string, funcionarioIds: string[]
           errorMessage = "Não autorizado. Faça login novamente.";
         }
       }
-        return createErrorResponse(errorMessage);
-      }
-
-      revalidateTag(`obra-${obraId}`);
-      revalidatePath("/dashboard/obras");
+      return createErrorResponse(errorMessage);
     }
+
+    // Processar resposta de sucesso
+    let responseData;
+    try {
+      responseData = await response.json();
+    } catch {
+      // Se não conseguir fazer parse do JSON, ainda é sucesso
+      responseData = null;
+    }
+
+    revalidateTag(`obra-${obraId}`);
+    revalidatePath("/dashboard/obras");
+
+    return createSuccessResponse(
+      "Funcionários alocados com sucesso!",
+      responseData
+    );
+  } catch (error) {
+    console.error("Erro ao alocar funcionários:", error);
+    return createErrorResponse("Erro de conexão com o servidor. Tente novamente.");
+  }
+}
 
 export async function excluirObra(id: string): Promise<ActionResponse> {
   try {

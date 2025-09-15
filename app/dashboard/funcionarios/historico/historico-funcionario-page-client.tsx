@@ -184,33 +184,78 @@ export default function HistoricoFuncionariosClientPage({
 
     let matchesDataContratacao = true
     if (dateRangeContratacao?.from && funcionario.dataContratacao) {
-      const [day, month, year] = funcionario.dataContratacao.split("/")
-      const dataContratacao = new Date(Number(year), Number(month) - 1, Number(day))
+      try {
+        // Handle different date formats
+        let dataContratacao: Date
 
-      if (dateRangeContratacao.to) {
-        matchesDataContratacao = isWithinInterval(dataContratacao, {
-          start: dateRangeContratacao.from,
-          end: dateRangeContratacao.to,
-        })
-      } else {
-        matchesDataContratacao =
-          format(dataContratacao, "yyyy-MM-dd") === format(dateRangeContratacao.from, "yyyy-MM-dd")
+        if (funcionario.dataContratacao.includes("/")) {
+          const parts = funcionario.dataContratacao.split("/")
+          if (parts.length === 3) {
+            const [day, month, year] = parts
+            dataContratacao = new Date(Number(year), Number(month) - 1, Number(day))
+          } else {
+            dataContratacao = new Date(funcionario.dataContratacao)
+          }
+        } else {
+          // Try ISO format or other formats
+          dataContratacao = new Date(funcionario.dataContratacao)
+        }
+
+        // Validate the date
+        if (isNaN(dataContratacao.getTime())) {
+          matchesDataContratacao = true // Skip filtering if date is invalid
+        } else {
+          if (dateRangeContratacao.to) {
+            matchesDataContratacao = isWithinInterval(dataContratacao, {
+              start: dateRangeContratacao.from,
+              end: dateRangeContratacao.to,
+            })
+          } else {
+            matchesDataContratacao =
+              format(dataContratacao, "yyyy-MM-dd") === format(dateRangeContratacao.from, "yyyy-MM-dd")
+          }
+        }
+      } catch (error) {
+        console.warn('Invalid date format for dataContratacao:', funcionario.dataContratacao, error)
+        matchesDataContratacao = true // Skip filtering if date parsing fails
       }
     }
 
     let matchesDataDemissao = true
     if (dateRangeDemissao?.from && funcionario.desligamentoData) {
-      // Alterado de desligamentoData para dataDemissao
-      const [day, month, year] = funcionario.desligamentoData.split("/")
-      const dataDemissao = new Date(Number(year), Number(month) - 1, Number(day))
+      try {
+        // Handle different date formats
+        let dataDemissao: Date
 
-      if (dateRangeDemissao.to) {
-        matchesDataDemissao = isWithinInterval(dataDemissao, {
-          start: dateRangeDemissao.from,
-          end: dateRangeDemissao.to,
-        })
-      } else {
-        matchesDataDemissao = format(dataDemissao, "yyyy-MM-dd") === format(dateRangeDemissao.from, "yyyy-MM-dd")
+        if (funcionario.desligamentoData.includes("/")) {
+          const parts = funcionario.desligamentoData.split("/")
+          if (parts.length === 3) {
+            const [day, month, year] = parts
+            dataDemissao = new Date(Number(year), Number(month) - 1, Number(day))
+          } else {
+            dataDemissao = new Date(funcionario.desligamentoData)
+          }
+        } else {
+          // Try ISO format or other formats
+          dataDemissao = new Date(funcionario.desligamentoData)
+        }
+
+        // Validate the date
+        if (isNaN(dataDemissao.getTime())) {
+          matchesDataDemissao = true // Skip filtering if date is invalid
+        } else {
+          if (dateRangeDemissao.to) {
+            matchesDataDemissao = isWithinInterval(dataDemissao, {
+              start: dateRangeDemissao.from,
+              end: dateRangeDemissao.to,
+            })
+          } else {
+            matchesDataDemissao = format(dataDemissao, "yyyy-MM-dd") === format(dateRangeDemissao.from, "yyyy-MM-dd")
+          }
+        }
+      } catch (error) {
+        console.warn('Invalid date format for desligamentoData:', funcionario.desligamentoData, error)
+        matchesDataDemissao = true // Skip filtering if date parsing fails
       }
     }
 

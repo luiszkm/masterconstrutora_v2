@@ -179,7 +179,20 @@ const historicoPagamentos = [
 ]
 
 // Departamentos disponíveis para filtro
-const departamentos = ["Projetos", "Design", "Construção", "Administração", "Segurança"]
+const departamentos = [
+  "Projetos",
+  "Design",
+  "Construção",
+  "Construção Civil",
+  "Administração",
+  "Segurança",
+  "Engenharia",
+  "Arquitetura",
+  "Financeiro",
+  "Recursos Humanos",
+  "Obras",
+  "Planejamento"
+]
 
 // Cargos disponíveis para filtro
 const cargos = ["Engenheiro Civil", "Arquiteta", "Mestre de Obras", "Gerente de Projetos", "Técnico em Segurança"]
@@ -251,6 +264,10 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
   })
   const [selectedFuncionarios, setSelectedFuncionarios] = useState<string[]>([])
   const [dialogPagamentoQuinzenaAberto, setDialogPagamentoQuinzenaAberto] = useState(false)
+
+  // Filtros de data para API
+  const [dataInicio, setDataInicio] = useState<string>("")
+  const [dataFim, setDataFim] = useState<string>("")
   const [contasBancarias, setContasBancarias] = useState<
     { id: string; nome: string; agencia: string; conta: string }[]
   >([])
@@ -283,10 +300,16 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
   const loadFuncionarios = async (page: number = currentPage, size: number = pageSize) => {
     setLoading(true)
     try {
-      const result = await listarFuncionariosComUltimoApontamentoAction({
+      const params: any = {
         page: page.toString(),
         pageSize: size.toString()
-      })
+      }
+
+      // Add date filters if set
+      if (dataInicio) params.dataInicio = dataInicio
+      if (dataFim) params.dataFim = dataFim
+
+      const result = await listarFuncionariosComUltimoApontamentoAction(params)
       if ("error" in result) {
         toast({
           title: "Erro ao carregar funcionários",
@@ -321,6 +344,20 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize)
     loadFuncionarios(1, newSize) // Volta para primeira página
+  }
+
+  // Função para aplicar filtros de data
+  const handleDateFilter = () => {
+    setCurrentPage(1) // Reset to first page
+    loadFuncionarios(1, pageSize)
+  }
+
+  // Função para limpar filtros de data
+  const clearDateFilters = () => {
+    setDataInicio("")
+    setDataFim("")
+    setCurrentPage(1)
+    loadFuncionarios(1, pageSize)
   }
 
   // State para a Server Action de pagamento
@@ -925,16 +962,65 @@ export function FuncionariosPageClient({ initialData }: FuncionariosPageClientPr
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-2 justify-between">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar funcionários..."
-                className="w-full pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row items-center gap-2 justify-between">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Buscar funcionários..."
+                  className="w-full pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Filtros de Data */}
+            <div className="flex flex-col sm:flex-row gap-2 items-center">
+              <div className="flex gap-2 items-center">
+                <Label htmlFor="dataInicio" className="text-sm font-medium whitespace-nowrap">
+                  Data Início:
+                </Label>
+                <Input
+                  id="dataInicio"
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="w-auto"
+                />
+              </div>
+              <div className="flex gap-2 items-center">
+                <Label htmlFor="dataFim" className="text-sm font-medium whitespace-nowrap">
+                  Data Fim:
+                </Label>
+                <Input
+                  id="dataFim"
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="w-auto"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleDateFilter}
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filtrar
+                </Button>
+                <Button
+                  onClick={clearDateFilters}
+                  variant="ghost"
+                  size="sm"
+                  disabled={loading || (!dataInicio && !dataFim)}
+                >
+                  Limpar
+                </Button>
+              </div>
             </div>
             <div className="flex gap-2 w-full md:w-auto">
               <DropdownMenu>

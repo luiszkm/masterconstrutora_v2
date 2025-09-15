@@ -2,13 +2,17 @@ import { redirect } from "next/navigation"
 import {  getApontamentos } from "@/app/actions/funcionario"
 import  ApontamentosFuncionariosClient  from "./apontamentos-funcionarios-client"
 
-export default async function ApontamentosFuncionarioPage({ params }: { params: { id: string } }) {
+export default async function ApontamentosFuncionarioPage({
+  params,
+  searchParams
+}: {
+  params: { id: string }
+  searchParams?: { page?: string; pageSize?: string; dataInicio?: string; dataFim?: string; status?: string }
+}) {
   const { id } = params
 
-
-
-  // Buscar apontamentos do funcionário
-  const apontamentosResult = await getApontamentos()
+  // Buscar apontamentos do funcionário com filtros
+  const apontamentosResult = await getApontamentos(searchParams)
   if ("error" in apontamentosResult) {
     if (apontamentosResult.error.includes("Não autorizado")) {
       redirect("/login")
@@ -25,5 +29,19 @@ export default async function ApontamentosFuncionarioPage({ params }: { params: 
 
   console.log("apontamentosResult", apontamentosResult)
 
-  return <ApontamentosFuncionariosClient apontamentos={apontamentosResult} />
+  // Handle backwards compatibility
+  let formattedData = apontamentosResult
+  if (Array.isArray(apontamentosResult)) {
+    formattedData = {
+      dados: apontamentosResult,
+      paginacao: {
+        totalItens: apontamentosResult.length,
+        totalPages: 1,
+        currentPage: 1,
+        pageSize: apontamentosResult.length || 20
+      }
+    }
+  }
+
+  return <ApontamentosFuncionariosClient initialData={formattedData} />
 }
